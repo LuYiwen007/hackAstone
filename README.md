@@ -276,7 +276,7 @@ hackAstone_backend/
 │   │   │           │   └── AIConversationConverter.java
 │   │   │           ├── enums/                      # 枚举类
 │   │   │           │   ├── ResultEnum.java
-│   │   │           │   ├── PlanStatus.java        # 计划状态枚举（5个状态）
+│   │   │           │   ├── PlanStatus.java        # 计划状态枚举（6个状态）
 │   │   │           │   ├── PlanType.java
 │   │   │           │   ├── UsageDataType.java
 │   │   │           │   └── ConversationRole.java  # 对话角色枚举
@@ -433,7 +433,7 @@ CREATE TABLE `ha_user` (
 | title | VARCHAR(200) | 计划标题 | NOT NULL |
 | description | TEXT | 计划描述 | |
 | plan_type | VARCHAR(50) | 计划类型 | |
-| status | VARCHAR(32) | 状态：DRAFT-草稿，PENDING-待开始，IN_PROGRESS-进行中，COMPLETED-已完成，CANCELLED-已取消 | NOT NULL, DEFAULT 'DRAFT' |
+| status | VARCHAR(32) | 状态：NOT_STARTED-未开始，IN_PROGRESS-执行中，PAUSED-暂停，COMPLETED-完成，FAILED-失败，DELAYED-延期 | NOT NULL, DEFAULT 'NOT_STARTED' |
 | start_date | DATETIME | 开始时间 | |
 | end_date | DATETIME | 结束时间 | |
 | priority | INT | 优先级：0-低，1-中，2-高 | DEFAULT 0 |
@@ -451,7 +451,7 @@ CREATE TABLE `ha_plan` (
   `title` VARCHAR(200) NOT NULL COMMENT '计划标题',
   `description` TEXT COMMENT '计划描述',
   `plan_type` VARCHAR(50) COMMENT '计划类型',
-  `status` VARCHAR(32) NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿，PENDING-待开始，IN_PROGRESS-进行中，COMPLETED-已完成，CANCELLED-已取消',
+  `status` VARCHAR(32) NOT NULL DEFAULT 'NOT_STARTED' COMMENT '状态：NOT_STARTED-未开始，IN_PROGRESS-执行中，PAUSED-暂停，COMPLETED-完成，FAILED-失败，DELAYED-延期',
   `start_date` DATETIME COMMENT '开始时间',
   `end_date` DATETIME COMMENT '结束时间',
   `priority` INT DEFAULT 0 COMMENT '优先级：0-低，1-中，2-高',
@@ -473,7 +473,7 @@ CREATE TABLE `ha_plan` (
 - `idx_user_status` (user_id, status)
 
 **说明：**
-- 计划状态共5个：DRAFT（草稿）、PENDING（待开始）、IN_PROGRESS（进行中）、COMPLETED（已完成）、CANCELLED（已取消）
+- 计划状态共6个：NOT_STARTED（未开始）、IN_PROGRESS（执行中）、PAUSED（暂停）、COMPLETED（完成）、FAILED（失败）、DELAYED（延期）
 - AI 生成的计划与手动创建的计划统一存储，不额外标注
 
 ### 4. 用户使用数据表（ha_usage_data）
@@ -565,7 +565,7 @@ CREATE TABLE `ha_ai_conversation` (
 1. **ID字段设计**：所有表的ID字段统一使用 VARCHAR(64) 类型，通过 id_sequence 表生成唯一ID，方便未来分库分表扩展
 2. **外键设计**：不使用数据库外键约束，所有关联字段通过普通索引实现，便于分库分表和提升性能
 3. **软删除设计**：用户表通过 status 字段实现软删除，统一使用 VARCHAR(32) 存储状态值
-4. **计划状态**：计划表有5个状态（DRAFT, PENDING, IN_PROGRESS, COMPLETED, CANCELLED），覆盖计划完整生命周期
+4. **计划状态**：计划表有6个状态（NOT_STARTED, IN_PROGRESS, PAUSED, COMPLETED, FAILED, DELAYED），覆盖计划完整生命周期
 5. **AI对话存储**：AI对话内容按时间、角色、内容、会话ID存储，支持完整的对话历史追溯
 6. **统一存储**：AI生成的计划与手动创建的计划统一存储在 ha_plan 表中，不额外标注来源
 7. **索引优化**：为常用查询字段建立索引，提升查询性能
