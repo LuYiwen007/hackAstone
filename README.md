@@ -29,278 +29,282 @@ hackAstone比赛仓库
 
 ### 前端项目（hackAstone_web）
 
+```
 hackAstone_web/
-├── package.json # npm 包配置文件
-├── vite.config.js # Vite 构建工具配置
-├── index.html # HTML 入口文件
-├── eslint.config.js # ESLint 配置
-├── README.md # 项目说明文档
+├── package.json                                     # npm 包配置文件
+├── vite.config.js                                  # Vite 构建工具配置
+├── index.html                                      # HTML 入口文件
+├── eslint.config.js                                # ESLint 配置
+├── README.md                                       # 项目说明文档
 │
-├── public/ # 公共静态资源
-│ └── favicon.ico
+├── public/                                         # 公共静态资源
+│   └── favicon.ico
 │
 └── src/
-├── main.jsx # React 应用入口
-├── App.jsx # 应用根组件
-├── App.css # 全局样式
-├── index.css # 基础样式
-│
-├── app/ # 应用层（FSD: App）
-│ ├── App.jsx # 应用根组件
-│ ├── index.jsx # 应用入口导出
-│ └── router/ # 路由配置
-│ ├── index.js # 路由适配器入口
-│ ├── routes.js # 路由定义
-│ └── web.jsx # Web 路由实现（React Router）
-│
-├── pages/ # 页面层（FSD: Pages）
-│ ├── LoginPage/ # 登录页面
-│ │ ├── LoginPage.jsx
-│ │ └── index.js
-│ ├── RegisterPage/ # 注册页面
-│ │ ├── RegisterPage.jsx
-│ │ └── index.js
-│ ├── PlanListPage/ # 计划列表页面
-│ │ ├── PlanListPage.jsx
-│ │ └── index.js
-│ ├── PlanDetailPage/ # 计划详情页面
-│ │ ├── PlanDetailPage.jsx
-│ │ └── index.js
-│ ├── CreatePlanPage/ # 创建计划页面
-│ │ ├── CreatePlanPage.jsx
-│ │ └── index.js
-│ ├── AIChatPage/ # AI对话生成计划页面
-│ │ ├── AIChatPage.jsx
-│ │ └── index.js
-│ └── UsageDataPage/ # 使用数据统计页面
-│ ├── UsageDataPage.jsx
-│ └── index.js
-│
-├── components/ # 功能层（FSD: Features）
-│ ├── auth/ # 认证功能模块
-│ │ ├── hooks/
-│ │ │ ├── useAuth.js
-│ │ │ └── useLogin.js
-│ │ ├── ui/
-│ │ │ ├── LoginForm.jsx
-│ │ │ └── RegisterForm.jsx
-│ │ └── index.js
-│ ├── plan/ # 计划功能模块
-│ │ ├── hooks/
-│ │ │ ├── usePlanList.js
-│ │ │ ├── useCreatePlan.js
-│ │ │ └── useUpdatePlan.js
-│ │ ├── ui/
-│ │ │ ├── PlanCard.jsx
-│ │ │ ├── PlanList.jsx
-│ │ │ ├── PlanForm.jsx
-│ │ │ └── PlanStatusBadge.jsx
-│ │ └── index.js
-│ ├── ai/ # AI功能模块
-│ │ ├── hooks/
-│ │ │ ├── useAIChat.js # AI对话Hook（调用大模型API）
-│ │ │ ├── useAIGeneratePlan.js # AI生成计划Hook
-│ │ │ └── useSaveConversation.js # 保存对话Hook
-│ │ ├── ui/
-│ │ │ ├── AIChatWindow.jsx # AI对话窗口组件
-│ │ │ ├── AIChatMessage.jsx # AI对话消息组件
-│ │ │ ├── AIChatInput.jsx # AI对话输入组件
-│ │ │ └── AIGenerateButton.jsx # AI生成按钮
-│ │ └── index.js
-│ ├── usage/ # 使用数据功能模块
-│ │ ├── hooks/
-│ │ │ └── useUsageData.js
-│ │ ├── ui/
-│ │ │ ├── UsageChart.jsx
-│ │ │ └── UsageStats.jsx
-│ │ └── index.js
-│ └── error/ # 错误处理模块
-│ ├── ui/
-│ │ └── Error.jsx
-│ └── index.js
-│
-├── entities/ # 实体层（FSD: Entities）
-│ ├── user/ # 用户实体
-│ │ ├── api/
-│ │ │ └── userApi.js
-│ │ ├── model/
-│ │ │ └── types.js
-│ │ ├── store/
-│ │ │ └── userStore.js
-│ │ └── index.js
-│ ├── plan/ # 计划实体
-│ │ ├── api/
-│ │ │ └── planApi.js
-│ │ ├── model/
-│ │ │ └── types.js
-│ │ ├── store/
-│ │ │ └── planStore.js
-│ │ └── index.js
-│ ├── usage/ # 使用数据实体
-│ │ ├── api/
-│ │ │ └── usageDataApi.js
-│ │ ├── model/
-│ │ │ └── types.js
-│ │ ├── store/
-│ │ │ └── usageDataStore.js
-│ │ └── index.js
-│ └── ai/ # AI实体
-│ ├── api/
-│ │ ├── aiClient.js # 大模型API客户端（直接调用OpenAI/Claude等）
-│ │ └── conversationApi.js # 对话存储API（调用后端）
-│ ├── model/
-│ │ └── types.js
-│ └── index.js
-│
-└── shared/ # 共享层（FSD: Shared）
-├── api/
-│ ├── client.js # 后端API客户端
-│ └── endpoints.js # API端点配置
-├── constants/
-│ ├── config.js # 应用配置（含AI API Key配置）
-│ └── routes.js # 路由常量
-├── lib/
-│ └── platform.js # 平台检测工具
-├── ui/ # 基础UI组件（Web专用）
-│ ├── Button/
-│ │ ├── Button.jsx
-│ │ └── index.js
-│ ├── Input/
-│ │ ├── Input.jsx
-│ │ └── index.js
-│ ├── Card/
-│ │ ├── Card.jsx
-│ │ └── index.js
-│ ├── Modal/
-│ │ ├── Modal.jsx
-│ │ └── index.js
-│ └── Loading/
-│ ├── Loading.jsx
-│ └── index.js
-└── utils/
-├── format.js # 格式化工具
-└── date.js # 日期工具
+    ├── main.jsx                                    # React 应用入口
+    ├── App.jsx                                     # 应用根组件
+    ├── App.css                                     # 全局样式
+    ├── index.css                                   # 基础样式
+    │
+    ├── app/                                        # 应用层（FSD: App）
+    │   ├── App.jsx                                 # 应用根组件
+    │   ├── index.jsx                               # 应用入口导出
+    │   └── router/                                 # 路由配置
+    │       ├── index.js                            # 路由适配器入口
+    │       ├── routes.js                           # 路由定义
+    │       └── web.jsx                             # Web 路由实现（React Router）
+    │
+    ├── pages/                                      # 页面层（FSD: Pages）
+    │   ├── LoginPage/                              # 登录页面
+    │   │   ├── LoginPage.jsx
+    │   │   └── index.js
+    │   ├── RegisterPage/                           # 注册页面
+    │   │   ├── RegisterPage.jsx
+    │   │   └── index.js
+    │   ├── PlanListPage/                           # 计划列表页面
+    │   │   ├── PlanListPage.jsx
+    │   │   └── index.js
+    │   ├── PlanDetailPage/                         # 计划详情页面
+    │   │   ├── PlanDetailPage.jsx
+    │   │   └── index.js
+    │   ├── CreatePlanPage/                         # 创建计划页面
+    │   │   ├── CreatePlanPage.jsx
+    │   │   └── index.js
+    │   ├── AIChatPage/                             # AI对话生成计划页面
+    │   │   ├── AIChatPage.jsx
+    │   │   └── index.js
+    │   └── UsageDataPage/                          # 使用数据统计页面
+    │       ├── UsageDataPage.jsx
+    │       └── index.js
+    │
+    ├── components/                                 # 功能层（FSD: Features）
+    │   ├── auth/                                   # 认证功能模块
+    │   │   ├── hooks/
+    │   │   │   ├── useAuth.js
+    │   │   │   └── useLogin.js
+    │   │   ├── ui/
+    │   │   │   ├── LoginForm.jsx
+    │   │   │   └── RegisterForm.jsx
+    │   │   └── index.js
+    │   ├── plan/                                   # 计划功能模块
+    │   │   ├── hooks/
+    │   │   │   ├── usePlanList.js
+    │   │   │   ├── useCreatePlan.js
+    │   │   │   └── useUpdatePlan.js
+    │   │   ├── ui/
+    │   │   │   ├── PlanCard.jsx
+    │   │   │   ├── PlanList.jsx
+    │   │   │   ├── PlanForm.jsx
+    │   │   │   └── PlanStatusBadge.jsx
+    │   │   └── index.js
+    │   ├── ai/                                     # AI功能模块
+    │   │   ├── hooks/
+    │   │   │   ├── useAIChat.js                    # AI对话Hook（调用大模型API）
+    │   │   │   ├── useAIGeneratePlan.js            # AI生成计划Hook
+    │   │   │   └── useSaveConversation.js          # 保存对话Hook
+    │   │   ├── ui/
+    │   │   │   ├── AIChatWindow.jsx                # AI对话窗口组件
+    │   │   │   ├── AIChatMessage.jsx               # AI对话消息组件
+    │   │   │   ├── AIChatInput.jsx                 # AI对话输入组件
+    │   │   │   └── AIGenerateButton.jsx            # AI生成按钮
+    │   │   └── index.js
+    │   ├── usage/                                  # 使用数据功能模块
+    │   │   ├── hooks/
+    │   │   │   └── useUsageData.js
+    │   │   ├── ui/
+    │   │   │   ├── UsageChart.jsx
+    │   │   │   └── UsageStats.jsx
+    │   │   └── index.js
+    │   └── error/                                  # 错误处理模块
+    │       ├── ui/
+    │       │   └── Error.jsx
+    │       └── index.js
+    │
+    ├── entities/                                   # 实体层（FSD: Entities）
+    │   ├── user/                                   # 用户实体
+    │   │   ├── api/
+    │   │   │   └── userApi.js
+    │   │   ├── model/
+    │   │   │   │   └── types.js
+    │   │   ├── store/
+    │   │   │   └── userStore.js
+    │   │   └── index.js
+    │   ├── plan/                                   # 计划实体
+    │   │   ├── api/
+    │   │   │   └── planApi.js
+    │   │   ├── model/
+    │   │   │   │   └── types.js
+    │   │   ├── store/
+    │   │   │   └── planStore.js
+    │   │   └── index.js
+    │   ├── usage/                                  # 使用数据实体
+    │   │   ├── api/
+    │   │   │   └── usageDataApi.js
+    │   │   ├── model/
+    │   │   │   │   └── types.js
+    │   │   ├── store/
+    │   │   │   └── usageDataStore.js
+    │   │   └── index.js
+    │   └── ai/                                     # AI实体
+    │       ├── api/
+    │       │   ├── aiClient.js                     # 大模型API客户端（直接调用OpenAI/Claude等）
+    │       │   └── conversationApi.js              # 对话存储API（调用后端）
+    │       ├── model/
+    │       │   └── types.js
+    │       └── index.js
+    │
+    └── shared/                                     # 共享层（FSD: Shared）
+        ├── api/
+        │   ├── client.js                           # 后端API客户端
+        │   └── endpoints.js                        # API端点配置
+        ├── constants/
+        │   ├── config.js                           # 应用配置（含AI API Key配置）
+        │   └── routes.js                           # 路由常量
+        ├── lib/
+        │   └── platform.js                         # 平台检测工具
+        ├── ui/                                     # 基础UI组件（Web专用）
+        │   ├── Button/
+        │   │   ├── Button.jsx
+        │   │   └── index.js
+        │   ├── Input/
+        │   │   ├── Input.jsx
+        │   │   └── index.js
+        │   ├── Card/
+        │   │   ├── Card.jsx
+        │   │   └── index.js
+        │   ├── Modal/
+        │   │   ├── Modal.jsx
+        │   │   └── index.js
+        │   └── Loading/
+        │       ├── Loading.jsx
+        │       └── index.js
+        └── utils/
+            ├── format.js                           # 格式化工具
+            └── date.js                             # 日期工具
+```
 
 ### 后端项目（hackAstone_backend）
 
+```
 hackAstone_backend/
 ├── src/
-│ ├── main/
-│ │ ├── java/
-│ │ │ └── org/hackastone/
-│ │ │ ├── HackAstoneApplication.java # Spring Boot 启动类
-│ │ │ │
-│ │ │ ├── base/ # 基础层 - 基础设施和通用组件
-│ │ │ │ ├── dal/ # 数据访问层 (Data Access Layer)
-│ │ │ │ │ ├── entity/ # 数据库实体类（对应数据库表）
-│ │ │ │ │ │ ├── UserEntity.java
-│ │ │ │ │ │ ├── PlanEntity.java
-│ │ │ │ │ │ ├── UsageDataEntity.java
-│ │ │ │ │ │ └── AIConversationEntity.java
-│ │ │ │ │ └── mapper/ # MyBatis Mapper 接口
-│ │ │ │ │ ├── UserMapper.java
-│ │ │ │ │ ├── PlanMapper.java
-│ │ │ │ │ ├── UsageDataMapper.java
-│ │ │ │ │ └── AIConversationMapper.java
-│ │ │ │ └── util/ # 基础工具类
-│ │ │ │ ├── constants/ # 常量定义
-│ │ │ │ │ └── BizConstants.java
-│ │ │ │ ├── exception/ # 异常处理
-│ │ │ │ │ ├── AssertUtil.java
-│ │ │ │ │ └── HackAstoneBizException.java
-│ │ │ │ ├── log/ # 日志工具
-│ │ │ │ │ └── LogUtil.java
-│ │ │ │ ├── template/ # 业务模板（统一异常处理）
-│ │ │ │ │ ├── AbstractBizCallback.java
-│ │ │ │ │ ├── BizCallback.java
-│ │ │ │ │ └── BizTemplate.java
-│ │ │ │ └── validator/ # 参数校验
-│ │ │ │ └── RequestValidator.java
-│ │ │ │
-│ │ │ ├── biz/ # 业务层 - 业务逻辑和 DTO
-│ │ │ │ └── dto/ # 数据传输对象 (Data Transfer Object)
-│ │ │ │ ├── converter/ # DTO 转换器
-│ │ │ │ │ ├── UserDTOConverter.java
-│ │ │ │ │ ├── PlanDTOConverter.java
-│ │ │ │ │ ├── UsageDataDTOConverter.java
-│ │ │ │ │ └── AIConversationDTOConverter.java
-│ │ │ │ ├── UserDTO.java
-│ │ │ │ ├── PlanDTO.java
-│ │ │ │ ├── UsageDataDTO.java
-│ │ │ │ ├── AIConversationDTO.java
-│ │ │ │ ├── LoginRequest.java
-│ │ │ │ ├── LoginResponse.java
-│ │ │ │ ├── RegisterRequest.java
-│ │ │ │ ├── CreatePlanRequest.java
-│ │ │ │ ├── UpdatePlanRequest.java
-│ │ │ │ ├── SaveConversationRequest.java
-│ │ │ │ └── GetConversationRequest.java
-│ │ │ │
-│ │ │ ├── controller/ # 控制器层 - HTTP 请求处理
-│ │ │ │ ├── aspect/ # AOP 切面
-│ │ │ │ │ └── LoggingAspect.java
-│ │ │ │ ├── config/ # 控制器配置
-│ │ │ │ │ └── WebMvcConfig.java
-│ │ │ │ ├── interceptor/ # 拦截器
-│ │ │ │ │ └── AuthInterceptor.java
-│ │ │ │ ├── UserController.java
-│ │ │ │ ├── PlanController.java
-│ │ │ │ ├── UsageDataController.java
-│ │ │ │ │ └── AIConversationController.java
-│ │ │ │
-│ │ │ └── core/ # 核心层 - 领域模型和核心服务
-│ │ │ ├── model/ # 领域模型（富模型）
-│ │ │ │ ├── User.java
-│ │ │ │ ├── Plan.java
-│ │ │ │ ├── UsageData.java
-│ │ │ │ ├── AIConversation.java
-│ │ │ │ └── UserContext.java
-│ │ │ ├── service/ # 领域服务接口和实现
-│ │ │ │ ├── UserService.java
-│ │ │ │ ├── UserServiceImpl.java
-│ │ │ │ ├── PlanService.java
-│ │ │ │ ├── PlanServiceImpl.java
-│ │ │ │ ├── UsageDataService.java
-│ │ │ │ ├── UsageDataServiceImpl.java
-│ │ │ │ ├── SessionService.java
-│ │ │ │ ├── SessionServiceImpl.java
-│ │ │ │ ├── AIConversationService.java
-│ │ │ │ └── AIConversationServiceImpl.java
-│ │ │ ├── converter/ # 领域模型转换器
-│ │ │ │ ├── UserConverter.java
-│ │ │ │ ├── PlanConverter.java
-│ │ │ │ ├── UsageDataConverter.java
-│ │ │ │ └── AIConversationConverter.java
-│ │ │ ├── enums/ # 枚举类
-│ │ │ │ ├── ResultEnum.java
-│ │ │ │ ├── PlanStatus.java # 计划状态枚举（5个状态）
-│ │ │ │ ├── PlanType.java
-│ │ │ │ ├── UsageDataType.java
-│ │ │ │ └── ConversationRole.java # 对话角色枚举
-│ │ │ └── util/ # 核心工具类
-│ │ │ ├── IdGenerator.java
-│ │ │ └── UserContextHolder.java
-│ │ │
-│ │ └── resources/ # 资源文件
-│ │ ├── application.yml # Spring Boot 配置文件
-│ │ ├── log4j2-spring.xml # Log4j2 日志配置
-│ │ ├── db/ # 数据库相关
-│ │ │ ├── schema.sql # 数据库表结构脚本
-│ │ │ └── test_data.sql # 测试数据
-│ │ ├── mappers/ # MyBatis XML Mapper 文件
-│ │ │ ├── UserMapper.xml
-│ │ │ ├── PlanMapper.xml
-│ │ │ ├── UsageDataMapper.xml
-│ │ │ └── AIConversationMapper.xml
-│ │ └── static/ # 静态资源（前端文件）
-│ │ └── assets/ # 前端资源文件
-│ │
-│ └── test/ # 测试代码
-│ └── java/
-│ └── org/hackastone/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── org/hackastone/
+│   │   │       ├── HackAstoneApplication.java    # Spring Boot 启动类
+│   │   │       │
+│   │   │       ├── base/                          # 基础层 - 基础设施和通用组件
+│   │   │       │   ├── dal/                       # 数据访问层 (Data Access Layer)
+│   │   │       │   │   ├── entity/                # 数据库实体类（对应数据库表）
+│   │   │       │   │   │   ├── UserEntity.java
+│   │   │       │   │   │   ├── PlanEntity.java
+│   │   │       │   │   │   ├── UsageDataEntity.java
+│   │   │       │   │   │   └── AIConversationEntity.java
+│   │   │       │   │   └── mapper/                # MyBatis Mapper 接口
+│   │   │       │   │       ├── UserMapper.java
+│   │   │       │   │       ├── PlanMapper.java
+│   │   │       │   │       ├── UsageDataMapper.java
+│   │   │       │   │       └── AIConversationMapper.java
+│   │   │       │   └── util/                      # 基础工具类
+│   │   │       │       ├── constants/             # 常量定义
+│   │   │       │       │   └── BizConstants.java
+│   │   │       │       ├── exception/              # 异常处理
+│   │   │       │       │   ├── AssertUtil.java
+│   │   │       │       │   └── HackAstoneBizException.java
+│   │   │       │       ├── log/                    # 日志工具
+│   │   │       │       │   └── LogUtil.java
+│   │   │       │       ├── template/               # 业务模板（统一异常处理）
+│   │   │       │       │   ├── AbstractBizCallback.java
+│   │   │       │       │   ├── BizCallback.java
+│   │   │       │       │   └── BizTemplate.java
+│   │   │       │       └── validator/              # 参数校验
+│   │   │       │           └── RequestValidator.java
+│   │   │       │
+│   │   │       ├── biz/                            # 业务层 - 业务逻辑和 DTO
+│   │   │       │   └── dto/                        # 数据传输对象 (Data Transfer Object)
+│   │   │       │       ├── converter/               # DTO 转换器
+│   │   │       │       │   ├── UserDTOConverter.java
+│   │   │       │       │   ├── PlanDTOConverter.java
+│   │   │       │       │   ├── UsageDataDTOConverter.java
+│   │   │       │       │   └── AIConversationDTOConverter.java
+│   │   │       │       ├── UserDTO.java
+│   │   │       │       ├── PlanDTO.java
+│   │   │       │       ├── UsageDataDTO.java
+│   │   │       │       ├── AIConversationDTO.java
+│   │   │       │       ├── LoginRequest.java
+│   │   │       │       ├── LoginResponse.java
+│   │   │       │       ├── RegisterRequest.java
+│   │   │       │       ├── CreatePlanRequest.java
+│   │   │       │       ├── UpdatePlanRequest.java
+│   │   │       │       ├── SaveConversationRequest.java
+│   │   │       │       └── GetConversationRequest.java
+│   │   │       │
+│   │   │       ├── controller/                     # 控制器层 - HTTP 请求处理
+│   │   │       │   ├── aspect/                     # AOP 切面
+│   │   │       │   │   └── LoggingAspect.java
+│   │   │       │   ├── config/                     # 控制器配置
+│   │   │       │   │   └── WebMvcConfig.java
+│   │   │       │   ├── interceptor/                # 拦截器
+│   │   │       │   │   └── AuthInterceptor.java
+│   │   │       │   ├── UserController.java
+│   │   │       │   ├── PlanController.java
+│   │   │       │   ├── UsageDataController.java
+│   │   │       │   └── AIConversationController.java
+│   │   │       │
+│   │   │       └── core/                           # 核心层 - 领域模型和核心服务
+│   │   │           ├── model/                       # 领域模型（富模型）
+│   │   │           │   ├── User.java
+│   │   │           │   ├── Plan.java
+│   │   │           │   ├── UsageData.java
+│   │   │           │   ├── AIConversation.java
+│   │   │           │   └── UserContext.java
+│   │   │           ├── service/                    # 领域服务接口和实现
+│   │   │           │   ├── UserService.java
+│   │   │           │   ├── UserServiceImpl.java
+│   │   │           │   ├── PlanService.java
+│   │   │           │   ├── PlanServiceImpl.java
+│   │   │           │   ├── UsageDataService.java
+│   │   │           │   ├── UsageDataServiceImpl.java
+│   │   │           │   ├── SessionService.java
+│   │   │           │   ├── SessionServiceImpl.java
+│   │   │           │   ├── AIConversationService.java
+│   │   │           │   └── AIConversationServiceImpl.java
+│   │   │           ├── converter/                  # 领域模型转换器
+│   │   │           │   ├── UserConverter.java
+│   │   │           │   ├── PlanConverter.java
+│   │   │           │   ├── UsageDataConverter.java
+│   │   │           │   └── AIConversationConverter.java
+│   │   │           ├── enums/                      # 枚举类
+│   │   │           │   ├── ResultEnum.java
+│   │   │           │   ├── PlanStatus.java        # 计划状态枚举（5个状态）
+│   │   │           │   ├── PlanType.java
+│   │   │           │   ├── UsageDataType.java
+│   │   │           │   └── ConversationRole.java  # 对话角色枚举
+│   │   │           └── util/                       # 核心工具类
+│   │   │               ├── IdGenerator.java
+│   │   │               └── UserContextHolder.java
+│   │   │
+│   │   └── resources/                              # 资源文件
+│   │       ├── application.yml                     # Spring Boot 配置文件
+│   │       ├── log4j2-spring.xml                    # Log4j2 日志配置
+│   │       ├── db/                                 # 数据库相关
+│   │       │   ├── schema.sql                       # 数据库表结构脚本
+│   │       │   └── test_data.sql                   # 测试数据
+│   │       ├── mappers/                            # MyBatis XML Mapper 文件
+│   │       │   ├── UserMapper.xml
+│   │       │   ├── PlanMapper.xml
+│   │       │   ├── UsageDataMapper.xml
+│   │       │   └── AIConversationMapper.xml
+│   │       └── static/                             # 静态资源（前端文件）
+│   │           └── assets/                          # 前端资源文件
+│   │
+│   └── test/                                       # 测试代码
+│       └── java/
+│           └── org/hackastone/
 │
-├── pom.xml # Maven 项目配置文件
-└── README.md # 项目说明文档
+├── pom.xml                                         # Maven 项目配置文件
+└── README.md                                       # 项目说明文档
+```
 
 ## 架构说明
 
@@ -356,12 +360,27 @@ hackAstone_backend/
 | step | INT | 步长 | NOT NULL, DEFAULT 1 |
 | updated_at | DATETIME | 更新时间 | NOT NULL |
 
+**建表语句：**
+```sql
+DROP TABLE IF EXISTS `id_sequence`;
+CREATE TABLE `id_sequence` (
+  `entity_type` VARCHAR(32) NOT NULL PRIMARY KEY COMMENT '实体类型（如：USR, PLN, UDT, AIC等）',
+  `current_value` BIGINT NOT NULL DEFAULT 0 COMMENT '当前序列号值',
+  `step` INT NOT NULL DEFAULT 1 COMMENT '步长',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='ID序列号表';
+```
+
 **初始化数据：**
+```sql
 INSERT INTO `id_sequence` (`entity_type`, `current_value`, `step`) VALUES
 ('USR', 0, 1),  -- 用户
 ('PLN', 0, 1),  -- 计划
 ('UDT', 0, 1),  -- 使用数据
-('AIC', 0, 1);  -- AI对话### 2. 用户账户表（ha_user）
+('AIC', 0, 1);  -- AI对话
+```
+
+### 2. 用户账户表（ha_user）
 
 | 字段名 | 类型 | 说明 | 约束 |
 |--------|------|------|------|
@@ -375,6 +394,28 @@ INSERT INTO `id_sequence` (`entity_type`, `current_value`, `step`) VALUES
 | ext_info | MEDIUMTEXT | 扩展信息（JSON格式） | NULL |
 | created_at | DATETIME | 创建时间 | NOT NULL |
 | updated_at | DATETIME | 更新时间 | NOT NULL |
+
+**建表语句：**
+```sql
+DROP TABLE IF EXISTS `ha_user`;
+CREATE TABLE `ha_user` (
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '用户ID（主键）',
+  `username` VARCHAR(50) NOT NULL COMMENT '用户名',
+  `phone` VARCHAR(20) COMMENT '手机号',
+  `password_hash` VARCHAR(255) NOT NULL COMMENT '密码哈希',
+  `nickname` VARCHAR(50) COMMENT '昵称',
+  `avatar_url` VARCHAR(255) COMMENT '头像URL',
+  `status` VARCHAR(32) NOT NULL DEFAULT 'ENABLED' COMMENT '状态：ENABLED-正常，DISABLED-禁用，DELETED-删除',
+  `ext_info` MEDIUMTEXT NULL COMMENT '扩展信息（JSON格式）',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  UNIQUE KEY `uk_username` (`username`),
+  UNIQUE KEY `uk_phone` (`phone`),
+  KEY `idx_username` (`username`),
+  KEY `idx_phone` (`phone`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户账户表';
+```
 
 **索引：**
 - `uk_username` (username) UNIQUE
@@ -401,6 +442,30 @@ INSERT INTO `id_sequence` (`entity_type`, `current_value`, `step`) VALUES
 | created_at | DATETIME | 创建时间 | NOT NULL |
 | updated_at | DATETIME | 更新时间 | NOT NULL |
 
+**建表语句：**
+```sql
+DROP TABLE IF EXISTS `ha_plan`;
+CREATE TABLE `ha_plan` (
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '计划ID（主键）',
+  `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
+  `title` VARCHAR(200) NOT NULL COMMENT '计划标题',
+  `description` TEXT COMMENT '计划描述',
+  `plan_type` VARCHAR(50) COMMENT '计划类型',
+  `status` VARCHAR(32) NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿，PENDING-待开始，IN_PROGRESS-进行中，COMPLETED-已完成，CANCELLED-已取消',
+  `start_date` DATETIME COMMENT '开始时间',
+  `end_date` DATETIME COMMENT '结束时间',
+  `priority` INT DEFAULT 0 COMMENT '优先级：0-低，1-中，2-高',
+  `tags` JSON COMMENT '标签（JSON数组）',
+  `ext_info` MEDIUMTEXT NULL COMMENT '扩展信息（JSON格式）',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_user_status` (`user_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='计划内容表';
+```
+
 **索引：**
 - `idx_user_id` (user_id)
 - `idx_status` (status)
@@ -424,6 +489,25 @@ INSERT INTO `id_sequence` (`entity_type`, `current_value`, `step`) VALUES
 | metadata | JSON | 额外数据（JSON对象） | |
 | created_at | DATETIME | 创建时间 | NOT NULL |
 
+**建表语句：**
+```sql
+DROP TABLE IF EXISTS `ha_usage_data`;
+CREATE TABLE `ha_usage_data` (
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '数据ID（主键）',
+  `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
+  `plan_id` VARCHAR(64) NULL COMMENT '关联计划ID（可选）',
+  `data_type` VARCHAR(50) NOT NULL COMMENT '数据类型：VIEW_PLAN-查看计划，CREATE_PLAN-创建计划，UPDATE_PLAN-更新计划，COMPLETE_PLAN-完成计划等',
+  `action` VARCHAR(100) COMMENT '具体操作',
+  `duration` INT COMMENT '使用时长（秒）',
+  `metadata` JSON COMMENT '额外数据（JSON对象）',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_plan_id` (`plan_id`),
+  KEY `idx_data_type` (`data_type`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户使用数据表';
+```
+
 **索引：**
 - `idx_user_id` (user_id)
 - `idx_plan_id` (plan_id)
@@ -440,6 +524,23 @@ INSERT INTO `id_sequence` (`entity_type`, `current_value`, `step`) VALUES
 | role | VARCHAR(20) | 角色：USER-用户，ASSISTANT-AI助手 | NOT NULL |
 | content | TEXT | 对话内容 | NOT NULL |
 | created_at | DATETIME | 创建时间 | NOT NULL |
+
+**建表语句：**
+```sql
+DROP TABLE IF EXISTS `ha_ai_conversation`;
+CREATE TABLE `ha_ai_conversation` (
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '对话ID（主键）',
+  `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
+  `session_id` VARCHAR(64) NOT NULL COMMENT '会话ID（一次对话会话的唯一标识）',
+  `role` VARCHAR(20) NOT NULL COMMENT '角色：USER-用户，ASSISTANT-AI助手',
+  `content` TEXT NOT NULL COMMENT '对话内容',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_session_id` (`session_id`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_user_session` (`user_id`, `session_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI对话内容表';
+```
 
 **索引：**
 - `idx_user_id` (user_id)
