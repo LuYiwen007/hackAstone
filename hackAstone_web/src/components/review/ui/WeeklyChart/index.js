@@ -1,0 +1,2 @@
+export { WeeklyChart } from './WeeklyChart';
+

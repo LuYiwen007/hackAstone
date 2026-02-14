@@ -1,0 +1,51 @@
+.ai-chat-message {
+  margin-bottom: 16px;
+  display: flex;
+}
+
+.ai-chat-message-user {
+  justify-content: flex-end;
+}
+
+.ai-chat-message-assistant {
+  justify-content: flex-start;
+}
+
+.ai-chat-message-content {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+
+.ai-chat-message-user .ai-chat-message-content {
+  background-color: #007bff;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.ai-chat-message-assistant .ai-chat-message-content {
+  background-color: #f0f0f0;
+  color: #333;
+  border-bottom-left-radius: 4px;
+}
+
+.ai-chat-message-role {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+
+.ai-chat-message-text {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.ai-chat-message-time {
+  font-size: 11px;
+  margin-top: 6px;
+  opacity: 0.7;
+}
+

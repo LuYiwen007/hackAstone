@@ -1,0 +1,2 @@
+export { TaskPriorityBadge } from './TaskPriorityBadge';
+

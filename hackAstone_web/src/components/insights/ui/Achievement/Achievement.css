@@ -1,0 +1,100 @@
+.achievement {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  box-shadow: 0px 1px 2px -1px rgba(0, 0, 0, 0.1), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.achievement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.achievement-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  color: #101828;
+  margin: 0;
+  font-family: 'Arimo', sans-serif;
+}
+
+.achievement-filter {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.achievement-filter svg {
+  width: 24px;
+  height: 24px;
+  color: #4A5565;
+}
+
+.achievement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.achievement-item {
+  background: linear-gradient(90deg, #FEFCE8 0%, #FFF7ED 100%);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.achievement-content {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.achievement-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.achievement-name {
+  font-size: 16px;
+  line-height: 24px;
+  color: #101828;
+  margin: 0;
+  font-family: 'Arimo', sans-serif;
+}
+
+.achievement-date {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  color: #4A5565;
+  font-size: 14px;
+  line-height: 20px;
+  font-family: 'Arimo', sans-serif;
+}
+
+.achievement-date svg {
+  width: 12px;
+  height: 12px;
+  color: #4A5565;
+}
+
+.achievement-icon {
+  font-size: 30px;
+  line-height: 36px;
+  flex-shrink: 0;
+}
+

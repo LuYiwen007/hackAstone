@@ -1,0 +1,39 @@
+.ai-chat-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+  height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-chat-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.ai-chat-page-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.ai-chat-page-content {
+  flex: 1;
+  min-height: 0;
+}
+
+.ai-chat-page-content > div {
+  height: 100%;
+}
+
+@media (max-width: 768px) {
+  .ai-chat-page {
+    padding: 16px;
+    height: calc(100vh - 32px);
+  }
+}
+

@@ -1,0 +1,2 @@
+export { TestResult } from './TestResult';
+

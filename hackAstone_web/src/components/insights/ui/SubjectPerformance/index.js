@@ -1,0 +1,2 @@
+export { SubjectPerformance } from './SubjectPerformance';
+

@@ -1,0 +1,159 @@
+.plans-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* 页面标题区域 */
+.plans-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plans-page-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plans-page-title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: #101828;
+  font-family: 'Arimo', sans-serif;
+  line-height: 36px;
+}
+
+.plans-page-subtitle {
+  margin: 0;
+  font-size: 16px;
+  color: #4A5565;
+  font-family: 'Arimo', sans-serif;
+  line-height: 24px;
+}
+
+.plans-page-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.plans-page-btn-ai,
+.plans-page-btn-create {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-family: 'Arimo', sans-serif;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.plans-page-btn-create {
+  background-color: #155DFC;
+  color: #FFFFFF;
+  border: none;
+}
+
+.plans-page-btn-create:hover {
+  background-color: #1447E6;
+}
+
+.plans-page-btn-ai {
+  background-color: transparent;
+  border: 1px solid #E5E7EB;
+  color: #4A5565;
+}
+
+.plans-page-btn-ai:hover {
+  background-color: #F9FAFB;
+  border-color: #D1D5DC;
+}
+
+/* 搜索和筛选区域 */
+.plans-page-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plans-page-search {
+  width: 100%;
+  max-width: 400px;
+}
+
+.plans-page-search-input {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  font-size: 16px;
+  font-family: 'Arimo', sans-serif;
+  color: #101828;
+  background-color: #FFFFFF;
+}
+
+.plans-page-search-input:focus {
+  outline: none;
+  border-color: #155DFC;
+  box-shadow: 0 0 0 3px rgba(21, 93, 252, 0.1);
+}
+
+.plans-page-status-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.plans-page-filter-btn {
+  padding: 8px 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  background-color: #FFFFFF;
+  color: #4A5565;
+  font-size: 16px;
+  font-family: 'Arimo', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.plans-page-filter-btn:hover {
+  background-color: #F9FAFB;
+  border-color: #D1D5DC;
+}
+
+.plans-page-filter-btn.active {
+  background-color: #EFF6FF;
+  border-color: #155DFC;
+  color: #155DFC;
+}
+
+@media (max-width: 768px) {
+  .plans-page-header {
+    gap: 16px;
+  }
+  
+  .plans-page-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .plans-page-actions button {
+    width: 100%;
+  }
+  
+  .plans-page-search {
+    max-width: 100%;
+  }
+  
+  .plans-page-status-filters {
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  
+  .plans-page-filter-btn {
+    white-space: nowrap;
+  }
+}
+

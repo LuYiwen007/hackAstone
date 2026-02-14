@@ -1,0 +1,18 @@
+.task-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px 6px;
+  border: 1px solid;
+  border-radius: 33554400px;
+  font-size: 14px;
+  line-height: 20px;
+  font-family: 'Arimo', sans-serif;
+}
+
+.task-priority-badge svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+

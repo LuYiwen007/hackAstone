@@ -1,0 +1,23 @@
+.usage-data-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.usage-data-page-title {
+  margin: 0 0 24px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+}
+
+.usage-data-page > div {
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .usage-data-page {
+    padding: 16px;
+  }
+}
+

@@ -1,0 +1,83 @@
+.task-group {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  box-shadow: 0px 1px 2px -1px rgba(0, 0, 0, 0.1), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-top: 17px;
+}
+
+.task-group-header {
+  width: 100%;
+  height: 48px;
+  padding: 0 17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.task-group-header-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.task-group-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.task-group-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: space-between;
+}
+
+.task-group-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 28px;
+  color: #FFFFFF;
+  margin: 0;
+  font-family: 'Arimo', sans-serif;
+}
+
+.task-group-progress {
+  font-size: 14px;
+  line-height: 20px;
+  color: #FFFFFF;
+  margin: 0;
+  font-family: 'Arimo', sans-serif;
+}
+
+.task-group-link {
+  background: none;
+  border: none;
+  color: #FFFFFF;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  font-family: 'Arimo', sans-serif;
+  padding: 0;
+  text-decoration: none;
+}
+
+.task-group-link:hover {
+  text-decoration: underline;
+}
+
+.task-group-tasks {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  padding-bottom: 16px;
+}
+

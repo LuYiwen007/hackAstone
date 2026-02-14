@@ -1,0 +1,115 @@
+.weekly-chart {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  box-shadow: 0px 1px 2px -1px rgba(0, 0, 0, 0.1), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.weekly-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.weekly-chart-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  color: #101828;
+  margin: 0;
+  font-family: 'Arimo', sans-serif;
+}
+
+.weekly-chart-total {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #155DFC;
+  font-size: 16px;
+  line-height: 24px;
+  font-family: 'Arimo', sans-serif;
+}
+
+.weekly-chart-total svg {
+  width: 20px;
+  height: 20px;
+}
+
+.weekly-chart-content {
+  height: 280px;
+  position: relative;
+  padding-left: 40px;
+}
+
+.weekly-chart-bars {
+  display: flex;
+  gap: 32px;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 240px;
+  padding: 0 40px 0 0;
+  position: relative;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.weekly-chart-bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.weekly-chart-bar {
+  width: 100%;
+  max-width: 127px;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+  transition: all 0.3s ease;
+}
+
+.weekly-chart-bar-value {
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Arimo', sans-serif;
+}
+
+.weekly-chart-bar-label {
+  font-size: 12px;
+  color: #6B7280;
+  text-align: center;
+  font-family: 'Arimo', sans-serif;
+}
+
+.weekly-chart-legend {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  align-items: center;
+}
+
+.weekly-chart-legend-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 20px;
+  color: #4A5565;
+  font-family: 'Arimo', sans-serif;
+}
+
+.weekly-chart-legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+

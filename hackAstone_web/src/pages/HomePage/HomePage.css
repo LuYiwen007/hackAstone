@@ -1,0 +1,295 @@
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* 欢迎区域 */
+.home-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-welcome-title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: #101828;
+  font-family: 'Arimo', sans-serif;
+  line-height: 36px;
+}
+
+.home-welcome-subtitle {
+  margin: 0;
+  font-size: 16px;
+  color: #4A5565;
+  font-family: 'Arimo', sans-serif;
+  line-height: 24px;
+}
+
+/* 统计卡片 */
+.home-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.home-stat-card {
+  flex: 1;
+  min-width: 286px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  box-shadow: 0px 1px 2px -1px rgba(0, 0, 0, 0.1), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-stat-icon {
+  width: 48px;
+  height: 48px;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #101828;
+  font-family: 'Arimo', sans-serif;
+  line-height: 32px;
+}
+
+.home-stat-label {
+  font-size: 14px;
+  color: #4A5565;
+  font-family: 'Arimo', sans-serif;
+  line-height: 20px;
+}
+
+/* 活动卡片 */
+.home-activities {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.home-activity-card {
+  flex: 1;
+  min-width: 592px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  box-shadow: 0px 1px 2px -1px rgba(0, 0, 0, 0.1), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-card-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #101828;
+  font-family: 'Arimo', sans-serif;
+  line-height: 28px;
+}
+
+.home-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-activity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 17px;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.home-activity-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.home-activity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home-activity-title {
+  font-size: 16px;
+  color: #101828;
+  font-family: 'Arimo', sans-serif;
+  line-height: 24px;
+}
+
+.home-activity-time {
+  font-size: 14px;
+  color: #6A7282;
+  font-family: 'Arimo', sans-serif;
+  line-height: 20px;
+}
+
+.home-activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 即将到期 */
+.home-deadline-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.home-deadline-item:last-child {
+  border-bottom: none;
+}
+
+.home-deadline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home-deadline-title {
+  font-size: 16px;
+  color: #101828;
+  font-family: 'Arimo', sans-serif;
+  line-height: 24px;
+}
+
+.home-deadline-time {
+  font-size: 14px;
+  color: #6A7282;
+  font-family: 'Arimo', sans-serif;
+  line-height: 20px;
+}
+
+.home-deadline-priority {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Arimo', sans-serif;
+  line-height: 16px;
+}
+
+/* 活跃计划 */
+.home-plans-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  box-shadow: 0px 1px 2px -1px rgba(0, 0, 0, 0.1), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-plan-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 12px;
+  border-bottom: 1px solid #F3F4F6;
+  border-radius: 10px;
+}
+
+.home-plan-item:last-child {
+  border-bottom: none;
+}
+
+.home-plan-content {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex: 1;
+}
+
+.home-plan-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.home-plan-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home-plan-title {
+  font-size: 16px;
+  color: #101828;
+  font-family: 'Arimo', sans-serif;
+  line-height: 24px;
+}
+
+.home-plan-progress {
+  font-size: 14px;
+  color: #6A7282;
+  font-family: 'Arimo', sans-serif;
+  line-height: 20px;
+}
+
+.home-plan-status {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Arimo', sans-serif;
+  line-height: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (max-width: 1200px) {
+  .home-activity-card {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-stats {
+    flex-direction: column;
+  }
+  
+  .home-stat-card {
+    min-width: 100%;
+  }
+  
+  .home-activities {
+    flex-direction: column;
+  }
+  
+  .home-activity-card {
+    min-width: 100%;
+  }
+}
+

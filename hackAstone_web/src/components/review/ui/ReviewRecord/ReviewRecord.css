@@ -1,0 +1,139 @@
+.review-record {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  box-shadow: 0px 1px 2px -1px rgba(0, 0, 0, 0.1), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-record-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 8px;
+}
+
+.review-record-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.review-record-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-record-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.review-record-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 28px;
+  color: #101828;
+  margin: 0;
+  font-family: 'Arimo', sans-serif;
+}
+
+.review-record-status {
+  padding: 4px 12px;
+  border-radius: 33554400px;
+  font-size: 12px;
+  line-height: 16px;
+  font-family: 'Arimo', sans-serif;
+}
+
+.review-record-status.status-today {
+  background-color: #DCFCE7;
+  color: #008236;
+}
+
+.review-record-status.status-past {
+  background-color: #F3F4F6;
+  color: #364153;
+}
+
+.review-record-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.review-record-meta-item {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  color: #4A5565;
+  font-size: 14px;
+  line-height: 20px;
+  font-family: 'Arimo', sans-serif;
+}
+
+.review-record-meta-item svg {
+  width: 16px;
+  height: 16px;
+  color: #4A5565;
+}
+
+.review-record-duration {
+  color: #155DFC;
+  font-size: 14px;
+  line-height: 20px;
+  font-family: 'Arimo', sans-serif;
+}
+
+.review-record-summary {
+  background-color: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-record-summary-title {
+  font-size: 14px;
+  line-height: 20px;
+  color: #101828;
+  margin: 0;
+  font-family: 'Arimo', sans-serif;
+}
+
+.review-record-summary-text {
+  font-size: 14px;
+  line-height: 23px;
+  color: #364153;
+  margin: 0;
+  font-family: 'Arimo', sans-serif;
+}
+
+.review-record-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.review-record-tag {
+  padding: 3px 12px;
+  background-color: #EFF6FF;
+  border-radius: 33554400px;
+  color: #155DFC;
+  font-size: 14px;
+  line-height: 20px;
+  font-family: 'Arimo', sans-serif;
+}
