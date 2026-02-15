@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: hackAstone-backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 确保你的数据库 hackastone_db 已经存在
+    url: jdbc:mysql://localhost:3306/hackastone_db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: 123456
+
+mybatis:
+  mapper-locations: classpath:mappers/*.xml
+  type-aliases-package: org.hackastone.base.dal.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    org.hackastone: debug
