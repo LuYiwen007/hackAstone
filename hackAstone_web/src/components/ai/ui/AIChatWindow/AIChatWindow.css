@@ -31,3 +31,46 @@
   padding: 12px;
 }
 
+/* 输入栏下方：大模型返回计划后的操作按钮 */
+.ai-chat-plan-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  font-family: 'Arimo', sans-serif;
+}
+
+.ai-chat-plan-action-btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-chat-plan-action-restart {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  color: #4A5565;
+}
+
+.ai-chat-plan-action-restart:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DC;
+  color: #101828;
+}
+
+.ai-chat-plan-action-accept {
+  background: #155DFC;
+  border: none;
+  color: #FFFFFF;
+}
+
+.ai-chat-plan-action-accept:hover {
+  background: #1447E6;
+}
+

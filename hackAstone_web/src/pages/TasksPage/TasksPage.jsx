@@ -141,7 +141,7 @@ export const TasksPage = () => {
   const totalToday = todayTasks.length;
   const progressPercentage = totalToday > 0 ? (completedToday / totalToday) * 100 : 0;
 
-  // 筛选任务
+  // 筛选任务：今日任务和全部任务都显示所有任务（勾选后不消失，仅在前面的圆点打勾）
   const getFilteredGroups = () => {
     if (filter === 'completed') {
       return taskGroups.map((group) => ({
@@ -149,13 +149,7 @@ export const TasksPage = () => {
         tasks: group.tasks.filter((t) => t.completed),
       })).filter((group) => group.tasks.length > 0);
     }
-    if (filter === 'today') {
-      // 今日任务 - 显示所有未完成的任务
-      return taskGroups.map((group) => ({
-        ...group,
-        tasks: group.tasks.filter((t) => !t.completed),
-      })).filter((group) => group.tasks.length > 0);
-    }
+    // 今日任务 / 全部任务：显示所有任务，点击后只在圆点打勾，任务保留在列表中
     return taskGroups;
   };
 

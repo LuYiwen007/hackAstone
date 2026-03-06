@@ -43,6 +43,11 @@
   word-wrap: break-word;
 }
 
+.ai-chat-message-plan-preview {
+  min-width: 280px;
+  max-width: 100%;
+}
+
 .ai-chat-message-time {
   font-size: 11px;
   margin-top: 6px;

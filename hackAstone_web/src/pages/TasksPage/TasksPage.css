@@ -1,12 +1,10 @@
 .tasks-page {
-  min-height: 100vh;
-  background-color: #F9FAFB;
-  padding: 97px 136px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
 .tasks-page-container {
-  max-width: 1216px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 32px;

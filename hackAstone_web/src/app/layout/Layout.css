@@ -69,6 +69,21 @@
   gap: 8px;
 }
 
+.layout-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.layout-nav-link .layout-nav-icon {
+  opacity: 0.85;
+}
+
+.layout-nav-link.active .layout-nav-icon {
+  opacity: 1;
+}
+
 .layout-nav-link:hover {
   background-color: #F9FAFB;
 }
@@ -89,11 +104,16 @@
   border-radius: 50%;
   border: none;
   background: transparent;
+  color: #4A5565;
   cursor: pointer;
-  font-size: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.layout-user-button:hover {
+  background: #F9FAFB;
+  color: #101828;
 }
 
 .layout-main {
