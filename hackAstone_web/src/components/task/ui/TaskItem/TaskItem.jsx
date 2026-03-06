@@ -6,38 +6,32 @@ export const TaskItem = ({ task, onToggle }) => {
 
   return (
     <div className={`task-item ${isCompleted ? 'task-item-completed' : ''}`}>
-      <div className="task-item-content">
-        <div className="task-item-main">
-          <h4 className="task-item-title">{task.title}</h4>
-          <div className="task-item-meta">
-            <TaskPriorityBadge priority={task.priority || 0} />
-            <div className="task-item-duration">
-              <span>{task.duration || '30分钟'}</span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M8 4V8L10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <span className="task-item-time">{task.time || '09:00'}</span>
-          </div>
-        </div>
-        <button
-          className="task-item-checkbox"
-          onClick={() => onToggle && onToggle(task.id)}
-          aria-label={isCompleted ? '标记为未完成' : '标记为完成'}
-        >
-          {isCompleted ? (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="3" width="18" height="18" rx="4" fill="#155DFC"/>
-              <path d="M8 12L11 15L16 9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <button
+        type="button"
+        className="task-item-checkbox"
+        onClick={() => onToggle?.(task.id)}
+        aria-label={isCompleted ? '标记为未完成' : '标记为完成'}
+      >
+        {isCompleted ? (
+          <span className="task-item-checkbox-done">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+              <path d="M1 5L5 9L13 1" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="3" width="18" height="18" rx="4" stroke="#E5E7EB" strokeWidth="1.5"/>
-            </svg>
-          )}
-        </button>
+          </span>
+        ) : (
+          <span className="task-item-checkbox-empty" />
+        )}
+      </button>
+      <span className="task-item-title">{task.title}</span>
+      <div className="task-item-time-wrap">
+        <svg className="task-item-clock" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M8 4V8L10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <span>{task.duration || '30分钟'}</span>
+        <span className="task-item-time">{task.time || '09:00'}</span>
       </div>
+      <TaskPriorityBadge priority={task.priority ?? 0} />
     </div>
   );
 };

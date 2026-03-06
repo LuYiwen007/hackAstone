@@ -2,7 +2,7 @@ import { PlanCard } from '../PlanCard';
 import { Loading } from '../../../../shared/ui/Loading';
 import './PlanList.css';
 
-export const PlanList = ({ plans, loading = false }) => {
+export const PlanList = ({ plans, loading = false, showCreateCard = false, onCreateClick }) => {
   if (loading) {
     return (
       <div className="plan-list-loading">
@@ -11,19 +11,28 @@ export const PlanList = ({ plans, loading = false }) => {
     );
   }
 
-  if (!plans || plans.length === 0) {
-    return (
-      <div className="plan-list-empty">
-        <p>暂无计划，点击右上角按钮创建新计划</p>
-      </div>
-    );
-  }
+  const hasPlans = plans && plans.length > 0;
 
   return (
-    <div className="plan-list">
-      {plans.map((plan) => (
-        <PlanCard key={plan.id} plan={plan} />
-      ))}
+    <div className="plan-list-wrapper">
+      {!hasPlans && !showCreateCard && (
+        <div className="plan-list-empty">
+          <p>暂无计划，点击「新建计划」创建</p>
+        </div>
+      )}
+      {(hasPlans || showCreateCard) && (
+        <div className="plan-list">
+          {hasPlans && plans.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} />
+          ))}
+          {showCreateCard && (
+            <button type="button" className="plan-list-create-card" onClick={onCreateClick}>
+              <span className="plan-list-create-icon">+</span>
+              <span className="plan-list-create-text">创建计划</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

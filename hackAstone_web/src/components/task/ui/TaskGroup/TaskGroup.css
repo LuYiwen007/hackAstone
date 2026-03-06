@@ -6,45 +6,48 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding-top: 17px;
 }
 
 .task-group-header {
-  width: 100%;
-  height: 48px;
-  padding: 0 17px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: 16px;
 }
 
 .task-group-header-left {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
 }
 
-.task-group-icon {
-  width: 40px;
-  height: 40px;
+.task-group-icon-wrap {
+  width: 44px;
+  height: 44px;
+  background: #FFFFFF;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.task-group-icon {
+  font-size: 22px;
+  line-height: 1;
 }
 
 .task-group-info {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  justify-content: space-between;
+  gap: 4px;
 }
 
 .task-group-title {
   font-size: 18px;
   font-weight: 700;
-  line-height: 28px;
+  line-height: 26px;
   color: #FFFFFF;
   margin: 0;
   font-family: 'Arimo', sans-serif;
@@ -53,7 +56,7 @@
 .task-group-progress {
   font-size: 14px;
   line-height: 20px;
-  color: #FFFFFF;
+  color: rgba(255, 255, 255, 0.95);
   margin: 0;
   font-family: 'Arimo', sans-serif;
 }
@@ -67,7 +70,7 @@
   cursor: pointer;
   font-family: 'Arimo', sans-serif;
   padding: 0;
-  text-decoration: none;
+  flex-shrink: 0;
 }
 
 .task-group-link:hover {
@@ -78,6 +81,4 @@
   display: flex;
   flex-direction: column;
   padding: 0;
-  padding-bottom: 16px;
 }
-
