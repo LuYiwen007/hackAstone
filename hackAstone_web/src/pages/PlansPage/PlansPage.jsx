@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../../shared/ui/Button';
-import { PlanList } from '../../components/plan';
-import { Input } from '../../shared/ui/Input';
+import { PlanList, NewPlanMenu } from '../../components/plan';
 import './PlansPage.css';
 
-// 模拟数据
 const mockPlans = [
   {
     id: '1',
@@ -64,83 +61,36 @@ const mockPlans = [
 export const PlansPage = () => {
   const navigate = useNavigate();
   const [plans] = useState(mockPlans);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-
-  const filteredPlans = plans.filter((plan) => {
-    const matchesSearch = plan.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (plan.description && plan.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesStatus = statusFilter === 'all' || plan.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const [newPlanMenuOpen, setNewPlanMenuOpen] = useState(false);
 
   return (
     <div className="plans-page">
-      {/* 页面标题和描述 */}
       <div className="plans-page-header">
         <div className="plans-page-title-section">
           <h1 className="plans-page-title">我的计划</h1>
           <p className="plans-page-subtitle">管理和跟踪你的学习计划</p>
         </div>
-        <div className="plans-page-actions">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/ai/chat')}
-            className="plans-page-btn-ai"
-          >
-            🤖 AI生成计划
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={() => navigate('/plan/create')}
-            className="plans-page-btn-create"
-          >
-            + 创建计划
-          </Button>
-        </div>
+        <button
+          type="button"
+          className="plans-page-btn-new"
+          onClick={() => setNewPlanMenuOpen(true)}
+        >
+          + 新建计划
+        </button>
       </div>
 
-      {/* 搜索和筛选 */}
-      <div className="plans-page-filters">
-        <div className="plans-page-search">
-          <Input
-            type="text"
-            placeholder="搜索计划..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="plans-page-search-input"
-          />
-        </div>
-        <div className="plans-page-status-filters">
-          <button
-            className={`plans-page-filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('all')}
-          >
-            全部
-          </button>
-          <button
-            className={`plans-page-filter-btn ${statusFilter === 'IN_PROGRESS' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('IN_PROGRESS')}
-          >
-            进行中
-          </button>
-          <button
-            className={`plans-page-filter-btn ${statusFilter === 'NOT_STARTED' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('NOT_STARTED')}
-          >
-            未开始
-          </button>
-          <button
-            className={`plans-page-filter-btn ${statusFilter === 'COMPLETED' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('COMPLETED')}
-          >
-            已完成
-          </button>
-        </div>
-      </div>
+      <NewPlanMenu
+        isOpen={newPlanMenuOpen}
+        onClose={() => setNewPlanMenuOpen(false)}
+        onAiPlan={() => navigate('/ai/chat')}
+        onCreatePlan={() => navigate('/plan/create')}
+      />
 
-      {/* 计划列表 */}
-      <PlanList plans={filteredPlans} />
+      <PlanList
+        plans={plans}
+        showCreateCard
+        onCreateClick={() => setNewPlanMenuOpen(true)}
+      />
     </div>
   );
 };

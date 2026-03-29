@@ -1,8 +1,11 @@
 .task-item {
-  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
   border-bottom: 1px solid #F3F4F6;
-  background-color: transparent;
-  transition: background-color 0.2s;
+  background: #FFFFFF;
+  font-family: 'Arimo', sans-serif;
 }
 
 .task-item:last-child {
@@ -10,68 +13,17 @@
 }
 
 .task-item-completed {
-  background-color: #F9FAFB;
-}
-
-.task-item-content {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.task-item-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.task-item-title {
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-  color: #101828;
-  margin: 0;
-  font-family: 'Arimo', sans-serif;
+  background: #F9FAFB;
 }
 
 .task-item-completed .task-item-title {
   color: #6A7282;
-}
-
-.task-item-meta {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.task-item-duration {
-  display: flex;
-  gap: 4px;
-  align-items: flex-end;
-  color: #4A5565;
-  font-size: 14px;
-  line-height: 20px;
-  font-family: 'Arimo', sans-serif;
-}
-
-.task-item-duration svg {
-  width: 16px;
-  height: 16px;
-  color: #4A5565;
-}
-
-.task-item-time {
-  color: #4A5565;
-  font-size: 14px;
-  line-height: 20px;
-  font-family: 'Arimo', sans-serif;
+  text-decoration: line-through;
 }
 
 .task-item-checkbox {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border: none;
   background: none;
   cursor: pointer;
@@ -82,8 +34,52 @@
   justify-content: center;
 }
 
-.task-item-checkbox svg {
-  width: 24px;
-  height: 24px;
+.task-item-checkbox-empty {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #D1D5DC;
+  border-radius: 50%;
+  display: block;
 }
 
+.task-item-checkbox-done {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #00C950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-item-checkbox-done svg {
+  flex-shrink: 0;
+}
+
+.task-item-title {
+  flex: 1;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  color: #101828;
+  margin: 0;
+  min-width: 0;
+}
+
+.task-item-time-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #4A5565;
+  flex-shrink: 0;
+}
+
+.task-item-clock {
+  flex-shrink: 0;
+  color: #4A5565;
+}
+
+.task-item-time {
+  color: #4A5565;
+}

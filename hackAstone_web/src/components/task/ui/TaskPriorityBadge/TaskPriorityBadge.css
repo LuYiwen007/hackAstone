@@ -1,18 +1,13 @@
 .task-priority-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 9px 6px;
-  border: 1px solid;
-  border-radius: 33554400px;
-  font-size: 14px;
-  line-height: 20px;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
   font-family: 'Arimo', sans-serif;
-}
-
-.task-priority-badge svg {
-  width: 12px;
-  height: 12px;
   flex-shrink: 0;
 }
 

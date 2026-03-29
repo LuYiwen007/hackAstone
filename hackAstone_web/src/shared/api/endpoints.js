@@ -22,5 +22,9 @@ export const ENDPOINTS = {
   // AI对话相关
   CONVERSATION_SAVE: '/ai/conversation/save',
   CONVERSATION_GET: '/ai/conversation/get',
+
+  // AI 计划草稿（储存与预览）
+  PLAN_AI_DRAFT: '/plan/ai-draft',
+  PLAN_AI_DRAFT_GET: '/plan/ai-draft', // GET /plan/ai-draft/:id
 };
 

@@ -4,8 +4,17 @@ import { AIChatInput } from '../AIChatInput';
 import { Loading } from '../../../../shared/ui/Loading';
 import './AIChatWindow.css';
 
-export const AIChatWindow = ({ messages = [], onSend, loading = false }) => {
+export const AIChatWindow = ({
+  messages = [],
+  onSend,
+  loading = false,
+  onUsePlan,
+  lastPlanDraft = null,
+  onRestart,
+  onAcceptCreate,
+}) => {
   const messagesEndRef = useRef(null);
+  const showPlanActions = Boolean(lastPlanDraft && lastPlanDraft.planName);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -21,7 +30,7 @@ export const AIChatWindow = ({ messages = [], onSend, loading = false }) => {
           </div>
         )}
         {messages.map((message, index) => (
-          <AIChatMessage key={index} message={message} />
+          <AIChatMessage key={index} message={message} onUsePlan={onUsePlan} />
         ))}
         {loading && (
           <div className="ai-chat-loading">
@@ -32,6 +41,20 @@ export const AIChatWindow = ({ messages = [], onSend, loading = false }) => {
         <div ref={messagesEndRef} />
       </div>
       <AIChatInput onSend={onSend} disabled={loading} />
+      {showPlanActions && (onRestart || onAcceptCreate) && (
+        <div className="ai-chat-plan-actions">
+          {onRestart && (
+            <button type="button" className="ai-chat-plan-action-btn ai-chat-plan-action-restart" onClick={onRestart}>
+              重新开始
+            </button>
+          )}
+          {onAcceptCreate && (
+            <button type="button" className="ai-chat-plan-action-btn ai-chat-plan-action-accept" onClick={onAcceptCreate}>
+              接受并创建
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
