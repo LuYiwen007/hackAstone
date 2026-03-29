@@ -1,2 +1,0 @@
-export { PlanCard } from './PlanCard';
-

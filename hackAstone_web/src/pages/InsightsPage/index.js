@@ -1,2 +1,0 @@
-export { InsightsPage } from './InsightsPage';
-

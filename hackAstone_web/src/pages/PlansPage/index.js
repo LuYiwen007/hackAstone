@@ -1,2 +1,0 @@
-export { PlansPage } from './PlansPage';
-
