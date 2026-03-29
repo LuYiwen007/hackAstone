@@ -1,4 +1,4 @@
-# Dependencies
+# Dependencies（勿提交 node_modules；Vite 缓存 .vite 在 node_modules 内）
 node_modules/
 
 # Build
