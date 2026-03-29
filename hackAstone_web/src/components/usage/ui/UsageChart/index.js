@@ -1,2 +1,0 @@
-export { UsageChart } from './UsageChart';
-

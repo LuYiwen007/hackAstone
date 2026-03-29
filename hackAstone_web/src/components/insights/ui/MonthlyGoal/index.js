@@ -1,2 +1,0 @@
-export { MonthlyGoal } from './MonthlyGoal';
-

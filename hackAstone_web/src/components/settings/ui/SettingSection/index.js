@@ -1,2 +1,0 @@
-export { SettingSection } from './SettingSection';
-

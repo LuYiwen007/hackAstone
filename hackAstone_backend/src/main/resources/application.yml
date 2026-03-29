@@ -11,7 +11,7 @@ spring:
     # 确保你的数据库 hackastone 已经存在
     url: jdbc:mysql://localhost:3306/hackastone?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
     username: root
-    password: 123456
+    password: 36591126
 
 mybatis:
   mapper-locations: classpath:mappers/*.xml

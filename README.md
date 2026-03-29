@@ -5,17 +5,20 @@ hackAstone比赛仓库
 
 ## 项目简介
 
-本项目是一个基于 Spring Boot + React 的计划管理应用，采用分层架构设计，支持用户账户管理、计划创建与管理、使用数据统计，并集成 AI 大模型实现智能计划生成功能。
+本项目仓库包含 **Spring Boot 后端** 与 **React 前端**。当前产品方向已调整为 **AI 哲学辩论 / 认知竞技场（Cognitive Arena）**：与历史上的思想家对话、圆桌辩论、学习档案与辩论后总结等。前端界面与路由已按独立设计稿目录 **「网页设计」** 中的代码合并进 `hackAstone_web`（TypeScript + Tailwind v4 + React Router 7）。
+
+历史版本曾包含「计划管理」相关页面；若需恢复旧版 UI，请从 Git 历史中检出对应提交。
 
 ## 技术栈
 
-### 前端
+### 前端（hackAstone_web）
 - **框架**: React 19
-- **构建工具**: Vite 7.2.4
-- **路由**: React Router 6.30.2
-- **状态管理**: Zustand 5.0.9
-- **架构**: Feature-Sliced Design (FSD)
-- **AI集成**: 前端直接调用大模型 API（OpenAI/Claude等）
+- **构建工具**: Vite 7.x
+- **路由**: React Router 7
+- **样式**: Tailwind CSS v4（`@tailwindcss/vite`）
+- **组件**: Radix UI、Lucide 图标等（与「网页设计」一致）
+- **状态**: Zustand（可选，用于后续用户态）
+- **AI**: 辩论与总结可对接百炼 / OpenAI 等（待接后端或直连）
 
 ### 后端
 - **框架**: Spring Boot 2.1.0

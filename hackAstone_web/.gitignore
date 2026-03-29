@@ -1,0 +1,14 @@
+# Dependencies（勿提交 node_modules；Vite 缓存 .vite 在 node_modules 内）
+node_modules/
+
+# Build
+dist/
+
+# Local env (API Key 等敏感信息，勿提交)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+*.log
