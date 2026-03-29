@@ -12,7 +12,7 @@ export default defineConfig({
   },
   assetsInclude: ['**/*.svg', '**/*.csv'],
   server: {
-    port: 3000,
+    port: 8081,
     open: true,
     proxy: {
       '/api': {

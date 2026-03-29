@@ -21,7 +21,7 @@ public class UserController {
 
     /**
      * 注册接口
-     * URL: POST http://localhost:8080/user/register
+     * URL: POST http://localhost:8080/api/user/register
      */
     @PostMapping("/register")
     public Result<String> register(@RequestBody UserRegisterRequest request) {
@@ -33,7 +33,7 @@ public class UserController {
     }
     /**
      * 登录接口
-     * URL: POST http://localhost:8080/user/login
+     * URL: POST http://localhost:8080/api/user/login
      */
     @PostMapping("/login")
     public Result<UserEntity> login(@RequestBody UserLoginRequest request) {

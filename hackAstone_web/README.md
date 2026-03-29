@@ -9,7 +9,9 @@ npm install
 npm run dev
 ```
 
-默认 <http://localhost:3000>
+若浏览器白屏且控制台出现 **504 (Outdated Optimize Dep)**：先停掉 dev，删除缓存目录 `node_modules/.vite` 后重新 `npm run dev`；或执行一次 `npm run dev:force`。并确认只开了一个 Vite 进程。
+
+开发服务器默认 <http://localhost:8081>（`vite.config.ts`）。后端 Spring Boot 默认 **8080**，Vite 将 `/api` 代理到 `http://localhost:8080`。
 
 ## 路由
 

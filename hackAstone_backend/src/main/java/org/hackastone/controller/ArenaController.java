@@ -12,7 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/arena")
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
+@CrossOrigin(origins = {"http://localhost:8081", "http://127.0.0.1:8081"})
 public class ArenaController {
 
     @Autowired
