@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.hackastone.base.dal.mapper.PlanMapper">
+
+    <resultMap id="BaseResultMap" type="org.hackastone.base.dal.entity.PlanEntity">
+        <id column="id" property="id" jdbcType="VARCHAR"/>
+        <result column="user_id" property="userId" jdbcType="VARCHAR"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="plan_type" property="planType" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="start_date" property="startDate" jdbcType="TIMESTAMP"/>
+        <result column="end_date" property="endDate" jdbcType="TIMESTAMP"/>
+        <result column="priority" property="priority" jdbcType="INTEGER"/>
+        <result column="tags" property="tags" jdbcType="VARCHAR"/>
+        <result column="ext_info" property="extInfo" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="org.hackastone.base.dal.entity.PlanEntity">
+        INSERT INTO ha_plan
+        (id, user_id, title, description, plan_type, status, priority, ext_info, created_at, updated_at)
+        VALUES
+        (#{id}, #{userId}, #{title}, #{description}, #{planType}, 'NOT_STARTED', 0, #{extInfo}, NOW(), NOW())
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT id, user_id, title, description, plan_type, status, start_date, end_date, priority, tags, ext_info, created_at, updated_at
+        FROM ha_plan
+        WHERE id = #{id}
+    </select>
+
+</mapper>
