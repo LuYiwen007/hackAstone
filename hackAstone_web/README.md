@@ -1,38 +1,64 @@
 # Cognitive Arena（认知竞技场）· 前端
 
-界面与交互**完全沿用**仓库外目录 `网页设计` 中的实现（React + TypeScript + Vite + Tailwind CSS v4 + Radix UI）。
+## 技术栈
 
-## 运行
+- React 19
+- TypeScript
+- Vite 7
+- React Router 7
+- Tailwind CSS v4
+
+## 本地运行
 
 ```bash
 npm install
 npm run dev
 ```
 
-若浏览器白屏且控制台出现 **504 (Outdated Optimize Dep)**：先停掉 dev，删除缓存目录 `node_modules/.vite` 后重新 `npm run dev`；或执行一次 `npm run dev:force`。并确认只开了一个 Vite 进程。
-
-开发服务器默认 <http://localhost:8081>（`vite.config.ts`）。后端 Spring Boot 默认 **8080**，Vite 将 `/api` 代理到 `http://localhost:8080`。
+- 默认地址：`http://localhost:8081`
+- 代理：`/api -> http://localhost:8080`
 
 ## 路由
 
-| 路径 | 说明 |
-|------|------|
-| `/` | 首页：时间轴 + 区域 + 思想家卡片，选中后可辩论 |
-| `/disciplines` | 学科辩论 |
-| `/battle/:id` | 学科对战 |
-| `/philosophy-battle/:id` | 与选定思想家哲学辩论 |
-| `/roundtable` | 多思想家圆桌辩论 |
-| `/profile` | 个人学习档案（My Learning Journey） |
+- `/`：首页（时间轴 + 区域 + 思想家）
+- `/disciplines`：学科辩论列表
+- `/battle/:id`：学科辩论详情
+- `/philosophy-battle/:id`：哲学辩论（多轮 Agent）
+- `/roundtable`：多思想家圆桌辩论（Agent）
+- `/profile`：思维画像
 
-## 功能规划（与产品需求对应）
+## 与后端接口对齐
 
-- **思想家知识卡片 + 深度资料**：`PhilosopherCard` 弹层内已含著作、引言、观点、影响关系；「深度资料」按钮可后续接维基或后端摘要。
-- **辩论后智能总结**：`DebateSummary` 组件（辩论流程末尾）。
-- **现代应用场景**：`ModernApplication` 组件。
-- **概念闪卡**：`ConceptCards` 组件。
-- **圆桌 / 档案**：见 `RoundtableDebate.tsx`、`MindProfile.tsx`。
+前端 API 封装文件：`src/shared/api/arena.ts`
 
-后端对接时可将上述页面的静态/mock 数据替换为 Spring Boot API。
+已用接口：
+
+- `GET /api/arena/catalog`
+- `GET /api/arena/profile`
+- `POST /api/arena/agent/run`
+- `POST /api/arena/agent/topic`
+- `POST /api/arena/agent/roundtable/openings`
+- `POST /api/arena/agent/roundtable/reply`
+
+## Agent 驱动页面说明
+
+### `PhilosophyBattleLive`
+
+文件：`src/app/pages/PhilosophyBattleLive.tsx`
+
+- 首屏辩题由 Agent 生成
+- 支持多轮用户输入
+- 每轮包含哲学家回应 + 裁判追问
+- 何时收束由 Agent 决定（`continueDebate`）
+- 失败自动回退本地文案，避免白屏
+
+### `RoundtableDebate`
+
+文件：`src/app/pages/RoundtableDebate.tsx`
+
+- 开场发言优先走 Agent
+- 用户每次输入后，参与思想家批量响应
+- 失败自动回退本地模板
 
 ## 构建
 
@@ -40,4 +66,19 @@ npm run dev
 npm run build
 ```
 
-输出目录：`dist/`。
+输出目录：`dist/`
+
+## 常见问题
+
+### 白屏 + `504 (Outdated Optimize Dep)`
+
+```bash
+rm -rf node_modules/.vite
+npm run dev
+```
+
+或：
+
+```bash
+npm run dev:force
+```

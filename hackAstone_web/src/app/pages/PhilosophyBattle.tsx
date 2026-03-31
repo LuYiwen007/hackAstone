@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router";
 import { ArrowLeft, MessageSquare, AlertCircle, Swords, Users, User } from "lucide-react";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { getDebateTopic } from "../data/debateTopics";
+import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { DebateSummary } from "../components/DebateSummary";
+import { generateTopic } from "../../shared/api/arena";
 
 type Stage = "topic" | "choose" | "reason" | "judge" | "reveal";
 type Choice = "agree" | "disagree" | "uncertain" | null;
@@ -17,6 +19,7 @@ export function PhilosophyBattle() {
   const [choice, setChoice] = useState<Choice>(null);
   const [reason, setReason] = useState("");
   const [judgeIndex, setJudgeIndex] = useState(0);
+  const [aiTopic, setAiTopic] = useState<DebateTopicContent | null>(null);
 
   if (!philosopher) {
     return (
@@ -31,7 +34,25 @@ export function PhilosophyBattle() {
     );
   }
 
-  const topic = debateTopics[philosopher.id] ?? getDebateTopic(philosopher.id);
+  const fallbackTopic = debateTopics[philosopher.id] ?? getDebateTopic(philosopher.id);
+  const topic = aiTopic ?? fallbackTopic;
+
+  useEffect(() => {
+    let cancelled = false;
+    generateTopic(philosopher.nameCN, philosopher.school, philosopher.keyIdeas)
+      .then((resp) => {
+        const parsed = parseJsonPayload<DebateTopicContent>(resp.text);
+        if (!cancelled && parsed?.question && parsed?.judgeQuestions?.length) {
+          setAiTopic(parsed);
+        }
+      })
+      .catch(() => {
+        // 静默回退到本地数据，避免白屏或阻塞首屏
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [philosopher.id]);
 
   const handleChoose = (selected: "agree" | "disagree" | "uncertain") => {
     setChoice(selected);
@@ -312,4 +333,25 @@ export function PhilosophyBattle() {
       </main>
     </div>
   );
+}
+
+function parseJsonPayload<T>(raw: string): T | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const direct = tryParse<T>(trimmed);
+  if (direct) return direct;
+  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i) || trimmed.match(/```\s*([\s\S]*?)\s*```/i);
+  if (fenced?.[1]) return tryParse<T>(fenced[1].trim());
+  const first = trimmed.indexOf("{");
+  const last = trimmed.lastIndexOf("}");
+  if (first >= 0 && last > first) return tryParse<T>(trimmed.slice(first, last + 1));
+  return null;
+}
+
+function tryParse<T>(text: string): T | null {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }

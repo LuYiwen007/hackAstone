@@ -22,3 +22,16 @@ mybatis:
 logging:
   level:
     org.hackastone: debug
+
+bailian:
+  # 建议通过环境变量注入，不要把 key 写入仓库
+  api-key: sk-edd5db6b07ad4c8880067b2250b8f79a
+  endpoint: https://dashscope.aliyuncs.com/api/v1/apps
+  timeout-ms: 7000
+  cache-ttl-ms: 60000
+  atlas-app-id: abc36d9955e84ea3a823badc126820da
+  nova-app-id: 0eda7ecd8ce1420087fd627ccd293a0d
+  forge-app-id: a96f850a5df24ef89e209b94c832ee1e
+  ledger-app-id: 4415d8e9131e43ef953e259cdb8f0e35
+  echo-app-id: d2756fe8a8c1491c8103a5fc50505c8d
+  sentinel-app-id: 074a4934f6714fb2a303a5bda14e8b7b
