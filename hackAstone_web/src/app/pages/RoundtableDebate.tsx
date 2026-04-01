@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { ArrowLeft, Users, Plus, X, Sparkles, MessageSquare, User } from "lucide-react";
 import type { Philosopher } from "../data/philosophers";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
+import { generateRoundtableOpenings, generateRoundtableReply } from "../../shared/api/arena";
 
 interface Message {
   id: string;
@@ -66,18 +67,35 @@ export function RoundtableDebate() {
     
     setStage("debate");
     
-    // AI生成开场白
+    // 优先走后端 Echo Agent，失败时回退本地生成
     setIsThinking(true);
-    setTimeout(() => {
-      const openingMessages: Message[] = selectedPhilosophers.map((p, index) => ({
-        id: `opening-${p.id}`,
-        speaker: p.id,
-        content: generateOpening(p, debateTopic, index),
-        timestamp: Date.now() + index * 1000,
-      }));
-      setMessages(openingMessages);
-      setIsThinking(false);
-    }, 2000);
+    const participants = selectedPhilosophers.map((p) => ({ id: p.id, nameCN: p.nameCN, school: p.school }));
+    generateRoundtableOpenings(debateTopic, participants)
+      .then((resp) => {
+        const parsed = parseJsonPayload<{ messages?: Array<{ speaker: string; content: string }> }>(resp.text);
+        const serverMessages = parsed?.messages ?? [];
+        if (serverMessages.length > 0) {
+          const openingMessages: Message[] = serverMessages.map((m, index) => ({
+            id: `opening-${m.speaker}-${Date.now()}-${index}`,
+            speaker: m.speaker,
+            content: m.content,
+            timestamp: Date.now() + index * 300,
+          }));
+          setMessages(openingMessages);
+          return;
+        }
+        throw new Error("empty server messages");
+      })
+      .catch(() => {
+        const openingMessages: Message[] = selectedPhilosophers.map((p, index) => ({
+          id: `opening-${p.id}`,
+          speaker: p.id,
+          content: generateOpening(p, debateTopic, index),
+          timestamp: Date.now() + index * 1000,
+        }));
+        setMessages(openingMessages);
+      })
+      .finally(() => setIsThinking(false));
   };
 
   const handleUserSend = () => {
@@ -93,18 +111,35 @@ export function RoundtableDebate() {
     setMessages([...messages, userMessage]);
     setUserInput("");
 
-    // AI生成回应
+    // 优先走后端 Echo Agent，失败时回退本地生成
     setIsThinking(true);
-    setTimeout(() => {
-      const responses = selectedPhilosophers.map((p, index) => ({
-        id: `response-${p.id}-${Date.now()}`,
-        speaker: p.id,
-        content: generateResponse(p, userInput, debateTopic),
-        timestamp: Date.now() + index * 2000,
-      }));
-      setMessages(prev => [...prev, ...responses]);
-      setIsThinking(false);
-    }, 2000);
+    const participants = selectedPhilosophers.map((p) => ({ id: p.id, nameCN: p.nameCN, school: p.school }));
+    generateRoundtableReply(debateTopic, userInput, participants)
+      .then((resp) => {
+        const parsed = parseJsonPayload<{ messages?: Array<{ speaker: string; content: string }> }>(resp.text);
+        const serverMessages = parsed?.messages ?? [];
+        if (serverMessages.length > 0) {
+          const responses = serverMessages.map((m, index) => ({
+            id: `response-${m.speaker}-${Date.now()}-${index}`,
+            speaker: m.speaker,
+            content: m.content,
+            timestamp: Date.now() + index * 300,
+          }));
+          setMessages((prev) => [...prev, ...responses]);
+          return;
+        }
+        throw new Error("empty server responses");
+      })
+      .catch(() => {
+        const responses = selectedPhilosophers.map((p, index) => ({
+          id: `response-${p.id}-${Date.now()}`,
+          speaker: p.id,
+          content: generateResponse(p, userInput, debateTopic),
+          timestamp: Date.now() + index * 2000,
+        }));
+        setMessages((prev) => [...prev, ...responses]);
+      })
+      .finally(() => setIsThinking(false));
   };
 
   const getPhilosopher = (philosopherId: string) => {
@@ -420,4 +455,25 @@ function generateResponse(philosopher: Philosopher, userInput: string, topic: st
   };
 
   return responses[philosopher.id] || `从${philosopher.school}的角度看，${userInput.slice(0, 30)}...这个观点需要结合${philosopher.keyIdeas[0]}来理解。`;
+}
+
+function parseJsonPayload<T>(raw: string): T | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const direct = tryParse<T>(trimmed);
+  if (direct) return direct;
+  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i) || trimmed.match(/```\s*([\s\S]*?)\s*```/i);
+  if (fenced?.[1]) return tryParse<T>(fenced[1].trim());
+  const first = trimmed.indexOf("{");
+  const last = trimmed.lastIndexOf("}");
+  if (first >= 0 && last > first) return tryParse<T>(trimmed.slice(first, last + 1));
+  return null;
+}
+
+function tryParse<T>(text: string): T | null {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }

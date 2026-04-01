@@ -3,7 +3,7 @@ import { Home } from "./pages/Home";
 import { Disciplines } from "./pages/Disciplines";
 import { Battle } from "./pages/Battle";
 import { MindProfile } from "./pages/MindProfile";
-import { PhilosophyBattle } from "./pages/PhilosophyBattle";
+import { PhilosophyBattleLive } from "./pages/PhilosophyBattleLive";
 import { RoundtableDebate } from "./pages/RoundtableDebate";
 
 export const router = createBrowserRouter([
@@ -25,7 +25,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/philosophy-battle/:id",
-    Component: PhilosophyBattle,
+    Component: PhilosophyBattleLive,
   },
   {
     path: "/roundtable",
