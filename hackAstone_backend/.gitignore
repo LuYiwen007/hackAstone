@@ -1,8 +1,17 @@
 ### IntelliJ IDEA ###
+.idea/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .kotlin
+
+# Build output
+target/
+
+# Local env
+.env
+.env.local
+.env.*.local
 
 ### Eclipse ###
 .apt_generated
@@ -28,3 +37,6 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# Logs
+*.log

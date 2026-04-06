@@ -1,0 +1,22 @@
+# Logs and local tooling
+.codex-runlogs/
+*.log
+
+# Editors
+.idea/
+.vscode/
+
+# Dependencies and build output
+node_modules/
+dist/
+target/
+out/
+.npm-cache/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store

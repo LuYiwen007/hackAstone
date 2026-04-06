@@ -1,17 +1,18 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
-    context-path: /api
+    context-path: ${SERVER_CONTEXT_PATH:/api}
 
 spring:
   application:
     name: hackAstone-backend
+  config:
+    import: optional:file:./.env[.properties]
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    # 确保你的数据库 hackastone 已经存在
-    url: jdbc:mysql://localhost:3306/hackastone?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/hackastone?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
 
 mybatis:
   mapper-locations: classpath:mappers/*.xml
@@ -21,10 +22,9 @@ mybatis:
 
 logging:
   level:
-    org.hackastone: debug
+    org.hackastone: ${APP_LOG_LEVEL:debug}
 
 bailian:
-  # 建议通过环境变量注入，不要把 key 写入仓库
   api-key: ${BAILIAN_API_KEY:}
   endpoint: ${BAILIAN_ENDPOINT:https://dashscope.aliyuncs.com/api/v1/apps}
   timeout-ms: ${BAILIAN_TIMEOUT_MS:60000}
