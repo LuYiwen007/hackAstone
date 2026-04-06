@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { ArrowLeft, Users, Plus, X, Sparkles, MessageSquare, User } from "lucide-react";
 import type { Philosopher } from "../data/philosophers";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
+import { PhilosopherAvatar } from "../components/PhilosopherAvatar";
 import { generateRoundtableOpenings, generateRoundtableReply } from "../../shared/api/arena";
 
 interface Message {
@@ -192,6 +193,7 @@ export function RoundtableDebate() {
                         key={p.id}
                         className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2"
                       >
+                        <PhilosopherAvatar philosopher={p} className="w-9 h-9 flex-shrink-0" />
                         <div>
                           <div className="font-semibold text-white">{p.nameCN}</div>
                           <div className="text-xs text-zinc-500">{p.school}</div>
@@ -229,8 +231,13 @@ export function RoundtableDebate() {
                             : "bg-zinc-900 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800"
                         }`}
                       >
-                        <div className="font-semibold text-white text-sm">{p.nameCN}</div>
-                        <div className="text-xs text-zinc-500 mt-1">{p.school}</div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <PhilosopherAvatar philosopher={p} className="w-10 h-10 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-white text-sm">{p.nameCN}</div>
+                            <div className="text-xs text-zinc-500">{p.school}</div>
+                          </div>
+                        </div>
                         {isSelected && (
                           <div className="text-xs text-orange-500 mt-1">✓ 已选择</div>
                         )}
@@ -332,9 +339,7 @@ export function RoundtableDebate() {
                     >
                       {msg.speaker !== "user" && philosopher && (
                         <div className="flex-shrink-0">
-                          <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {philosopher.nameCN.slice(0, 1)}
-                          </div>
+                          <PhilosopherAvatar philosopher={philosopher} className="w-10 h-10 text-sm" />
                         </div>
                       )}
                       

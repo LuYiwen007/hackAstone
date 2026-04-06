@@ -4,7 +4,15 @@ import type { DebateTopicContent } from "../../app/data/debateTopicTypes";
 import { apiGet, apiBaseUrl } from "./client";
 
 export type RegionMeta = { id: string; name: string; x: number; y: number };
-export type TimePeriodMeta = { year: number; label: string; era: string };
+export type TimePeriodMeta = {
+  id: string;
+  year: number;
+  label: string;
+  era: string;
+  startYear?: number;
+  endYear?: number;
+  showAll?: boolean;
+};
 
 export type ArenaCatalogPayload = {
   philosophers: Philosopher[];
@@ -15,6 +23,9 @@ export type ArenaCatalogPayload = {
 };
 
 export type MindProfilePayload = {
+  userId?: string;
+  persisted?: boolean;
+  lastUpdatedAt?: string;
   biases: {
     name: string;
     description: string;
@@ -35,8 +46,13 @@ export function fetchArenaCatalog() {
   return apiGet<ArenaCatalogPayload>("/arena/catalog");
 }
 
-export function fetchMindProfile() {
-  return apiGet<MindProfilePayload>("/arena/profile");
+export function fetchMindProfile(userId?: string) {
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+  return apiGet<MindProfilePayload>(`/arena/profile${query}`);
+}
+
+export function saveMindProfile(userId: string, profile: MindProfilePayload) {
+  return apiPost<MindProfilePayload>(`/arena/profile?userId=${encodeURIComponent(userId)}`, profile);
 }
 
 type AgentRunResponse = {

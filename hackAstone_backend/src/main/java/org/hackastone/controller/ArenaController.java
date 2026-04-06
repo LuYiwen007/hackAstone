@@ -3,12 +3,14 @@ package org.hackastone.controller;
 import org.hackastone.base.util.Result;
 import org.hackastone.biz.ArenaDataService;
 import org.hackastone.biz.BailianAgentService;
+import org.hackastone.biz.MindProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -25,6 +27,8 @@ public class ArenaController {
     private ArenaDataService arenaDataService;
     @Autowired
     private BailianAgentService bailianAgentService;
+    @Autowired
+    private MindProfileService mindProfileService;
 
     /**
      * 认知竞技场静态数据：思想家、地区、时间轴、学科辩题、哲学辩题文案
@@ -38,8 +42,16 @@ public class ArenaController {
      * 思维画像（当前为演示数据，后续可对齐用户与对局统计）
      */
     @GetMapping("/profile")
-    public Result<Map<String, Object>> profile() {
-        return Result.success(arenaDataService.getProfile());
+    public Result<Map<String, Object>> profile(@RequestParam(required = false) String userId) {
+        return Result.success(mindProfileService.getOrCreateProfile(userId));
+    }
+
+    @PostMapping("/profile")
+    public Result<Map<String, Object>> saveProfile(
+            @RequestParam(required = false) String userId,
+            @RequestBody Map<String, Object> profile
+    ) {
+        return Result.success(mindProfileService.saveProfile(userId, profile));
     }
 
     /**

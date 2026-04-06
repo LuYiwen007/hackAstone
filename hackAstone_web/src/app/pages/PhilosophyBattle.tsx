@@ -5,6 +5,7 @@ import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { getDebateTopic } from "../data/debateTopics";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { DebateSummary } from "../components/DebateSummary";
+import { PhilosopherAvatar } from "../components/PhilosopherAvatar";
 import { generateTopic } from "../../shared/api/arena";
 
 type Stage = "topic" | "choose" | "reason" | "judge" | "reveal";
@@ -89,9 +90,7 @@ export function PhilosophyBattle() {
               <span>返回地图</span>
             </Link>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold">
-                {philosopher.nameCN[0]}
-              </div>
+              <PhilosopherAvatar philosopher={philosopher} className="w-8 h-8 text-sm" />
               <div className="text-sm">
                 <div className="font-bold">{philosopher.nameCN}</div>
                 <div className="text-zinc-500">{philosopher.school}</div>
@@ -132,9 +131,7 @@ export function PhilosophyBattle() {
               {/* Philosopher View */}
               <div className="p-6 rounded-xl border-2 border-purple-600/30 bg-zinc-900">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center font-bold">
-                    {philosopher.nameCN[0]}
-                  </div>
+                  <PhilosopherAvatar philosopher={philosopher} className="w-10 h-10" />
                   <div>
                     <div className="font-bold">{philosopher.nameCN}</div>
                     <div className="text-xs text-zinc-500">正方立场</div>
@@ -292,9 +289,7 @@ export function PhilosophyBattle() {
           <div className="max-w-4xl mx-auto">
             <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-purple-600/30 rounded-xl p-8">
               <div className="text-center mb-8">
-                <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center text-3xl mx-auto mb-4">
-                  {philosopher.nameCN[0]}
-                </div>
+                <PhilosopherAvatar philosopher={philosopher} className="w-16 h-16 text-3xl mx-auto mb-4" />
                 <h3 className="text-2xl font-bold mb-2">{philosopher.nameCN} 的完整思想</h3>
                 <p className="text-zinc-400">关于"{topic.question}"这个问题</p>
               </div>

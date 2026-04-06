@@ -9,10 +9,12 @@ import {
 } from "react";
 import {
   philosophers as fallbackPhilosophers,
-  regions as fallbackRegions,
-  timePeriods as fallbackTimePeriods,
   type Philosopher,
 } from "../data/philosophers";
+import {
+  regions as fallbackRegions,
+  timePeriods as fallbackTimePeriods,
+} from "../data/catalogMeta";
 import { battles as fallbackBattles, type Battle } from "../data/battles";
 import { debateTopicsByPhilosopher } from "../data/debateTopics";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
@@ -49,8 +51,10 @@ export function ArenaCatalogProvider({ children }: { children: ReactNode }) {
     fetchArenaCatalog()
       .then((data) => {
         setPhilosophers(data.philosophers);
-        setRegions(data.regions);
-        setTimePeriods(data.timePeriods);
+        // Keep the local map/timeline metadata so the homepage remains stable
+        // even when the backend catalog is still on an older schema.
+        setRegions(fallbackRegions);
+        setTimePeriods(fallbackTimePeriods);
         setBattles(data.battles);
         setDebateTopics({ ...fallbackDebateTopics, ...data.debateTopics });
         setCatalogFromServer(true);
