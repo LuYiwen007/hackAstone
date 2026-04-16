@@ -18,6 +18,33 @@ export interface Philosopher {
   };
 }
 
+const philosopherAvatarMap: Record<string, string> = {
+  aquinas: "/philosophers/aquinas.jpg",
+  aristotle: "/philosophers/aristotle.jpg",
+  averroes: "/philosophers/averroes.jpg",
+  buddha: "/philosophers/buddha.jpg",
+  confucius: "/philosophers/confucius.jpg",
+  descartes: "/philosophers/descartes.jpg",
+  epicurus: "/philosophers/epicurus.jpg",
+  hegel: "/philosophers/hegel.jpg",
+  hume: "/philosophers/hume.jpg",
+  james: "/philosophers/james.jpg",
+  kant: "/philosophers/kant.jpg",
+  laozi: "/philosophers/laozi.jpg",
+  locke: "/philosophers/locke.jpg",
+  mengzi: "/philosophers/mengzi.jpg",
+  mozi: "/philosophers/mozi.jpg",
+  plato: "/philosophers/plato.jpg",
+  rousseau: "/philosophers/rousseau.jpg",
+  socrates: "/philosophers/socrates.jpg",
+  spinoza: "/philosophers/spinoza.jpg",
+  zhuangzi: "/philosophers/zhuangzi.jpg",
+};
+
+export function getPhilosopherAvatarSrc(philosopherId: string): string | undefined {
+  return philosopherAvatarMap[philosopherId];
+}
+
 export const philosophers: Philosopher[] = [
   // 古希腊 (Europe)
   { 

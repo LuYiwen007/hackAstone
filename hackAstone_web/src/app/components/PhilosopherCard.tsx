@@ -1,6 +1,7 @@
 import { X, BookOpen, Quote, Users as UsersIcon, MapPin, Calendar, ExternalLink } from "lucide-react";
 import type { Philosopher } from "../data/philosophers";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
+import { PhilosopherAvatar } from "./PhilosopherAvatar";
 
 interface PhilosopherCardProps {
   philosopher: Philosopher;
@@ -24,9 +25,7 @@ export function PhilosopherCard({ philosopher, onClose, onStartDebate }: Philoso
         {/* Header */}
         <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-6 flex items-start justify-between">
           <div className="flex items-start gap-4 flex-1">
-            <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center text-2xl font-bold flex-shrink-0">
-              {philosopher.nameCN[0]}
-            </div>
+            <PhilosopherAvatar philosopher={philosopher} className="h-16 w-16 flex-shrink-0 text-2xl" />
             <div className="flex-1 min-w-0">
               <h2 className="text-2xl font-bold mb-1">{philosopher.nameCN}</h2>
               <p className="text-zinc-400">{philosopher.name}</p>
