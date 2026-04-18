@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
+<<<<<<< HEAD
 import { AlertCircle, ArrowLeft, MessageSquare } from "lucide-react";
+=======
+import { ArrowLeft, MessageSquare } from "lucide-react";
+>>>>>>> 7d2b71a2c832fe320877ebc107bd89ed18ce97c8
 import { Link } from "react-router";
 import { ArenaHeader } from "../components/ArenaHeader";
 import { PhilosopherAvatar } from "../components/PhilosopherAvatar";
