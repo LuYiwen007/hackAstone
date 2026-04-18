@@ -1,0 +1,29 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#0A0A0F"/>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1262" cy="170" r="272" fill="#F59E0B" fill-opacity="0.16"/>
+  <circle cx="292" cy="774" r="328" fill="#22C55E" fill-opacity="0.12"/>
+  <path d="M482 152H1118V748H482V152Z" fill="#FAFAF9" fill-opacity="0.05" stroke="#FDE68A" stroke-opacity="0.52" stroke-width="6"/>
+  <path d="M548 166C596 266 628 390 628 536C628 612 618 682 602 734" stroke="#FDE68A" stroke-opacity="0.7" stroke-width="18" stroke-linecap="round"/>
+  <path d="M640 166C688 266 720 390 720 536C720 614 710 684 694 734" stroke="#FDE68A" stroke-opacity="0.62" stroke-width="18" stroke-linecap="round"/>
+  <path d="M732 166C780 266 812 390 812 536C812 614 802 684 786 734" stroke="#FDE68A" stroke-opacity="0.52" stroke-width="18" stroke-linecap="round"/>
+  <path d="M824 166C872 266 904 390 904 536C904 614 894 684 878 734" stroke="#FDE68A" stroke-opacity="0.52" stroke-width="18" stroke-linecap="round"/>
+  <path d="M916 166C964 266 996 390 996 536C996 614 986 684 970 734" stroke="#FDE68A" stroke-opacity="0.62" stroke-width="18" stroke-linecap="round"/>
+  <path d="M1008 166C1056 266 1088 390 1088 536C1088 612 1078 682 1062 734" stroke="#FDE68A" stroke-opacity="0.7" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="662" cy="654" r="44" fill="#1C1917"/>
+  <path d="M586 760C600 700 630 672 662 672C694 672 724 700 738 760" fill="#1C1917"/>
+  <circle cx="940" cy="654" r="44" fill="#1C1917"/>
+  <path d="M864 760C878 700 908 672 940 672C972 672 1002 700 1016 760" fill="#1C1917"/>
+  <path d="M724 524H878" stroke="#A3E635" stroke-width="18" stroke-linecap="round"/>
+  <path d="M752 448L724 524L752 602" stroke="#A3E635" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M850 448L878 524L850 602" stroke="#A3E635" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M800 220V394" stroke="#F8FAFC" stroke-opacity="0.7" stroke-width="12" stroke-linecap="round"/>
+  <path d="M716 302H884" stroke="#F8FAFC" stroke-opacity="0.7" stroke-width="12" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="bg" x1="182" y1="108" x2="1380" y2="824" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#422006"/>
+      <stop offset="0.52" stop-color="#18181B"/>
+      <stop offset="1" stop-color="#052E16"/>
+    </linearGradient>
+  </defs>
+</svg>

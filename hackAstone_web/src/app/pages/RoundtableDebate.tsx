@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { ArrowLeft, Users, Plus, X, Sparkles, MessageSquare, User } from "lucide-react";
+import { Plus, X, Sparkles, MessageSquare, User } from "lucide-react";
 import type { Philosopher } from "../data/philosophers";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { generateRoundtableOpenings, generateRoundtableReply } from "../../shared/api/arena";
+import { ArenaHeader } from "../components/ArenaHeader";
 
 interface Message {
   id: string;
@@ -148,24 +148,15 @@ export function RoundtableDebate() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Header */}
-      <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Link
-              to="/"
-              className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>返回主页</span>
-            </Link>
-            <div className="flex items-center gap-3">
-              <Users className="w-6 h-6 text-orange-500" />
-              <h1 className="text-xl font-bold">多思想家圆桌辩论</h1>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ArenaHeader
+        currentPage="roundtable"
+        theme={{
+          iconBg: "bg-gradient-to-br from-orange-500 to-red-600",
+          activeButton: "bg-gradient-to-r from-orange-600 to-red-600",
+          activeBorder: "border-orange-800",
+          activeHover: "hover:from-orange-500 hover:to-red-500",
+        }}
+      />
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Setup Stage */}

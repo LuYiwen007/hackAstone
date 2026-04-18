@@ -1,0 +1,32 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#09090B"/>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="340" cy="170" r="240" fill="#A855F7" fill-opacity="0.14"/>
+  <circle cx="1286" cy="720" r="320" fill="#22D3EE" fill-opacity="0.12"/>
+  <rect x="470" y="138" width="660" height="624" rx="96" fill="url(#tank)" stroke="#A5F3FC" stroke-opacity="0.8" stroke-width="8"/>
+  <rect x="520" y="186" width="560" height="528" rx="72" fill="#0F172A" fill-opacity="0.72"/>
+  <path d="M756 314C684 344 638 406 638 474C638 598 772 680 842 680C934 680 1020 598 1020 494C1020 420 968 350 890 320C872 348 846 372 818 390C792 372 772 344 756 314Z" fill="#F9A8D4" fill-opacity="0.86"/>
+  <path d="M744 314C760 354 784 382 818 402C854 380 880 352 894 318C950 334 992 378 1006 430C972 410 930 402 888 410C850 416 820 432 802 456C776 428 732 410 682 410C666 410 650 412 636 418C650 374 690 338 744 314Z" fill="#F472B6" fill-opacity="0.9"/>
+  <path d="M730 492C772 506 806 534 828 576C854 534 892 506 942 492" stroke="#FCE7F3" stroke-opacity="0.88" stroke-width="18" stroke-linecap="round"/>
+  <path d="M816 390C816 330 852 256 928 210" stroke="#22D3EE" stroke-width="10" stroke-linecap="round"/>
+  <path d="M928 210H1060V116" stroke="#22D3EE" stroke-width="10" stroke-linecap="round"/>
+  <path d="M756 402C730 334 676 276 590 246" stroke="#A78BFA" stroke-width="10" stroke-linecap="round"/>
+  <path d="M590 246H468V154" stroke="#A78BFA" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="1060" cy="116" r="22" fill="#22D3EE"/>
+  <circle cx="468" cy="154" r="22" fill="#A78BFA"/>
+  <circle cx="604" cy="604" r="16" fill="#67E8F9" fill-opacity="0.8"/>
+  <circle cx="998" cy="564" r="12" fill="#C084FC" fill-opacity="0.7"/>
+  <circle cx="920" cy="280" r="10" fill="#67E8F9" fill-opacity="0.6"/>
+  <defs>
+    <linearGradient id="bg" x1="210" y1="84" x2="1366" y2="836" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B0764"/>
+      <stop offset="0.48" stop-color="#111827"/>
+      <stop offset="1" stop-color="#083344"/>
+    </linearGradient>
+    <linearGradient id="tank" x1="506" y1="170" x2="1124" y2="762" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9" stop-opacity="0.28"/>
+      <stop offset="0.48" stop-color="#111827" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#06B6D4" stop-opacity="0.18"/>
+    </linearGradient>
+  </defs>
+</svg>
