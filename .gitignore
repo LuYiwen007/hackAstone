@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- Xcode / iOS（hackAstone_app 等）---
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+**/DerivedData/
+**/build/
+*.ipa
+*.dSYM
+*.dSYM.zip
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc
+
+# Swift Package Manager
+.build/
+Packages/
+
+# CocoaPods / Carthage（若以后使用）
+Pods/
+Carthage/Build/
+
+# --- Maven / Java（hackAstone_backend）---
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# --- Node / 前端（hackAstone_web）---
+node_modules/
+dist/
+.npm/
+.pnpm-store/
+*.log
+.env
+.env.local
+.env.*.local
+
+# IDE（根目录与各子项目通用）
+.idea/
+.vscode/
