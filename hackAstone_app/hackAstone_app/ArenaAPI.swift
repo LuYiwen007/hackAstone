@@ -65,6 +65,28 @@ enum ArenaAPI {
         try await runAgent(agent: "echo", query: query, imageList: [])
     }
 
+    /// 与 Web `generateTopic` 一致：`POST /arena/agent/topic`
+    static func generateTopic(philosopherName: String, philosopherSchool: String, keyIdeas: [String]) async throws -> AgentRunResponse {
+        let data = try await request(
+            path: "/arena/agent/topic",
+            method: "POST",
+            jsonBody: [
+                "philosopherName": philosopherName,
+                "philosopherSchool": philosopherSchool,
+                "keyIdeas": keyIdeas.joined(separator: "、"),
+            ]
+        )
+        let inner = try envelopeData(data)
+        let o = inner as? [String: Any]
+        guard let o else { throw ArenaAPIError.decode }
+        return AgentRunResponse(
+            agent: o["agent"] as? String ?? "echo",
+            appId: o["appId"] as? String ?? "",
+            text: o["text"] as? String ?? "",
+            cached: o["cached"] as? Bool ?? false
+        )
+    }
+
     static func runAgent(agent: String, query: String, imageList: [String] = []) async throws -> AgentRunResponse {
         let data = try await request(
             path: "/arena/agent/run",
@@ -104,6 +126,76 @@ enum ArenaAPI {
             path: "/arena/agent/roundtable/reply",
             method: "POST",
             jsonBody: ["topic": topic, "userInput": userInput, "participants": participants]
+        )
+        let inner = try envelopeData(data)
+        let o = inner as? [String: Any]
+        guard let o else { throw ArenaAPIError.decode }
+        return AgentRunResponse(
+            agent: o["agent"] as? String ?? "echo",
+            appId: o["appId"] as? String ?? "",
+            text: o["text"] as? String ?? "",
+            cached: o["cached"] as? Bool ?? false
+        )
+    }
+
+    /// 与后端 `POST /arena/agent/dilemma/turn` 一致：服务端组装 prompt 后走百炼 Echo。
+    static func dilemmaTurn(
+        moralDilemmaTitle: String,
+        moralDilemmaEnglishTitle: String,
+        question: String,
+        promptLead: String,
+        userStance: String,
+        philosopherName: String,
+        philosopherSchool: String,
+        keyIdeas: String,
+        history: String
+    ) async throws -> AgentRunResponse {
+        let data = try await request(
+            path: "/arena/agent/dilemma/turn",
+            method: "POST",
+            jsonBody: [
+                "moralDilemmaTitle": moralDilemmaTitle,
+                "moralDilemmaEnglishTitle": moralDilemmaEnglishTitle,
+                "question": question,
+                "promptLead": promptLead,
+                "userStance": userStance,
+                "philosopherName": philosopherName,
+                "philosopherSchool": philosopherSchool,
+                "keyIdeas": keyIdeas,
+                "history": history,
+            ]
+        )
+        let inner = try envelopeData(data)
+        let o = inner as? [String: Any]
+        guard let o else { throw ArenaAPIError.decode }
+        return AgentRunResponse(
+            agent: o["agent"] as? String ?? "echo",
+            appId: o["appId"] as? String ?? "",
+            text: o["text"] as? String ?? "",
+            cached: o["cached"] as? Bool ?? false
+        )
+    }
+
+    /// 与后端 `POST /arena/agent/dilemma/summary` 一致。
+    static func dilemmaSummary(
+        moralDilemmaTitle: String,
+        question: String,
+        userStance: String,
+        philosopherName: String,
+        philosopherSchool: String,
+        history: String
+    ) async throws -> AgentRunResponse {
+        let data = try await request(
+            path: "/arena/agent/dilemma/summary",
+            method: "POST",
+            jsonBody: [
+                "moralDilemmaTitle": moralDilemmaTitle,
+                "question": question,
+                "userStance": userStance,
+                "philosopherName": philosopherName,
+                "philosopherSchool": philosopherSchool,
+                "history": history,
+            ]
         )
         let inner = try envelopeData(data)
         let o = inner as? [String: Any]

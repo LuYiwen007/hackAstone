@@ -108,3 +108,29 @@ export function generateRoundtableReply(
 ) {
   return apiPost<AgentRunResponse>("/arena/agent/roundtable/reply", { topic, userInput, participants });
 }
+
+/** 道德困境单轮：后端组装 prompt 后调用百炼 Echo */
+export function generateDilemmaTurn(body: {
+  moralDilemmaTitle: string;
+  moralDilemmaEnglishTitle: string;
+  question: string;
+  promptLead: string;
+  userStance: string;
+  philosopherName: string;
+  philosopherSchool: string;
+  keyIdeas: string;
+  history: string;
+}) {
+  return apiPost<AgentRunResponse>("/arena/agent/dilemma/turn", body);
+}
+
+export function generateDilemmaSummary(body: {
+  moralDilemmaTitle: string;
+  question: string;
+  userStance: string;
+  philosopherName: string;
+  philosopherSchool: string;
+  history: string;
+}) {
+  return apiPost<AgentRunResponse>("/arena/agent/dilemma/summary", body);
+}

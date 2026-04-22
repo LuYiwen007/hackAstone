@@ -107,14 +107,16 @@ struct HomeView: View {
                 Spacer()
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Button {
                     path.append(AppRoute.roundtable)
                 } label: {
-                        Label(L.roundtableDebate, systemImage: "person.3.sequence.fill")
-                        .font(.subheadline.weight(.semibold))
+                    Label(L.roundtableDebate, systemImage: "person.3.sequence.fill")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 6)
                         .padding(.vertical, 10)
                         .foregroundStyle(.white)
                         .background(LinearGradient(colors: [Color.orange, Color.red.opacity(0.85)], startPoint: .leading, endPoint: .trailing))
@@ -124,12 +126,31 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
 
                 Button {
+                    path.append(AppRoute.dilemma)
+                } label: {
+                    Label(L.moralDilemma, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(.white)
+                        .background(LinearGradient(colors: [Color.cyan.opacity(0.9), Color.blue.opacity(0.75)], startPoint: .leading, endPoint: .trailing))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+
+                Button {
                     path.append(AppRoute.profile)
                 } label: {
-                        Label(L.mindProfile, systemImage: "person.fill")
-                        .font(.subheadline)
+                    Label(L.mindProfile, systemImage: "person.fill")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 6)
                         .padding(.vertical, 10)
                         .foregroundStyle(ArenaTheme.textPrimary)
                         .background(ArenaTheme.surface)

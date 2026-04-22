@@ -49,7 +49,7 @@ npm run dev
 
 ## iOS 应用（`hackAstone_app`）
 
-SwiftUI 实现的 Cognitive Arena 客户端，路由与交互与 `hackAstone_web` 对齐：首页世界地图与时代轴、哲学辩论、学科辩论与对局、圆桌辩论、思维画像等。目录拉取失败时会回退到内置 `fallback_catalog.json`，不阻塞使用。
+SwiftUI 实现的 Cognitive Arena 客户端，路由与交互与 `hackAstone_web` 对齐：首页世界地图与时代轴、哲学辩论、学科辩论与对局、圆桌辩论、**道德困境**（与 Web `/dilemma` 一致）、思维画像等。目录拉取失败时会回退到内置 `fallback_catalog.json`，不阻塞使用。
 
 ### 环境与工程
 
@@ -87,7 +87,8 @@ xcodebuild -scheme hackAstone_app -destination 'platform=iOS Simulator,name=iPho
 - `hackAstone_app/hackAstone_app/hackAstone_appApp.swift`：应用入口
 - `hackAstone_app/hackAstone_app/RootView.swift`：导航栈与路由
 - `hackAstone_app/hackAstone_app/HomeView.swift`：首页（哲学 / 学科切换、地图区块）
-- `hackAstone_app/hackAstone_app/ArenaAPI.swift`：调用后端 `/api/arena/...` 等接口
+- `hackAstone_app/hackAstone_app/DilemmaView.swift` / `DilemmaData.swift`：道德困境流程（Echo 多轮 + 小结）
+- `hackAstone_app/hackAstone_app/ArenaAPI.swift`：调用后端 `/api/arena/...` 等接口（含与 Web 一致的 `POST /arena/agent/topic` 封装 `generateTopic`）
 
 ## 百炼 Agent 接入说明
 

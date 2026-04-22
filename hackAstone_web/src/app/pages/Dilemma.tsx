@@ -7,7 +7,7 @@ import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { dilemmas, getDilemma, type DilemmaOption } from "../data/dilemmas";
 import type { Philosopher } from "../data/philosophers";
 import { DebateSummary } from "../components/DebateSummary";
-import { runEchoQuery } from "../../shared/api/arena";
+import { generateDilemmaSummary, generateDilemmaTurn } from "../../shared/api/arena";
 
 type Stage = "setup" | "debate" | "reveal";
 type MessageRole = "user" | "philosopher" | "judge";
@@ -130,42 +130,18 @@ export function Dilemma() {
       })
       .join("\n");
 
-    const turnQuery = [
-      "[ROLE]",
-      "CA-Echo-LLM",
-      "",
-      "[TASK]",
-      "围绕给定道德困境继续一轮哲学讨论：先以哲学家身份回应用户，再以 Judge 身份追问，并判断是否可以进入总结。",
-      "",
-      "[REPO_CONTEXT]",
-      "project=hackAstone",
-      "",
-      "[TARGET_FILES]",
-      "NONE",
-      "",
-      "[API_CONTRACT]",
-      "NONE",
-      "",
-      "[ACCEPTANCE_CRITERIA]",
-      "返回 philosopherReply/judgeQuestion/continueDebate 三个字段",
-      "",
-      "[CONSTRAINTS]",
-      "中文输出；哲学家回应要体现其思想风格；仅返回 JSON；continueDebate 为布尔值",
-      "",
-      "[RETURN_FORMAT]",
-      "json",
-      "",
-      `道德困境：${currentDilemma.title} (${currentDilemma.englishTitle})`,
-      `问题：${currentDilemma.question}`,
-      `用户立场：${selectedOption.stancePrompt}`,
-      `哲学家：${selectedPhilosopher.nameCN}；学派：${selectedPhilosopher.school}；关键思想：${selectedPhilosopher.keyIdeas.join("、")}`,
-      `讨论提醒：${currentDilemma.promptLead}`,
-      "历史：",
-      historyText,
-    ].join("\n");
-
     try {
-      const response = await runEchoQuery(turnQuery);
+      const response = await generateDilemmaTurn({
+        moralDilemmaTitle: currentDilemma.title,
+        moralDilemmaEnglishTitle: currentDilemma.englishTitle,
+        question: currentDilemma.question,
+        promptLead: currentDilemma.promptLead,
+        userStance: selectedOption.stancePrompt,
+        philosopherName: selectedPhilosopher.nameCN,
+        philosopherSchool: selectedPhilosopher.school,
+        keyIdeas: selectedPhilosopher.keyIdeas.join("、"),
+        history: historyText,
+      });
       const parsed = parseJsonPayload<TurnResult>(response.text);
       const turn =
         parsed?.philosopherReply && parsed?.judgeQuestion
@@ -228,41 +204,15 @@ export function Dilemma() {
       })
       .join("\n");
 
-    const summaryQuery = [
-      "[ROLE]",
-      "CA-Echo-LLM",
-      "",
-      "[TASK]",
-      "根据道德困境讨论历史生成一份完整总结，解释用户立场与哲学家回应的张力。",
-      "",
-      "[REPO_CONTEXT]",
-      "project=hackAstone",
-      "",
-      "[TARGET_FILES]",
-      "NONE",
-      "",
-      "[API_CONTRACT]",
-      "NONE",
-      "",
-      "[ACCEPTANCE_CRITERIA]",
-      "返回 fullExplanation 字段",
-      "",
-      "[CONSTRAINTS]",
-      "中文输出；条理清晰；保留哲学家风格；仅返回 JSON",
-      "",
-      "[RETURN_FORMAT]",
-      "json",
-      "",
-      `道德困境：${currentDilemma.title}`,
-      `问题：${currentDilemma.question}`,
-      `用户立场：${selectedOption.stancePrompt}`,
-      `哲学家：${selectedPhilosopher.nameCN}；学派：${selectedPhilosopher.school}`,
-      "历史：",
-      history,
-    ].join("\n");
-
     try {
-      const response = await runEchoQuery(summaryQuery);
+      const response = await generateDilemmaSummary({
+        moralDilemmaTitle: currentDilemma.title,
+        question: currentDilemma.question,
+        userStance: selectedOption.stancePrompt,
+        philosopherName: selectedPhilosopher.nameCN,
+        philosopherSchool: selectedPhilosopher.school,
+        history,
+      });
       const parsed = parseJsonPayload<SummaryResult>(response.text);
       if (parsed?.fullExplanation) {
         setFullExplanation(parsed.fullExplanation);
