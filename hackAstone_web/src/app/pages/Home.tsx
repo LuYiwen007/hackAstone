@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { Clock, Globe2, Swords, User, Users, UsersRound } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Clock, Globe2, Swords } from "lucide-react";
+import { ArenaHeader } from "../components/ArenaHeader";
 import { PhilosopherAvatar } from "../components/PhilosopherAvatar";
 import { PhilosopherCard } from "../components/PhilosopherCard";
 import type { Philosopher } from "../data/philosophers";
@@ -135,56 +136,14 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-6 py-4">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
-                <Users className="h-6 w-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">Cognitive Arena</h1>
-                <p className="text-xs text-zinc-500">跨时空思想对话场</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link
-                to="/roundtable"
-                className="flex items-center gap-2 rounded-lg border border-orange-800 bg-gradient-to-r from-orange-600 to-red-600 px-4 py-2 text-white transition-colors hover:from-orange-700 hover:to-red-700"
-              >
-                <UsersRound className="h-4 w-4" />
-                <span className="text-sm font-semibold">圆桌辩论</span>
-              </Link>
-              <Link
-                to="/disciplines"
-                className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800"
-              >
-                <Swords className="h-4 w-4" />
-                <span className="text-sm">学科辩论</span>
-              </Link>
-              <Link
-                to="/profile"
-                className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800"
-              >
-                <User className="h-4 w-4" />
-                <span className="text-sm">思维画像</span>
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Link to="/" className="rounded-lg bg-cyan-600 px-4 py-2 font-bold text-white">
-              哲学辩论
-            </Link>
-            <Link
-              to="/disciplines"
-              className="rounded-lg px-4 py-2 text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-100"
-            >
-              学科辩论
-            </Link>
-          </div>
-        </div>
-      </header>
+      <ArenaHeader
+        currentPage="home"
+        theme={{
+          iconBg: "bg-gradient-to-br from-cyan-500 to-blue-600",
+          activeButton: "bg-cyan-600 border-cyan-500",
+          activeHover: "hover:bg-cyan-500",
+        }}
+      />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-8 text-center">

@@ -1,5 +1,6 @@
 import { Link } from "react-router";
-import { Swords, Brain, User, Users } from "lucide-react";
+import { Swords, Brain } from "lucide-react";
+import { ArenaHeader } from "../components/ArenaHeader";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
 
 export function Disciplines() {
@@ -8,54 +9,14 @@ export function Disciplines() {
   
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg flex items-center justify-center">
-                <Swords className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="font-bold text-xl">Cognitive Arena</h1>
-                <p className="text-xs text-zinc-500">认知竞技场</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link 
-                to="/disciplines"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 transition-colors border border-zinc-800"
-              >
-                <Swords className="w-4 h-4" />
-                <span className="text-sm">学科辩论</span>
-              </Link>
-              <Link 
-                to="/profile"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 transition-colors border border-zinc-800"
-              >
-                <User className="w-4 h-4" />
-                <span className="text-sm">思维画像</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="flex gap-2">
-            <Link
-              to="/"
-              className="px-4 py-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
-            >
-              哲学辩论
-            </Link>
-            <Link
-              to="/disciplines"
-              className="px-4 py-2 rounded-lg bg-orange-600 text-white font-bold"
-            >
-              学科辩论
-            </Link>
-          </div>
-        </div>
-      </header>
+      <ArenaHeader
+        currentPage="disciplines"
+        theme={{
+          iconBg: "bg-gradient-to-br from-red-500 to-orange-600",
+          activeButton: "bg-orange-600 border-orange-500",
+          activeHover: "hover:bg-orange-500",
+        }}
+      />
 
       <main className="max-w-6xl mx-auto px-6 py-12">
         {/* Hero */}
