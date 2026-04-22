@@ -16,6 +16,8 @@ struct RootView: View {
                         MindProfileView(path: $path)
                     case .roundtable:
                         RoundtableView(path: $path)
+                    case .dilemma:
+                        DilemmaView(path: $path)
                     case .battle(let id):
                         BattleView(battleId: id, path: $path)
                     case .philosophyBattle(let id):

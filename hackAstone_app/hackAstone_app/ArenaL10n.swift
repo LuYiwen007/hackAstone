@@ -21,6 +21,7 @@ struct ArenaL10n {
 
     var homeSubtitle: String { en ? "Cross-era dialogue of ideas" : "跨时空思想对话场" }
     var roundtableDebate: String { en ? "Roundtable" : "圆桌辩论" }
+    var moralDilemma: String { en ? "Dilemmas" : "道德困境" }
     var mindProfile: String { en ? "Mind profile" : "思维画像" }
     var philosophyDebate: String { en ? "Philosophy" : "哲学辩论" }
     var disciplinesDebate: String { en ? "Disciplines" : "学科辩论" }
@@ -464,6 +465,51 @@ struct ArenaL10n {
             return ("", "")
         }
     }
+
+    // MARK: - Moral dilemma (/dilemma)
+
+    var dilemmaNavTitle: String { moralDilemma }
+    var dilemmaHeroKicker: String { en ? "Moral dilemmas" : "Moral Dilemmas" }
+    var dilemmaHeroSubtitle: String {
+        en ? "Discuss moral dilemmas with a philosopher." : "和哲学家讨论道德困境"
+    }
+    var dilemmaCoreQuestionLabel: String { en ? "Key question" : "核心提问" }
+    var dilemmaYourStanceSection: String { en ? "Your current stance" : "你当前的立场" }
+    var dilemmaChoosePhilosopherTitle: String {
+        en ? "Pick a philosopher to discuss with" : "选择一位哲学家和你讨论"
+    }
+    var dilemmaChoosePhilosopherHint: String {
+        en
+            ? "After you tap a card, you’ll enter a focused chat about this dilemma."
+            : "点击哲学家卡片后，会直接进入和他围绕当前困境的讨论窗口。"
+    }
+    var dilemmaRecommended: String { en ? "Recommended" : "推荐哲学家" }
+    var dilemmaAllPhilosophers: String { en ? "All philosophers" : "全部哲学家" }
+    var dilemmaFeaturedBadge: String { en ? "Featured" : "推荐" }
+    var dilemmaRechoosePhilosopher: String { en ? "Pick another philosopher" : "重新选择哲学家" }
+    var dilemmaCurrentDilemmaLabel: String { en ? "Current dilemma" : "当前困境" }
+    var dilemmaDiscussionNote: String {
+        en
+            ? "Discussion proceeds as philosopher reply + Judge follow-up, like the debate flow."
+            : "讨论会按“哲学家回应 + Judge 追问”的方式推进，和辩论窗口保持一致。"
+    }
+    var dilemmaThinking: String { en ? "Philosopher and Judge are thinking…" : "哲学家与 Judge 正在思考..." }
+    func dilemmaInputPlaceholder(name: String) -> String {
+        en
+            ? "Press \(name) further, or add your reasoning…"
+            : "继续追问 \(name)，或者补充你的理由..."
+    }
+    func dilemmaRevealLine(option: String, philosopher: String) -> String {
+        en
+            ? "You chose: \(option). Discussing with \(philosopher)."
+            : "你选择的是「\(option)」，讨论对象是 \(philosopher)。"
+    }
+    func dilemmaJudgeOpening(optionLabel: String) -> String {
+        en
+            ? "You chose “\(optionLabel)”. Explain your reasoning and respond to the sharpest objection to your view."
+            : "你当前选择了“\(optionLabel)”。请先说明你的理由，并尝试回应这个困境最尖锐的反对意见。"
+    }
+    var dilemmaContinueWithPhilosopher: String { en ? "Discuss with another philosopher" : "继续换哲学家讨论" }
 }
 
 extension Philosopher {
