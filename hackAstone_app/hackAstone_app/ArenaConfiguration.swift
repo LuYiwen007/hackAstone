@@ -1,16 +1,20 @@
 import Foundation
 
-/// 与 Web `VITE_API_BASE_URL` + Spring `server.servlet.context-path=/api` 对齐；默认连本机后端（模拟器可用 127.0.0.1）。
+/// 与 Web `VITE_API_BASE_URL` + Spring `server.servlet.context-path=/api` 对齐。
+/// 默认连云服务器公网；覆盖方式：`UserDefaults` 键 `arena_api_base_url`（例如本机调试 `http://127.0.0.1:8080/api`）。
 enum ArenaConfiguration {
     private static let apiKey = "arena_api_base_url"
     private static let assetsKey = "arena_assets_base_url"
 
-    /// 例如 `http://127.0.0.1:8080/api`（不要末尾 `/`）
+    /// 云主机公网 IP（CentOS 实例），与后端 `server.port` + `context-path` 一致；不要末尾 `/`
+    private static let defaultProductionApiBase = "http://47.107.253.140:8080/api"
+
+    /// 例如 `http://47.107.253.140:8080/api`（不要末尾 `/`）
     static var apiBaseURLString: String {
         get {
             let raw = UserDefaults.standard.string(forKey: apiKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
             if let raw, !raw.isEmpty { return raw.trimmingSuffixSlash() }
-            return "http://127.0.0.1:8080/api"
+            return defaultProductionApiBase
         }
         set { UserDefaults.standard.set(newValue.trimmingSuffixSlash(), forKey: apiKey) }
     }
