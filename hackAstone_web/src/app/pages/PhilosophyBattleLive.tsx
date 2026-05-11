@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useParams, Link } from "react-router";
-import { ArrowLeft, AlertCircle, MessageSquare, User } from "lucide-react";
+import { ArrowLeft, AlertCircle, MessageSquare } from "lucide-react";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
-import { getDebateTopic } from "../data/debateTopics";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { DebateSummary } from "../components/DebateSummary";
-import { runEchoQuery } from "../../shared/api/arena";
+import { generateTopic, runEchoQuery } from "../../shared/api/arena";
+import { parseJsonPayload } from "../../shared/jsonPayload";
 
 type Stage = "topic" | "choose" | "debate" | "reveal";
 type Choice = "agree" | "disagree" | "uncertain" | null;
@@ -29,12 +30,15 @@ type SummaryResult = {
 
 export function PhilosophyBattleLive() {
   const { id } = useParams();
-  const { philosophers, debateTopics } = useArenaCatalog();
+  const { philosophers } = useArenaCatalog();
   const philosopher = philosophers.find((p) => p.id === id);
 
   const [stage, setStage] = useState<Stage>("topic");
   const [choice, setChoice] = useState<Choice>(null);
   const [topic, setTopic] = useState<DebateTopicContent | null>(null);
+  const [topicLoading, setTopicLoading] = useState(false);
+  const [topicLoadError, setTopicLoadError] = useState<string | null>(null);
+  const [topicReloadToken, setTopicReloadToken] = useState(0);
   const [messages, setMessages] = useState<DebateMessage[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -42,61 +46,36 @@ export function PhilosophyBattleLive() {
   const [fullExplanation, setFullExplanation] = useState<string>("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
-  const fallbackTopic = useMemo(() => {
-    if (!philosopher) return getDebateTopic("unknown");
-    return debateTopics[philosopher.id] ?? getDebateTopic(philosopher.id);
-  }, [philosopher, debateTopics]);
-
   useEffect(() => {
     if (!philosopher) return;
     let cancelled = false;
-    const query = [
-      "[ROLE]",
-      "CA-Echo-LLM",
-      "",
-      "[TASK]",
-      "为指定哲学家生成一场辩论题，返回 JSON。",
-      "",
-      "[REPO_CONTEXT]",
-      "project=hackAstone",
-      "",
-      "[TARGET_FILES]",
-      "NONE",
-      "",
-      "[API_CONTRACT]",
-      "NONE",
-      "",
-      "[ACCEPTANCE_CRITERIA]",
-      "返回字段 question/philosopherView/oppositeView/judgeQuestions/fullExplanation",
-      "",
-      "[CONSTRAINTS]",
-      "中文输出；judgeQuestions 至少 3 条；仅返回 JSON",
-      "",
-      "[RETURN_FORMAT]",
-      "json",
-      "",
-      `思想家：${philosopher.nameCN}；学派：${philosopher.school}；关键思想：${philosopher.keyIdeas.join("、")}`,
-    ].join("\n");
-
-    runEchoQuery(query)
+    setTopicLoading(true);
+    setTopicLoadError(null);
+    generateTopic(philosopher.nameCN, philosopher.school, philosopher.keyIdeas)
       .then((resp) => {
+        if (cancelled) return;
         const parsed = parseJsonPayload<DebateTopicContent>(resp.text);
-        if (!cancelled && parsed?.question && parsed?.philosopherView && parsed?.oppositeView) {
+        if (parsed?.question && parsed?.philosopherView && parsed?.oppositeView) {
           setTopic(parsed);
           setFullExplanation(parsed.fullExplanation || "");
+        } else {
+          throw new Error("模型未返回有效的辩题 JSON");
         }
       })
-      .catch(() => {
-        if (!cancelled) {
-          setTopic(fallbackTopic);
-          setFullExplanation(fallbackTopic.fullExplanation || "");
-        }
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : "辩题生成失败";
+        setTopic(null);
+        setTopicLoadError(msg);
+        toast.error(msg);
+      })
+      .finally(() => {
+        if (!cancelled) setTopicLoading(false);
       });
-
     return () => {
       cancelled = true;
     };
-  }, [philosopher?.id, fallbackTopic]);
+  }, [philosopher?.id, topicReloadToken]);
 
   if (!philosopher) {
     return (
@@ -111,9 +90,8 @@ export function PhilosophyBattleLive() {
     );
   }
 
-  const currentTopic = topic ?? fallbackTopic;
-
   const handleChoose = (selected: Exclude<Choice, null>) => {
+    if (!topic) return;
     setChoice(selected);
     setStage("debate");
     setCanReveal(false);
@@ -128,13 +106,15 @@ export function PhilosophyBattleLive() {
 
   const handleUserTurn = async () => {
     const content = userInput.trim();
-    if (!content || !choice || isThinking) return;
+    if (!content || !choice || !topic || isThinking) return;
+
+    const userMsgId = `user-${Date.now()}`;
     setUserInput("");
     setIsThinking(true);
 
     const nextMessages = [
       ...messages,
-      { id: `user-${Date.now()}`, role: "user" as const, content },
+      { id: userMsgId, role: "user" as const, content },
     ];
     setMessages(nextMessages);
 
@@ -167,7 +147,7 @@ export function PhilosophyBattleLive() {
       "[RETURN_FORMAT]",
       "json",
       "",
-      `辩题：${currentTopic.question}`,
+      `辩题：${topic.question}`,
       `哲学家：${philosopher.nameCN}（${philosopher.school}）`,
       `用户立场：${choice}`,
       "历史：",
@@ -177,32 +157,31 @@ export function PhilosophyBattleLive() {
     try {
       const resp = await runEchoQuery(turnQuery);
       const parsed = parseJsonPayload<TurnResult>(resp.text);
-      const turn = parsed?.philosopherReply && parsed?.judgeQuestion
-        ? parsed
-        : localTurnFallback(philosopher.nameCN, content);
+      if (!parsed?.philosopherReply || !parsed?.judgeQuestion) {
+        throw new Error("模型未返回有效的辩论轮次 JSON");
+      }
+      const turn = parsed;
       setMessages((prev) => [
         ...prev,
         { id: `philosopher-${Date.now()}`, role: "philosopher", content: turn.philosopherReply },
         { id: `judge-${Date.now()}`, role: "judge", content: turn.judgeQuestion },
       ]);
       setCanReveal(turn.continueDebate === false);
-    } catch {
-      const turn = localTurnFallback(philosopher.nameCN, content);
-      setMessages((prev) => [
-        ...prev,
-        { id: `philosopher-${Date.now()}`, role: "philosopher", content: turn.philosopherReply },
-        { id: `judge-${Date.now()}`, role: "judge", content: turn.judgeQuestion },
-      ]);
-      setCanReveal(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "辩论生成失败";
+      toast.error(msg);
+      setMessages((prev) => prev.filter((m) => m.id !== userMsgId));
+      setUserInput(content);
     } finally {
       setIsThinking(false);
     }
   };
 
   const handleReveal = async () => {
-    if (!choice) return;
+    if (!choice || !topic) return;
     setStage("reveal");
     setIsGeneratingSummary(true);
+    setFullExplanation("");
 
     const history = messages
       .map((m) => `${m.role === "user" ? "用户" : m.role === "judge" ? "裁判" : philosopher.nameCN}：${m.content}`)
@@ -233,7 +212,7 @@ export function PhilosophyBattleLive() {
       "[RETURN_FORMAT]",
       "json",
       "",
-      `辩题：${currentTopic.question}`,
+      `辩题：${topic.question}`,
       `哲学家：${philosopher.nameCN}`,
       `用户立场：${choice}`,
       "历史：",
@@ -245,9 +224,12 @@ export function PhilosophyBattleLive() {
       const parsed = parseJsonPayload<SummaryResult>(resp.text);
       if (parsed?.fullExplanation) {
         setFullExplanation(parsed.fullExplanation);
+      } else {
+        throw new Error("模型未返回 fullExplanation");
       }
-    } catch {
-      // 回退保留当前 fullExplanation
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "总结生成失败";
+      toast.error(msg);
     } finally {
       setIsGeneratingSummary(false);
     }
@@ -273,30 +255,49 @@ export function PhilosophyBattleLive() {
       <main className="max-w-6xl mx-auto px-6 py-12">
         {stage === "topic" && (
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold mb-6">{currentTopic.question}</h1>
-              <p className="text-zinc-400">观点由 Agent 生成，失败时自动回退本地内容</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-6 rounded-xl border-2 border-purple-600/30 bg-zinc-900">
-                <div className="font-bold mb-3">{philosopher.nameCN} 立场</div>
-                <p className="text-zinc-300 leading-relaxed">{currentTopic.philosopherView}</p>
+            {topicLoading && (
+              <div className="text-center py-20 text-zinc-400">正在通过后端生成辩题…</div>
+            )}
+            {!topicLoading && topicLoadError && (
+              <div className="text-center py-16 space-y-4">
+                <p className="text-red-400">{topicLoadError}</p>
+                <button
+                  type="button"
+                  onClick={() => setTopicReloadToken((t) => t + 1)}
+                  className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 font-semibold"
+                >
+                  重试
+                </button>
               </div>
-              <div className="p-6 rounded-xl border-2 border-zinc-700 bg-zinc-900">
-                <div className="font-bold mb-3">反方立场</div>
-                <p className="text-zinc-300 leading-relaxed">{currentTopic.oppositeView}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setStage("choose")}
-              className="w-full mt-8 py-4 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors font-bold text-lg"
-            >
-              开始辩论
-            </button>
+            )}
+            {!topicLoading && !topicLoadError && topic && (
+              <>
+                <div className="text-center mb-12">
+                  <h1 className="text-4xl font-bold mb-6">{topic.question}</h1>
+                  <p className="text-zinc-400">辩题与观点由后端大模型生成</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 rounded-xl border-2 border-purple-600/30 bg-zinc-900">
+                    <div className="font-bold mb-3">{philosopher.nameCN} 立场</div>
+                    <p className="text-zinc-300 leading-relaxed">{topic.philosopherView}</p>
+                  </div>
+                  <div className="p-6 rounded-xl border-2 border-zinc-700 bg-zinc-900">
+                    <div className="font-bold mb-3">反方立场</div>
+                    <p className="text-zinc-300 leading-relaxed">{topic.oppositeView}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setStage("choose")}
+                  className="w-full mt-8 py-4 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors font-bold text-lg"
+                >
+                  开始辩论
+                </button>
+              </>
+            )}
           </div>
         )}
 
-        {stage === "choose" && (
+        {stage === "choose" && topic && (
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-4">你的立场？</h2>
@@ -310,7 +311,7 @@ export function PhilosophyBattleLive() {
           </div>
         )}
 
-        {stage === "debate" && (
+        {stage === "debate" && topic && (
           <div className="max-w-4xl mx-auto">
             <div className="mb-6 text-zinc-400 flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
@@ -332,17 +333,17 @@ export function PhilosophyBattleLive() {
               <input
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleUserTurn()}
+                onKeyDown={(e) => e.key === "Enter" && void handleUserTurn()}
                 placeholder="继续输入你的观点..."
                 className="flex-1 p-3 bg-zinc-950 border border-zinc-700 rounded-lg"
               />
-              <button onClick={handleUserTurn} disabled={!userInput.trim() || isThinking} className="px-6 py-3 bg-purple-600 rounded-lg disabled:opacity-50">
+              <button onClick={() => void handleUserTurn()} disabled={!userInput.trim() || isThinking} className="px-6 py-3 bg-purple-600 rounded-lg disabled:opacity-50">
                 <MessageSquare className="w-5 h-5" />
               </button>
             </div>
 
             <button
-              onClick={handleReveal}
+              onClick={() => void handleReveal()}
               disabled={!canReveal && messages.length < 4}
               className="w-full mt-6 py-3 rounded-lg bg-yellow-600 hover:bg-yellow-700 disabled:bg-zinc-700"
             >
@@ -351,13 +352,17 @@ export function PhilosophyBattleLive() {
           </div>
         )}
 
-        {stage === "reveal" && (
+        {stage === "reveal" && topic && (
           <div className="max-w-4xl mx-auto bg-zinc-900 border border-zinc-800 rounded-xl p-8">
             <h3 className="text-2xl font-bold mb-4">完整分析</h3>
-            <p className="text-zinc-300 whitespace-pre-line">{isGeneratingSummary ? "Agent 正在生成总结..." : fullExplanation || currentTopic.fullExplanation}</p>
+            <p className="text-zinc-300 whitespace-pre-line">
+              {isGeneratingSummary
+                ? "Agent 正在生成总结..."
+                : fullExplanation || "模型未能生成总结，请检查后端服务后重试。"}
+            </p>
             <DebateSummary
               philosopher={philosopher}
-              question={currentTopic.question}
+              question={topic.question}
               userChoice={choice}
               userReason={messages.filter((m) => m.role === "user").map((m) => m.content).join("\n")}
             />
@@ -370,33 +375,4 @@ export function PhilosophyBattleLive() {
       </main>
     </div>
   );
-}
-
-function parseJsonPayload<T>(raw: string): T | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  const direct = tryParse<T>(trimmed);
-  if (direct) return direct;
-  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i) || trimmed.match(/```\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) return tryParse<T>(fenced[1].trim());
-  const firstObj = trimmed.indexOf("{");
-  const lastObj = trimmed.lastIndexOf("}");
-  if (firstObj >= 0 && lastObj > firstObj) return tryParse<T>(trimmed.slice(firstObj, lastObj + 1));
-  return null;
-}
-
-function tryParse<T>(text: string): T | null {
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
-}
-
-function localTurnFallback(philosopherName: string, userInput: string): TurnResult {
-  return {
-    philosopherReply: `${philosopherName}：你的观点“${userInput.slice(0, 30)}...”很有启发，但我们要先界定核心概念，否则容易偷换前提。`,
-    judgeQuestion: "Judge：你这轮论证里最关键的前提是什么？如果这个前提不成立，你会如何调整观点？",
-    continueDebate: true,
-  };
 }

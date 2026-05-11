@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Plus, X, Sparkles, MessageSquare, User } from "lucide-react";
 import type { Philosopher } from "../data/philosophers";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { generateRoundtableOpenings, generateRoundtableReply } from "../../shared/api/arena";
+import { parseJsonPayload } from "../../shared/jsonPayload";
 import { ArenaHeader } from "../components/ArenaHeader";
 
 interface Message {
@@ -67,7 +69,6 @@ export function RoundtableDebate() {
     
     setStage("debate");
     
-    // 优先走后端 Echo Agent，失败时回退本地生成
     setIsThinking(true);
     const participants = selectedPhilosophers.map((p) => ({ id: p.id, nameCN: p.nameCN, school: p.school }));
     generateRoundtableOpenings(debateTopic, participants)
@@ -84,16 +85,13 @@ export function RoundtableDebate() {
           setMessages(openingMessages);
           return;
         }
-        throw new Error("empty server messages");
+        throw new Error("模型未返回有效的开场 JSON");
       })
-      .catch(() => {
-        const openingMessages: Message[] = selectedPhilosophers.map((p, index) => ({
-          id: `opening-${p.id}`,
-          speaker: p.id,
-          content: generateOpening(p, debateTopic, index),
-          timestamp: Date.now() + index * 1000,
-        }));
-        setMessages(openingMessages);
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "圆桌开场生成失败";
+        toast.error(msg);
+        setStage("setup");
+        setMessages([]);
       })
       .finally(() => setIsThinking(false));
   };
@@ -102,19 +100,19 @@ export function RoundtableDebate() {
     if (!userInput.trim()) return;
 
     // 添加用户消息
+    const userText = userInput.trim();
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       speaker: "user",
-      content: userInput,
+      content: userText,
       timestamp: Date.now(),
     };
     setMessages([...messages, userMessage]);
     setUserInput("");
 
-    // 优先走后端 Echo Agent，失败时回退本地生成
     setIsThinking(true);
     const participants = selectedPhilosophers.map((p) => ({ id: p.id, nameCN: p.nameCN, school: p.school }));
-    generateRoundtableReply(debateTopic, userInput, participants)
+    generateRoundtableReply(debateTopic, userText, participants)
       .then((resp) => {
         const parsed = parseJsonPayload<{ messages?: Array<{ speaker: string; content: string }> }>(resp.text);
         const serverMessages = parsed?.messages ?? [];
@@ -128,16 +126,13 @@ export function RoundtableDebate() {
           setMessages((prev) => [...prev, ...responses]);
           return;
         }
-        throw new Error("empty server responses");
+        throw new Error("模型未返回有效的圆桌回应 JSON");
       })
-      .catch(() => {
-        const responses = selectedPhilosophers.map((p, index) => ({
-          id: `response-${p.id}-${Date.now()}`,
-          speaker: p.id,
-          content: generateResponse(p, userInput, debateTopic),
-          timestamp: Date.now() + index * 2000,
-        }));
-        setMessages((prev) => [...prev, ...responses]);
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "圆桌回应生成失败";
+        toast.error(msg);
+        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+        setUserInput(userText);
       })
       .finally(() => setIsThinking(false));
   };
@@ -404,67 +399,4 @@ export function RoundtableDebate() {
       </div>
     </div>
   );
-}
-
-// 模拟AI生成开场白
-function generateOpening(philosopher: Philosopher, topic: string, order: number): string {
-  const openings: Record<string, string> = {
-    socrates: `让我们先澄清一下："${topic}"——这个问题本身是什么意思？在我们讨论之前，我们真的理解这些概念吗？我知道我对此一无所知，但我很好奇各位的看法。`,
-    
-    plato: `这个问题触及了现象与理念的根本区别。我们在日常世界中看到的只是影子，真正的答案存在于理念界。让我从理性的角度来分析...`,
-    
-    confucius: `${order === 0 ? '诸位贤者，' : ''}关于"${topic}"，我想从"仁"与"礼"的角度来思考。一个和谐的答案，应当既符合人性，又合乎规矩。`,
-    
-    laozi: `诸位的讨论似乎都在"有为"之中。但真正的智慧是否在于"无为"？道可道，非常道。关于"${topic}"，我们是否问错了问题？`,
-    
-    kant: `我建议我们用纯粹理性来审视这个问题。"${topic}"——这涉及到先验综合判断。我们需要区分现象与物自体...`,
-    
-    nietzsche: `哈！你们又在追求"真理"了。但"${topic}"这个问题本身，不就是弱者寻求确定性的表现吗？让我们重估一切价值！`,
-    
-    sartre: `"${topic}"——这个问题的答案不在于某个客观真理，而在于我们的选择。存在先于本质，我们必须为自己的选择负责。`,
-    
-    marx: `让我们从历史唯物主义的角度来看"${topic}"。这不是抽象的哲学问题,而是具体的社会经济问题。物质决定意识...`,
-  };
-
-  return openings[philosopher.id] || `作为${philosopher.school}的代表,我认为"${topic}"需要从${philosopher.keyIdeas[0]}的角度来理解。`;
-}
-
-// 模拟AI生成回应
-function generateResponse(philosopher: Philosopher, userInput: string, topic: string): string {
-  const responses: Record<string, string> = {
-    socrates: `有趣的观点。但让我问你：当你说"${userInput.slice(0, 20)}..."时，你真的理解这意味着什么吗？如果我继续追问，你能一直保持这个立场吗？`,
-    
-    confucius: `你的观点中有可取之处。但是，我们是否考虑到了"仁"？如果这个选择不能推己及人，恐怕难以长久。`,
-    
-    laozi: `你说得很多，但也许说得太多了。"多言数穷，不如守中。"有时候，少做一点反而更有效。`,
-    
-    nietzsche: `你还在用"应该"、"正确"这些词吗？这些都是奴隶道德的遗毒！强者创造价值，而不是追随价值。`,
-    
-    kant: `你的论证缺乏普遍性。让我问：如果所有人都这样做，世界会怎样？这能成为普遍法则吗？`,
-    
-    sartre: `你在为你的选择寻找理由，但理由永远是后来加上的。你已经选择了，现在你必须承担责任。`,
-  };
-
-  return responses[philosopher.id] || `从${philosopher.school}的角度看，${userInput.slice(0, 30)}...这个观点需要结合${philosopher.keyIdeas[0]}来理解。`;
-}
-
-function parseJsonPayload<T>(raw: string): T | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  const direct = tryParse<T>(trimmed);
-  if (direct) return direct;
-  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i) || trimmed.match(/```\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) return tryParse<T>(fenced[1].trim());
-  const first = trimmed.indexOf("{");
-  const last = trimmed.lastIndexOf("}");
-  if (first >= 0 && last > first) return tryParse<T>(trimmed.slice(first, last + 1));
-  return null;
-}
-
-function tryParse<T>(text: string): T | null {
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
 }

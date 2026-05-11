@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { AlertCircle, ArrowLeft, MessageSquare } from "lucide-react";
 import { Link } from "react-router";
 import { ArenaHeader } from "../components/ArenaHeader";
@@ -8,6 +9,7 @@ import { dilemmas, getDilemma, type DilemmaOption } from "../data/dilemmas";
 import type { Philosopher } from "../data/philosophers";
 import { DebateSummary } from "../components/DebateSummary";
 import { generateDilemmaSummary, generateDilemmaTurn } from "../../shared/api/arena";
+import { parseJsonPayload } from "../../shared/jsonPayload";
 
 type Stage = "setup" | "debate" | "reveal";
 type MessageRole = "user" | "philosopher" | "judge";
@@ -109,12 +111,13 @@ export function Dilemma() {
       return;
     }
 
+    const userMsgId = `user-${Date.now()}`;
     setUserInput("");
     setIsThinking(true);
 
     const nextMessages = [
       ...messages,
-      { id: `user-${Date.now()}`, role: "user" as const, content },
+      { id: userMsgId, role: "user" as const, content },
     ];
     setMessages(nextMessages);
 
@@ -143,10 +146,10 @@ export function Dilemma() {
         history: historyText,
       });
       const parsed = parseJsonPayload<TurnResult>(response.text);
-      const turn =
-        parsed?.philosopherReply && parsed?.judgeQuestion
-          ? parsed
-          : localTurnFallback(selectedPhilosopher, currentDilemma.title, selectedOption, content);
+      if (!parsed?.philosopherReply || !parsed?.judgeQuestion) {
+        throw new Error("模型未返回有效的哲学家回应 JSON");
+      }
+      const turn = parsed;
 
       setMessages((previous) => [
         ...previous,
@@ -162,22 +165,11 @@ export function Dilemma() {
         },
       ]);
       setCanReveal(turn.continueDebate === false);
-    } catch {
-      const turn = localTurnFallback(selectedPhilosopher, currentDilemma.title, selectedOption, content);
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: `philosopher-${Date.now()}`,
-          role: "philosopher",
-          content: turn.philosopherReply,
-        },
-        {
-          id: `judge-${Date.now()}`,
-          role: "judge",
-          content: turn.judgeQuestion,
-        },
-      ]);
-      setCanReveal(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "困境讨论生成失败";
+      toast.error(msg);
+      setMessages((previous) => previous.filter((m) => m.id !== userMsgId));
+      setUserInput(content);
     } finally {
       setIsThinking(false);
     }
@@ -190,7 +182,7 @@ export function Dilemma() {
 
     setStage("reveal");
     setIsGeneratingSummary(true);
-    setFullExplanation(localSummaryFallback(selectedPhilosopher, currentDilemma.title, selectedOption));
+    setFullExplanation("");
 
     const history = messages
       .map((message) => {
@@ -216,9 +208,12 @@ export function Dilemma() {
       const parsed = parseJsonPayload<SummaryResult>(response.text);
       if (parsed?.fullExplanation) {
         setFullExplanation(parsed.fullExplanation);
+      } else {
+        throw new Error("模型未返回 fullExplanation 字段");
       }
-    } catch {
-      // 保留本地总结兜底
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "总结生成失败";
+      toast.error(msg);
     } finally {
       setIsGeneratingSummary(false);
     }
@@ -481,7 +476,10 @@ export function Dilemma() {
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
               <p className="whitespace-pre-line leading-8 text-zinc-300">
-                {isGeneratingSummary ? "正在生成总结..." : fullExplanation}
+                {isGeneratingSummary
+                  ? "正在生成总结..."
+                  : fullExplanation ||
+                    "模型未能生成总结，请检查后端与百炼配置后重试。"}
               </p>
             </div>
 
@@ -565,63 +563,4 @@ function formatPeriod(period: number) {
     return `公元前 ${Math.abs(period)}`;
   }
   return `公元 ${period}`;
-}
-
-function localTurnFallback(
-  philosopher: Philosopher,
-  dilemmaTitle: string,
-  option: DilemmaOption,
-  userInput: string
-): TurnResult {
-  return {
-    philosopherReply: `${philosopher.nameCN}：你刚才坚持“${option.label}”，这说明你把 ${userInput.slice(
-      0,
-      24
-    )} 放在了论证中心。但在 ${dilemmaTitle} 中，真正关键的是你愿意为哪一种原则承担后果，以及你如何界定人的价值。`,
-    judgeQuestion:
-      "Judge：如果把你的立场推广成所有人都遵守的规则，它最容易在哪个情境下失效？你会怎么修补它？",
-    continueDebate: true,
-  };
-}
-
-function localSummaryFallback(
-  philosopher: Philosopher,
-  dilemmaTitle: string,
-  option: DilemmaOption
-) {
-  return [
-    `${philosopher.nameCN} 会把这场关于“${dilemmaTitle}”的讨论，拉回到更深层的原则问题。`,
-    "",
-    `你的选择是：${option.label}。`,
-    `这意味着你优先考虑的是：${option.summary}`,
-    "",
-    `如果继续沿着 ${philosopher.nameCN} 的思路推进，讨论通常会落到三个问题上：`,
-    "1. 你究竟把什么看作最应该被保护的价值。",
-    "2. 你的规则是否能在更普遍的情境中成立。",
-    "3. 当后果与原则冲突时，你愿意牺牲哪一边。",
-    "",
-    "这一版先保留为通用总结，后续我们还可以继续细化每个困境的专属生成结果。",
-  ].join("\n");
-}
-
-function parseJsonPayload<T>(raw: string): T | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  const direct = tryParse<T>(trimmed);
-  if (direct) return direct;
-  const fenced =
-    trimmed.match(/```json\s*([\s\S]*?)\s*```/i) || trimmed.match(/```\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) return tryParse<T>(fenced[1].trim());
-  const first = trimmed.indexOf("{");
-  const last = trimmed.lastIndexOf("}");
-  if (first >= 0 && last > first) return tryParse<T>(trimmed.slice(first, last + 1));
-  return null;
-}
-
-function tryParse<T>(text: string): T | null {
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
 }

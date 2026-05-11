@@ -40,6 +40,7 @@ struct DilemmaView: View {
     @State private var canReveal = false
     @State private var fullExplanation = ""
     @State private var isGeneratingSummary = false
+    @State private var errorAlert: String?
 
     private var L: ArenaL10n { locale.L }
     private var en: Bool { L.prefersEnglish }
@@ -92,6 +93,14 @@ struct DilemmaView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button(L.backToHome) { path = NavigationPath() }
             }
+        }
+        .alert(L.apiRequestFailedTitle, isPresented: Binding(
+            get: { errorAlert != nil },
+            set: { if !$0 { errorAlert = nil } }
+        )) {
+            Button(L.alertConfirm, role: .cancel) { errorAlert = nil }
+        } message: {
+            Text(errorAlert ?? "")
         }
     }
 
@@ -427,7 +436,7 @@ struct DilemmaView: View {
                 .font(.subheadline)
                 .foregroundStyle(ArenaTheme.textMuted)
 
-            Text(isGeneratingSummary ? L.agentGeneratingSummary : fullExplanation)
+            Text(isGeneratingSummary ? L.agentGeneratingSummary : (fullExplanation.isEmpty ? L.summaryMissing : fullExplanation))
                 .font(.body)
                 .foregroundStyle(Color(red: 0.82, green: 0.84, blue: 0.86))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -514,8 +523,9 @@ struct DilemmaView: View {
             userInput = ""
             isThinking = true
         }
+        let userMsgId = "u-\(UUID().uuidString)"
         var next = await MainActor.run { messages }
-        next.append(DMMessage(id: "u-\(UUID().uuidString)", role: .user, content: content))
+        next.append(DMMessage(id: userMsgId, role: .user, content: content))
         await MainActor.run { messages = next }
 
         let historyText = next.map { m -> String in
@@ -542,24 +552,21 @@ struct DilemmaView: View {
                 history: historyText
             )
             let dto = JsonPayload.parse(resp.text, as: DilemmaTurnDTO.self)
-            let turn: (String, String, Bool)
-            if let dto, let pr = dto.philosopherReply, let jq = dto.judgeQuestion {
-                turn = (pr, jq, dto.continueDebate ?? true)
-            } else {
-                turn = localTurnFallback(philosopher: philosopher, dilemma: dilemma, option: option, userInput: content)
+            guard let dto, let pr = dto.philosopherReply, let jq = dto.judgeQuestion else {
+                throw NSError(domain: "dilemma", code: 1, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
             }
+            let continueDebate = dto.continueDebate ?? true
             await MainActor.run {
-                messages.append(DMMessage(id: "ph-\(UUID().uuidString)", role: .philosopher, content: turn.0))
-                messages.append(DMMessage(id: "jg-\(UUID().uuidString)", role: .judge, content: turn.1))
-                canReveal = turn.2 == false
+                messages.append(DMMessage(id: "ph-\(UUID().uuidString)", role: .philosopher, content: pr))
+                messages.append(DMMessage(id: "jg-\(UUID().uuidString)", role: .judge, content: jq))
+                canReveal = continueDebate == false
                 isThinking = false
             }
         } catch {
-            let turn = localTurnFallback(philosopher: philosopher, dilemma: dilemma, option: option, userInput: content)
             await MainActor.run {
-                messages.append(DMMessage(id: "ph-\(UUID().uuidString)", role: .philosopher, content: turn.0))
-                messages.append(DMMessage(id: "jg-\(UUID().uuidString)", role: .judge, content: turn.1))
-                canReveal = false
+                messages.removeAll { $0.id == userMsgId }
+                userInput = content
+                errorAlert = (error as NSError).localizedDescription
                 isThinking = false
             }
         }
@@ -569,7 +576,7 @@ struct DilemmaView: View {
         await MainActor.run {
             stage = .reveal
             isGeneratingSummary = true
-            fullExplanation = localSummaryFallback(philosopher: philosopher, dilemma: dilemma, option: option)
+            fullExplanation = ""
         }
 
         let history = await MainActor.run { messages }.map { m -> String in
@@ -594,39 +601,13 @@ struct DilemmaView: View {
             )
             if let parsed = JsonPayload.parse(resp.text, as: DilemmaSummaryDTO.self), let fe = parsed.fullExplanation, !fe.isEmpty {
                 await MainActor.run { fullExplanation = fe }
+            } else {
+                await MainActor.run { errorAlert = L.topicBadJson }
             }
-        } catch {}
+        } catch {
+            await MainActor.run { errorAlert = (error as NSError).localizedDescription }
+        }
         await MainActor.run { isGeneratingSummary = false }
-    }
-
-    private func localTurnFallback(philosopher: Philosopher, dilemma: MoralDilemma, option: MoralDilemmaOption, userInput: String) -> (String, String, Bool) {
-        let clip = String(userInput.prefix(24))
-        let name = philosopher.nameCN
-        let title = dilemma.title(false)
-        let label = option.label(false)
-        let reply = "\(name)：你刚才坚持「\(label)」，这说明你把 \(clip) 放在了论证中心。但在 \(title) 中，真正关键的是你愿意为哪一种原则承担后果，以及你如何界定人的价值。"
-        let judge = "Judge：如果把你的立场推广成所有人都遵守的规则，它最容易在哪个情境下失效？你会怎么修补它？"
-        return (reply, judge, true)
-    }
-
-    private func localSummaryFallback(philosopher: Philosopher, dilemma: MoralDilemma, option: MoralDilemmaOption) -> String {
-        let name = philosopher.nameCN
-        let title = dilemma.title(false)
-        let label = option.label(false)
-        let sum = option.summary(false)
-        return [
-            "\(name) 会把这场关于「\(title)」的讨论，拉回到更深层的原则问题。",
-            "",
-            "你的选择是：\(label)。",
-            "这意味着你优先考虑的是：\(sum)",
-            "",
-            "如果继续沿着 \(name) 的思路推进，讨论通常会落到三个问题上：",
-            "1. 你究竟把什么看作最应该被保护的价值。",
-            "2. 你的规则是否能在更普遍的情境中成立。",
-            "3. 当后果与原则冲突时，你愿意牺牲哪一边。",
-            "",
-            "这一版先保留为通用总结，后续我们还可以继续细化每个困境的专属生成结果。",
-        ].joined(separator: "\n")
     }
 
     private func formatPeriod(_ period: Int) -> String {

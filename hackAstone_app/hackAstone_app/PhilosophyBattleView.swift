@@ -41,27 +41,18 @@ struct PhilosophyBattleView: View {
     @State private var stage: PBStage = .topic
     @State private var choice: PhilosophyChoice?
     @State private var topic: DebateTopicContent?
+    @State private var topicLoadError: String?
+    @State private var isTopicLoading = false
+    @State private var topicRetryNonce = 0
     @State private var messages: [PBMessage] = []
     @State private var userInput = ""
     @State private var isThinking = false
     @State private var canReveal = false
     @State private var fullExplanation = ""
     @State private var isGeneratingSummary = false
+    @State private var errorAlert: String?
 
     private var philosopher: Philosopher? { catalog.philosophers.first { $0.id == philosopherId } }
-
-    private var fallbackTopic: DebateTopicContent {
-        guard let p = philosopher else {
-            return localizedGenericTopic
-        }
-        return catalog.debateTopics[p.id] ?? catalog.debateTopics["confucius"] ?? localizedGenericTopic
-    }
-
-    private var localizedGenericTopic: DebateTopicContent {
-        L.prefersEnglish ? Self.genericTopicEN : Self.genericTopic
-    }
-
-    private var currentTopic: DebateTopicContent { topic ?? fallbackTopic }
 
     var body: some View {
         Group {
@@ -75,7 +66,15 @@ struct PhilosophyBattleView: View {
                     .padding(.bottom, 32)
                 }
                 .background(ArenaTheme.background)
-                .task { await loadTopic(philosopher: p) }
+                .task(id: "\(philosopherId)-\(topicRetryNonce)") { await loadTopic(philosopher: p) }
+                .alert(L.apiRequestFailedTitle, isPresented: Binding(
+                    get: { errorAlert != nil },
+                    set: { if !$0 { errorAlert = nil } }
+                )) {
+                    Button(L.alertConfirm, role: .cancel) { errorAlert = nil }
+                } message: {
+                    Text(errorAlert ?? "")
+                }
             } else {
                 missing
             }
@@ -129,25 +128,51 @@ struct PhilosophyBattleView: View {
     }
 
     private func topicStage(philosopher: Philosopher) -> some View {
-        VStack(spacing: 20) {
-            Text(currentTopic.question)
-                .font(.title.weight(.bold))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(ArenaTheme.textPrimary)
-            Text(L.agentDisclaimer)
-                .font(.caption)
-                .foregroundStyle(ArenaTheme.textMuted)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 14)], spacing: 14) {
-                topicCard(title: L.philosopherStanceTitle(name: philosopher.displayName(isEnglish: L.prefersEnglish)), text: currentTopic.philosopherView, accent: ArenaTheme.purpleAccent)
-                topicCard(title: L.oppositeStance, text: currentTopic.oppositeView, accent: ArenaTheme.textMuted)
-            }
-            Button(L.startDebate) { stage = .choose }
-                .font(.headline)
+        Group {
+            if isTopicLoading {
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .tint(ArenaTheme.purpleAccent)
+                    Text(L.topicGenerating)
+                        .font(.caption)
+                        .foregroundStyle(ArenaTheme.textMuted)
+                }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(ArenaTheme.purpleAccent)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.vertical, 40)
+            } else if let err = topicLoadError {
+                VStack(spacing: 16) {
+                    Text(err)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.red.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                    Button(L.topicRetry) { topicRetryNonce += 1 }
+                        .buttonStyle(.borderedProminent)
+                        .tint(ArenaTheme.purpleAccent)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            } else if let t = topic {
+                VStack(spacing: 20) {
+                    Text(t.question)
+                        .font(.title.weight(.bold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(ArenaTheme.textPrimary)
+                    Text(L.agentDisclaimer)
+                        .font(.caption)
+                        .foregroundStyle(ArenaTheme.textMuted)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 14)], spacing: 14) {
+                        topicCard(title: L.philosopherStanceTitle(name: philosopher.displayName(isEnglish: L.prefersEnglish)), text: t.philosopherView, accent: ArenaTheme.purpleAccent)
+                        topicCard(title: L.oppositeStance, text: t.oppositeView, accent: ArenaTheme.textMuted)
+                    }
+                    Button(L.startDebate) { stage = .choose }
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(ArenaTheme.purpleAccent)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
         }
     }
 
@@ -192,6 +217,16 @@ struct PhilosophyBattleView: View {
     }
 
     private func debateStage(philosopher: Philosopher) -> some View {
+        Group {
+            if topic == nil {
+                Text(L.topicGenerating).foregroundStyle(ArenaTheme.textMuted)
+            } else {
+                debateStageContent(philosopher: philosopher)
+            }
+        }
+    }
+
+    private func debateStageContent(philosopher: Philosopher) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Label(L.debateRoundHint, systemImage: "exclamationmark.circle")
                 .font(.caption)
@@ -258,16 +293,18 @@ struct PhilosophyBattleView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(L.fullAnalysis)
                 .font(.title2.weight(.bold))
-            Text(isGeneratingSummary ? L.agentGeneratingSummary : (fullExplanation.isEmpty ? (currentTopic.fullExplanation ?? "") : fullExplanation))
+            Text(isGeneratingSummary ? L.agentGeneratingSummary : (fullExplanation.isEmpty ? L.summaryMissing : fullExplanation))
                 .font(.body)
                 .foregroundStyle(Color(red: 0.82, green: 0.84, blue: 0.86))
                 .fixedSize(horizontal: false, vertical: true)
-            DebateSummarySection(
-                philosopher: philosopher,
-                question: currentTopic.question,
-                userChoice: choice,
-                userReason: messages.filter { $0.role == .user }.map(\.content).joined(separator: "\n")
-            )
+            if let q = topic?.question {
+                DebateSummarySection(
+                    philosopher: philosopher,
+                    question: q,
+                    userChoice: choice,
+                    userReason: messages.filter { $0.role == .user }.map(\.content).joined(separator: "\n")
+                )
+            }
             HStack(spacing: 12) {
                 Button(L.backToMap) { path = NavigationPath() }
                     .frame(maxWidth: .infinity)
@@ -297,49 +334,47 @@ struct PhilosophyBattleView: View {
     }
 
     private func loadTopic(philosopher: Philosopher) async {
-        let query = """
-        [ROLE]
-        CA-Echo-LLM
-
-        [TASK]
-        为指定哲学家生成一场辩论题，返回 JSON。
-
-        [RETURN_FORMAT]
-        json
-
-        [CONSTRAINTS]
-        中文输出；judgeQuestions 至少 3 条；仅返回 JSON
-
-        [ACCEPTANCE_CRITERIA]
-        返回字段 question/philosopherView/oppositeView/judgeQuestions/fullExplanation
-
-        思想家：\(philosopher.nameCN)；学派：\(philosopher.school)；关键思想：\(philosopher.keyIdeas.joined(separator: "、"))
-        """
+        await MainActor.run {
+            isTopicLoading = true
+            topicLoadError = nil
+        }
         do {
-            let resp = try await ArenaAPI.runEcho(query: query)
+            let resp = try await ArenaAPI.generateTopic(
+                philosopherName: philosopher.nameCN,
+                philosopherSchool: philosopher.school,
+                keyIdeas: philosopher.keyIdeas
+            )
             if let parsed = JsonPayload.parse(resp.text, as: DebateTopicContent.self),
-               parsed.question.isEmpty == false
+               parsed.question.isEmpty == false,
+               parsed.philosopherView.isEmpty == false,
+               parsed.oppositeView.isEmpty == false
             {
-                topic = parsed
-                fullExplanation = parsed.fullExplanation ?? ""
+                await MainActor.run {
+                    topic = parsed
+                    fullExplanation = parsed.fullExplanation ?? ""
+                    topicLoadError = nil
+                }
             } else {
-                topic = nil
-                fullExplanation = fallbackTopic.fullExplanation ?? ""
+                throw NSError(domain: "pb", code: 2, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
             }
         } catch {
-            topic = nil
-            fullExplanation = fallbackTopic.fullExplanation ?? ""
+            await MainActor.run {
+                topic = nil
+                topicLoadError = (error as NSError).localizedDescription
+            }
         }
+        await MainActor.run { isTopicLoading = false }
     }
 
     private func handleUserTurn(philosopher: Philosopher) async {
         let content = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !content.isEmpty, let choice else { return }
+        guard !content.isEmpty, let choice, let top = topic else { return }
         guard !isThinking else { return }
+        let userRowId = UUID().uuidString
         userInput = ""
         isThinking = true
         var next = messages
-        next.append(PBMessage(id: UUID().uuidString, role: .user, content: content))
+        next.append(PBMessage(id: userRowId, role: .user, content: content))
         messages = next
 
         let historyText = next.map { m -> String in
@@ -369,7 +404,7 @@ struct PhilosophyBattleView: View {
         [ACCEPTANCE_CRITERIA]
         返回 philosopherReply/judgeQuestion/continueDebate 三个字段
 
-        辩题：\(currentTopic.question)
+        辩题：\(top.question)
         哲学家：\(philosopher.nameCN)（\(philosopher.school)）
         用户立场：\(choiceLabel(choice))
         历史：
@@ -379,20 +414,17 @@ struct PhilosophyBattleView: View {
         do {
             let resp = try await ArenaAPI.runEcho(query: turnQuery)
             let dto = JsonPayload.parse(resp.text, as: TurnDTO.self)
-            let turn: TurnResult
-            if let dto, let pr = dto.philosopherReply, let jq = dto.judgeQuestion {
-                turn = TurnResult(philosopherReply: pr, judgeQuestion: jq, continueDebate: dto.continueDebate ?? true)
-            } else {
-                turn = Self.localTurnFallback(L: L, philosopher: philosopher, userInput: content)
+            guard let dto, let pr = dto.philosopherReply, let jq = dto.judgeQuestion else {
+                throw NSError(domain: "pb", code: 3, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
             }
+            let turn = TurnResult(philosopherReply: pr, judgeQuestion: jq, continueDebate: dto.continueDebate ?? true)
             messages.append(PBMessage(id: UUID().uuidString, role: .philosopher, content: turn.philosopherReply))
             messages.append(PBMessage(id: UUID().uuidString, role: .judge, content: turn.judgeQuestion))
             canReveal = turn.continueDebate == false
         } catch {
-                let turn = Self.localTurnFallback(L: L, philosopher: philosopher, userInput: content)
-            messages.append(PBMessage(id: UUID().uuidString, role: .philosopher, content: turn.philosopherReply))
-            messages.append(PBMessage(id: UUID().uuidString, role: .judge, content: turn.judgeQuestion))
-            canReveal = false
+            messages.removeAll { $0.id == userRowId }
+            userInput = content
+            errorAlert = (error as NSError).localizedDescription
         }
         isThinking = false
     }
@@ -406,9 +438,10 @@ struct PhilosophyBattleView: View {
     }
 
     private func handleReveal(philosopher: Philosopher) async {
-        guard choice != nil else { return }
+        guard let choice, let top = topic else { return }
         stage = .reveal
         isGeneratingSummary = true
+        fullExplanation = ""
         let history = messages.map { m -> String in
             let who: String = {
                 switch m.role {
@@ -436,9 +469,9 @@ struct PhilosophyBattleView: View {
         [ACCEPTANCE_CRITERIA]
         返回 fullExplanation 字段
 
-        辩题：\(currentTopic.question)
+        辩题：\(top.question)
         哲学家：\(philosopher.nameCN)
-        用户立场：\(choiceLabel(choice!))
+        用户立场：\(choiceLabel(choice))
         历史：
         \(history)
         """
@@ -446,35 +479,12 @@ struct PhilosophyBattleView: View {
             let resp = try await ArenaAPI.runEcho(query: summaryQuery)
             if let parsed = JsonPayload.parse(resp.text, as: SummaryOnly.self), let fe = parsed.fullExplanation, !fe.isEmpty {
                 fullExplanation = fe
+            } else {
+                errorAlert = L.topicBadJson
             }
-        } catch {}
+        } catch {
+            errorAlert = (error as NSError).localizedDescription
+        }
         isGeneratingSummary = false
     }
-
-    private static func localTurnFallback(L: ArenaL10n, philosopher: Philosopher, userInput: String) -> TurnResult {
-        let clip = String(userInput.prefix(30))
-        let name = philosopher.displayName(isEnglish: L.prefersEnglish)
-        let t = L.philosophyTurnFallback(philosopherName: name, clip: clip)
-        return TurnResult(philosopherReply: t.reply, judgeQuestion: t.judge, continueDebate: true)
-    }
-
-    private static let genericTopicEN = DebateTopicContent(
-        question: "Philosophical dialogue",
-        philosopherView: "Let us proceed carefully from reason and experience.",
-        oppositeView: "Let us question every premise from doubt and critique.",
-        judgeQuestions: [
-            "What is your key concept?",
-            "Are there counterexamples?",
-            "What hidden premises does your conclusion rely on?",
-        ],
-        fullExplanation: "This is a practice dialogue. Keep asking and testing premises to move understanding forward.",
-    )
-
-    private static let genericTopic = DebateTopicContent(
-        question: "哲学对话",
-        philosopherView: "让我们从理性与经验出发，审慎地展开讨论。",
-        oppositeView: "让我们从怀疑与批判出发，检验每一个前提。",
-        judgeQuestions: ["你的关键概念是什么？", "是否存在反例？", "你的结论依赖哪些隐含前提？"],
-        fullExplanation: "这是一场练习性的哲学对话。继续提问、继续检验前提，是推进理解的关键。"
-    )
 }

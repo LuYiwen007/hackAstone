@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   Brain,
   BookOpen,
@@ -7,6 +8,8 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { runEchoQuery } from "../../shared/api/arena";
+import { parseJsonPayload } from "../../shared/jsonPayload";
 
 interface ConceptCardsProps {
   debateTopic: string;
@@ -30,137 +33,73 @@ interface QuizQuestion {
   explanation: string;
 }
 
-// 模拟AI生成的概念卡片
-const generateConceptCards = (
-  topic: string,
-  philosopher: string,
-): ConceptCard[] => {
-  // 这里应该根据辩论内容AI生成，现在用模拟数据
+function flashcardsPrompt(debateTopic: string, philosopherName: string): string {
   return [
-    {
-      id: "1",
-      term: "美德即知识",
-      definition:
-        "苏格拉底的核心主张：如果一个人真正理解什么是善，他就不可能选择恶。所有不道德的行为都源于无知。",
-      example:
-        "如果一个人真正理解吸烟对健康的危害（不仅是知道这句话，而是深刻理解后果），他就不会吸烟。",
-      difficulty: "medium",
-    },
-    {
-      id: "2",
-      term: "产婆术（Maieutic Method）",
-      definition:
-        "苏格拉底的教学方法：不直接告诉答案，而是通过提问引导对方自己发现真理，就像助产士帮助孕妇分娩一样。",
-      example:
-        "老师不说'这样做是错的'，而是问'你觉得这样做会带来什么后果？''你会希望别人这样对待你吗？'",
-      difficulty: "hard",
-    },
-    {
-      id: "3",
-      term: "未经审视的生活不值得过",
-      definition:
-        "人应该不断反思自己的行为、信念和价值观，而不是盲目地活着。只有经过深刻反思的生活才有意义。",
-      example:
-        "每天睡前问自己：今天我的时间花在了哪里？我做的事情符合我的价值观吗？我在成为更好的人吗？",
-      difficulty: "easy",
-    },
-    {
-      id: "4",
-      term: "无知之知",
-      definition:
-        "苏格拉底说'我知道我一无所知'——真正的智慧在于意识到自己的无知，而不是假装什么都懂。",
-      example:
-        "专家知道某个领域有多复杂，承认'这个问题没有简单答案'；而外行往往觉得'这还不简单'。",
-      difficulty: "medium",
-    },
-    {
-      id: "5",
-      term: "理性主义 vs 情感主义",
-      definition:
-        "苏格拉底是极端理性主义者，认为理性可以控制情绪；而现代心理学认为情绪和理性是相对独立的系统。",
-      example:
-        "辩论焦点：你可以'知道'应该冷静，但还是会因为愤怒而吼人——这是理性失败了，还是情绪本来就不受理性控制？",
-      difficulty: "hard",
-    },
-  ];
-};
+    "[ROLE]",
+    "CA-Echo-LLM",
+    "",
+    "[TASK]",
+    "根据辩题与哲学家，生成用于主动回忆的概念闪卡，仅返回 JSON。",
+    "",
+    "[RETURN_FORMAT]",
+    '{"cards":[{"id":"1","term":"...","definition":"...","example":"...","difficulty":"easy"|"medium"|"hard"}]}',
+    "",
+    "[CONSTRAINTS]",
+    "至少 5 张卡片；与辩题及该哲学家思想直接相关；不要 markdown 围栏；仅返回 JSON 对象。",
+    "",
+    `辩题：${debateTopic}`,
+    `哲学家：${philosopherName}`,
+  ].join("\n");
+}
 
-// 模拟AI生成的测验题
-const generateQuiz = (
-  topic: string,
-  philosopher: string,
-): QuizQuestion[] => {
+function quizPrompt(debateTopic: string, philosopherName: string): string {
   return [
-    {
-      id: "q1",
-      question:
-        "根据苏格拉底的'美德即知识'理论，一个人会做坏事是因为：",
-      options: [
-        "A. 他意志薄弱，无法控制自己",
-        "B. 他被欲望控制，明知故犯",
-        "C. 他不真正理解这件事是坏的",
-        "D. 他天生邪恶，无法改变",
-      ],
-      correctAnswer: 2,
-      explanation:
-        "苏格拉底认为，所有的恶行都源于无知。如果一个人真正理解某事是坏的（不是表面知道，而是深刻理解），他就不会去做。那些看似'明知故犯'的情况，实际上是因为当事人没有真正理解后果。",
-    },
-    {
-      id: "q2",
-      question: "苏格拉底的'产婆术'教学方法的核心是：",
-      options: [
-        "A. 直接告诉学生正确答案",
-        "B. 让学生自己阅读书籍寻找答案",
-        "C. 通过提问引导学生自己发现真理",
-        "D. 让学生互相辩论得出结论",
-      ],
-      correctAnswer: 2,
-      explanation:
-        "苏格拉底的产婆术就像助产士帮助孕妇分娩一样，不是他生孩子，而是帮助孕妇把孩子生出来。同样，他不直接灌输知识，而是通过提问让学生自己'生出'真理。他相信知识本来就在人的灵魂深处，只需要被唤醒。",
-    },
-    {
-      id: "q3",
-      question: "'未经审视的生活不值得过'这句话的含义是：",
-      options: [
-        "A. 人应该每天写日记记录生活",
-        "B. 人应该不断反思自己的行为和信念",
-        "C. 人应该接受他人对自己生活的评价",
-        "D. 人应该追求完美无缺的生活",
-      ],
-      correctAnswer: 1,
-      explanation:
-        "苏格拉底认为，人的价值在于理性思考能力。如果只是盲目地活着，不反思自己的行为、不质疑自己的信念，那就和动物没有区别。真正有意义的生活，是经过深刻反思和审视的生活。",
-    },
-    {
-      id: "q4",
-      question:
-        "苏格拉底说'我知道我一无所知'，这体现了他的什么观点？",
-      options: [
-        "A. 他认为人类无法获得任何知识",
-        "B. 他在谦虚地贬低自己的智慧",
-        "C. 他认为承认无知是智慧的开始",
-        "D. 他认为知识是不可能存在的",
-      ],
-      correctAnswer: 2,
-      explanation:
-        "这不是自谦，而是苏格拉底的核心洞察：大多数人以为自己知道很多，实际上只是'表面知道'。真正的智者会意识到自己的无知，保持谦逊和好奇。这种'知道自己不知道'的自我觉察，是智慧的第一步。",
-    },
-    {
-      id: "q5",
-      question:
-        "现代心理学对苏格拉底'美德即知识'理论的挑战是：",
-      options: [
-        "A. 人们根本不需要道德知识",
-        "B. 知识和行为之间存在'知行差距'",
-        "C. 道德知识完全无法被学习",
-        "D. 所有人天生就知道什么是对的",
-      ],
-      correctAnswer: 1,
-      explanation:
-        "现代心理学（如双系统理论）发现：知道≠做到。人可以'知道'吸烟有害、拖延不好，但还是会做。这说明理性知识和实际行为之间有鸿沟，受情绪、欲望、意志力等多种因素影响。苏格拉底过于乐观地认为'知道就会做到'。",
-    },
-  ];
-};
+    "[ROLE]",
+    "CA-Echo-LLM",
+    "",
+    "[TASK]",
+    "根据辩题与哲学家生成单选题测验，仅返回 JSON。",
+    "",
+    "[RETURN_FORMAT]",
+    '{"questions":[{"id":"q1","question":"...","options":["A...","B...","C...","D..."],"correctAnswer":0,"explanation":"..."}]}',
+    "",
+    "[CONSTRAINTS]",
+    "至少 4 题；每题 4 个选项；correctAnswer 为正确选项在 options 数组中的 0-based 索引；中文；仅返回 JSON 对象。",
+    "",
+    `辩题：${debateTopic}`,
+    `哲学家：${philosopherName}`,
+  ].join("\n");
+}
+
+type CardsPayload = { cards?: ConceptCard[] };
+type QuizPayload = { questions?: QuizQuestion[] };
+
+function normalizeCards(raw: ConceptCard[]): ConceptCard[] {
+  return raw
+    .filter((c) => c.term && c.definition)
+    .map((c, i) => ({
+      id: String(c.id ?? i + 1),
+      term: c.term,
+      definition: c.definition,
+      example: c.example || "（无）",
+      difficulty: ["easy", "medium", "hard"].includes(c.difficulty) ? c.difficulty : "medium",
+    }));
+}
+
+function normalizeQuiz(raw: QuizQuestion[]): QuizQuestion[] {
+  return raw
+    .filter((q) => q.question && Array.isArray(q.options) && q.options.length >= 2)
+    .map((q, i) => ({
+      id: String(q.id ?? `q${i + 1}`),
+      question: q.question,
+      options: q.options,
+      correctAnswer:
+        typeof q.correctAnswer === "number" && q.correctAnswer >= 0 && q.correctAnswer < q.options.length
+          ? q.correctAnswer
+          : 0,
+      explanation: q.explanation || "",
+    }));
+}
 
 type ViewMode = "flashcards" | "quiz" | "none";
 
@@ -188,34 +127,48 @@ export function ConceptCards({
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerateFlashcards = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      const generated =
-        concepts ||
-        generateConceptCards(debateTopic, philosopherName);
-      setCards(generated);
+    if (concepts?.length) {
+      setCards(concepts);
       setViewMode("flashcards");
       setCurrentCardIndex(0);
       setShowAnswer(false);
-      setIsGenerating(false);
-    }, 1000);
+      return;
+    }
+    setIsGenerating(true);
+    runEchoQuery(flashcardsPrompt(debateTopic, philosopherName))
+      .then((resp) => {
+        const parsed = parseJsonPayload<CardsPayload>(resp.text);
+        const list = normalizeCards(parsed?.cards ?? []);
+        if (list.length === 0) throw new Error("模型未返回有效闪卡数据");
+        setCards(list);
+        setViewMode("flashcards");
+        setCurrentCardIndex(0);
+        setShowAnswer(false);
+      })
+      .catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : "闪卡生成失败");
+      })
+      .finally(() => setIsGenerating(false));
   };
 
   const handleGenerateQuiz = () => {
     setIsGenerating(true);
-    setTimeout(() => {
-      const generated = generateQuiz(
-        debateTopic,
-        philosopherName,
-      );
-      setQuizQuestions(generated);
-      setViewMode("quiz");
-      setCurrentQuizIndex(0);
-      setSelectedAnswer(null);
-      setShowExplanation(false);
-      setQuizScore({ correct: 0, total: 0 });
-      setIsGenerating(false);
-    }, 1000);
+    runEchoQuery(quizPrompt(debateTopic, philosopherName))
+      .then((resp) => {
+        const parsed = parseJsonPayload<QuizPayload>(resp.text);
+        const list = normalizeQuiz(parsed?.questions ?? []);
+        if (list.length === 0) throw new Error("模型未返回有效测验数据");
+        setQuizQuestions(list);
+        setViewMode("quiz");
+        setCurrentQuizIndex(0);
+        setSelectedAnswer(null);
+        setShowExplanation(false);
+        setQuizScore({ correct: 0, total: 0 });
+      })
+      .catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : "测验生成失败");
+      })
+      .finally(() => setIsGenerating(false));
   };
 
   const handleFlipCard = () => {
@@ -355,7 +308,7 @@ export function ConceptCards({
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-4"></div>
           <p className="text-zinc-400">
-            AI正在从辩论中提取关键概念...
+            正在通过后端生成学习内容…
           </p>
         </div>
       )}

@@ -33,6 +33,7 @@ struct RoundtableView: View {
     @State private var messages: [RTMessage] = []
     @State private var userInput = ""
     @State private var isThinking = false
+    @State private var errorAlert: String?
 
     private let presetTopicIds: [String] = ["ai-free-will", "utopia", "truth", "education"]
 
@@ -51,6 +52,14 @@ struct RoundtableView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .alert(L.apiRequestFailedTitle, isPresented: Binding(
+            get: { errorAlert != nil },
+            set: { if !$0 { errorAlert = nil } }
+        )) {
+            Button(L.alertConfirm, role: .cancel) { errorAlert = nil }
+        } message: {
+            Text(errorAlert ?? "")
+        }
     }
 
     private var header: some View {
@@ -290,26 +299,31 @@ struct RoundtableView: View {
                 if let parsed = JsonPayload.parse(resp.text, as: RTMessagesPayload.self),
                    let arr = parsed.messages, !arr.isEmpty
                 {
-                    messages = arr.enumerated().map { i, m in
-                        RTMessage(id: "o-\(m.speaker)-\(i)", speaker: m.speaker, content: m.content)
+                    await MainActor.run {
+                        messages = arr.enumerated().map { i, m in
+                            RTMessage(id: "o-\(m.speaker)-\(i)", speaker: m.speaker, content: m.content)
+                        }
                     }
                 } else {
                     throw NSError(domain: "rt", code: 0)
                 }
             } catch {
-                messages = selected.enumerated().map { i, p in
-                    RTMessage(id: "o-\(p.id)", speaker: p.id, content: RoundtableFallbacks.generateOpening(philosopher: p, topic: debateTopic, order: i))
+                await MainActor.run {
+                    stage = .setup
+                    messages = []
+                    errorAlert = L.roundtableOpeningFailed
                 }
             }
-            isThinking = false
+            await MainActor.run { isThinking = false }
         }
     }
 
     private func sendUser() {
         let text = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        let userRowId = "u-\(UUID().uuidString)"
         userInput = ""
-        messages.append(RTMessage(id: "u-\(UUID().uuidString)", speaker: "user", content: text))
+        messages.append(RTMessage(id: userRowId, speaker: "user", content: text))
         isThinking = true
         let participants = selected.map { ["id": $0.id, "nameCN": $0.nameCN, "school": $0.school] as [String: Any] }
         Task {
@@ -321,17 +335,20 @@ struct RoundtableView: View {
                     let more = arr.enumerated().map { i, m in
                         RTMessage(id: "r-\(m.speaker)-\(i)-\(UUID().uuidString)", speaker: m.speaker, content: m.content)
                     }
-                    messages.append(contentsOf: more)
+                    await MainActor.run {
+                        messages.append(contentsOf: more)
+                    }
                 } else {
                     throw NSError(domain: "rt", code: 1)
                 }
             } catch {
-                let more = selected.enumerated().map { i, p in
-                    RTMessage(id: "r-\(p.id)-\(i)", speaker: p.id, content: RoundtableFallbacks.generateResponse(philosopher: p, userInput: text, topic: debateTopic))
+                await MainActor.run {
+                    messages.removeAll { $0.id == userRowId }
+                    userInput = text
+                    errorAlert = L.roundtableReplyFailed
                 }
-                messages.append(contentsOf: more)
             }
-            isThinking = false
+            await MainActor.run { isThinking = false }
         }
     }
 }
