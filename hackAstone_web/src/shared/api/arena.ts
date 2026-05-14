@@ -43,9 +43,29 @@ type AgentRunResponse = {
   agent: string;
   appId: string;
   text: string;
-  raw: unknown;
   cached: boolean;
 };
+
+async function readErrorMessage(res: Response): Promise<string> {
+  const raw = await res.text();
+  const trimmed = raw.replace(/\s+/g, " ").trim();
+  try {
+    const body = JSON.parse(raw) as {
+      message?: string;
+      error?: string;
+      path?: string;
+      status?: number;
+    };
+    if (body.message) return body.message;
+    if (body.error) return body.error;
+  } catch {
+    /* 非 JSON（如 Spring Whitelabel HTML） */
+  }
+  if (trimmed.length > 0 && trimmed.length < 2000) {
+    return `HTTP ${res.status}：${trimmed.slice(0, 800)}`;
+  }
+  return `HTTP ${res.status}`;
+}
 
 async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -57,7 +77,7 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+    throw new Error(await readErrorMessage(res));
   }
   const json = (await res.json()) as {
     success: boolean;

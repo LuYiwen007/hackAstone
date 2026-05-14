@@ -13,6 +13,8 @@ export default defineConfig({
   assetsInclude: ['**/*.svg', '**/*.csv'],
   server: {
     port: 8081,
+    /** 8081 被占用时不要静默换端口（否则 Origin 变 8082/8084，易触发后端 CORS 403） */
+    strictPort: true,
     open: true,
     proxy: {
       '/api': {

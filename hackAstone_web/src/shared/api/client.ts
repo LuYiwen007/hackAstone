@@ -12,6 +12,22 @@ export type ApiResult<T> = {
   data: T;
 };
 
+async function readHttpErrorBody(res: Response): Promise<string> {
+  const raw = await res.text();
+  const trimmed = raw.replace(/\s+/g, " ").trim();
+  try {
+    const body = JSON.parse(raw) as { message?: string; error?: string };
+    if (body.message) return body.message;
+    if (body.error) return body.error;
+  } catch {
+    /* ignore */
+  }
+  if (trimmed.length > 0 && trimmed.length < 2000) {
+    return `HTTP ${res.status}：${trimmed.slice(0, 800)}`;
+  }
+  return `HTTP ${res.status}`;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const base = apiBaseUrl();
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -19,7 +35,7 @@ export async function apiGet<T>(path: string): Promise<T> {
     path.startsWith("http") ? path : base ? `${base}${p}` : `/api${p}`;
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+    throw new Error(await readHttpErrorBody(res));
   }
   const body = (await res.json()) as ApiResult<T>;
   if (!body.success) {

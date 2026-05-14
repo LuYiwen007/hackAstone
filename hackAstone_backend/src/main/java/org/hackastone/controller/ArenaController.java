@@ -3,8 +3,8 @@ package org.hackastone.controller;
 import org.hackastone.base.util.Result;
 import org.hackastone.biz.ArenaDataService;
 import org.hackastone.biz.BailianAgentService;
+import org.hackastone.config.BailianAgentConfig;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,18 +13,64 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/arena")
-@CrossOrigin(origins = {"http://localhost:8081", "http://127.0.0.1:8081"})
 public class ArenaController {
 
     @Autowired
     private ArenaDataService arenaDataService;
     @Autowired
     private BailianAgentService bailianAgentService;
+    @Autowired
+    private BailianAgentConfig bailianAgentConfig;
+
+    /**
+     * 百炼连接相关配置自检（不返回密钥，仅便于排查「连不上」类问题）
+     */
+    @GetMapping("/llm/diagnostics")
+    public Result<Map<String, Object>> llmDiagnostics() {
+        String key = bailianAgentConfig.getApiKey();
+        boolean hasKey = key != null && !key.trim().isEmpty();
+        String echoId = bailianAgentConfig.getEchoAppId();
+        String echoTrim = echoId == null ? "" : echoId.trim();
+        Map<String, Object> m = new HashMap<>();
+        m.put("endpoint", bailianAgentConfig.getEndpoint());
+        m.put("timeoutMs", bailianAgentConfig.getTimeoutMs());
+        m.put("apiKeyConfigured", hasKey);
+        m.put("echoAppIdConfigured", !echoTrim.isEmpty());
+        m.put("echoAppIdSuffix", echoTrim.length() < 4 ? "" : echoTrim.substring(echoTrim.length() - 4));
+        m.put("echoAppIdPrefix", echoTrim.length() < 4 ? echoTrim : echoTrim.substring(0, 4));
+        m.put("echoAppIdLength", echoTrim.length());
+        boolean endpointOk = bailianAgentConfig.getEndpoint() != null
+                && bailianAgentConfig.getEndpoint().contains("/apps");
+        m.put("endpointContainsAppsPath", endpointOk);
+        boolean uuidLike = echoTrim.matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                || echoTrim.matches("(?i)[0-9a-f]{32}");
+        m.put("echoAppIdUuidShape", uuidLike);
+        if (hasKey && key != null) {
+            String kt = key.trim();
+            m.put("apiKeyLooksLikeDashScope", kt.startsWith("sk-") && kt.length() > 10);
+        } else {
+            m.put("apiKeyLooksLikeDashScope", false);
+        }
+        String ws = bailianAgentConfig.getWorkspaceId();
+        boolean wsOk = ws != null && !ws.trim().isEmpty();
+        m.put("workspaceIdConfigured", wsOk);
+        String echoCompact = echoTrim.replace("-", "").toLowerCase(Locale.ROOT);
+        boolean bundledDefaultEcho = "d2756fe8a8c1491c8103a5fc50505c8d".equals(echoCompact);
+        m.put("echoAppIdIsBundledTemplateDefault", bundledDefaultEcho);
+        if (bundledDefaultEcho && wsOk) {
+            m.put("appAccessDeniedLikelyCause",
+                    "已配置子业务空间，但 echo-app-id 仍是仓库内置示例 ID（d275…5c8d）。请改为你在 hackAstone 空间内该应用的 APP_ID（application.yml 的 bailian.echo-app-id 或环境变量 BAILIAN_ECHO_APP_ID），然后重启后端。");
+        }
+        m.put("hint", "若仍报 AppId invalid：(1) 国内/国际 endpoint 与 Key、应用地域一致。(2) 应用在「子业务空间」时须设 bailian.workspace-id 或 BAILIAN_WORKSPACE_ID。(3) IDE 启动须在 Run 里配环境变量。(4) 见百炼文档：获取 Workspace ID、应用调用 HTTP。");
+        return Result.success(m);
+    }
 
     /**
      * 认知竞技场静态数据：思想家、地区、时间轴、学科辩题、哲学辩题文案

@@ -3,6 +3,14 @@ import type { Philosopher } from "../data/philosophers";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { PhilosopherAvatar } from "./PhilosopherAvatar";
 
+/** 中文维基条目 URL：路径为条目名（空格转为下划线），与 MediaWiki 约定一致 */
+function zhWikipediaArticleUrl(displayTitle: string): string {
+  const t = displayTitle.trim();
+  if (!t) return "https://zh.wikipedia.org/wiki/Wikipedia:首页";
+  const path = t.replace(/\s+/g, "_");
+  return `https://zh.wikipedia.org/wiki/${encodeURIComponent(path).replace(/%20/g, "_")}`;
+}
+
 interface PhilosopherCardProps {
   philosopher: Philosopher;
   onClose: () => void;
@@ -158,10 +166,15 @@ export function PhilosopherCard({ philosopher, onClose, onStartDebate }: Philoso
 
           {/* Deep Dive Button */}
           <div className="pt-4 border-t border-zinc-800">
-            <button className="w-full py-3 rounded-lg bg-zinc-950 border border-zinc-700 hover:border-zinc-600 transition-colors flex items-center justify-center gap-2 text-zinc-400 hover:text-zinc-300 mb-3">
+            <a
+              href={zhWikipediaArticleUrl(philosopher.nameCN)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 rounded-lg bg-zinc-950 border border-zinc-700 hover:border-zinc-600 transition-colors flex items-center justify-center gap-2 text-zinc-400 hover:text-zinc-300 mb-3"
+            >
               <ExternalLink className="w-4 h-4" />
               <span className="text-sm">查看深度资料（维基百科）</span>
-            </button>
+            </a>
             
             <button
               onClick={onStartDebate}
