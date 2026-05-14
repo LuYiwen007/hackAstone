@@ -18,6 +18,8 @@ public class BailianAgentConfig {
     private String ledgerAppId;
     private String echoAppId;
     private String sentinelAppId;
+    /** 子业务空间 Workspace ID；应用在子空间内时，HTTP 须带 X-DashScope-WorkSpace（见百炼文档） */
+    private String workspaceId;
 
     public String getEndpoint() {
         return endpoint;
@@ -97,5 +99,13 @@ public class BailianAgentConfig {
 
     public void setSentinelAppId(String sentinelAppId) {
         this.sentinelAppId = sentinelAppId;
+    }
+
+    public String getWorkspaceId() {
+        return workspaceId;
+    }
+
+    public void setWorkspaceId(String workspaceId) {
+        this.workspaceId = workspaceId;
     }
 }
