@@ -2,6 +2,7 @@ package org.hackastone.biz;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.hackastone.base.util.constants.ResultEnum;
 import org.hackastone.base.util.exception.HackAstoneBizException;
 import org.hackastone.config.BailianAgentConfig;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Service
 public class BailianAgentService {
 
@@ -31,7 +33,7 @@ public class BailianAgentService {
     private BailianAgentConfig config;
 
     public Map<String, Object> runAgent(String agentName, String query, List<String> imageList) {
-        String appId = normalizeDashScopeAppIdPathSegment(resolveAppId(agentName));
+        String appId = resolveAppId(agentName);
         String cacheKey = appId + "::" + query;
         CacheEntry hit = cache.get(cacheKey);
         long now = System.currentTimeMillis();
@@ -51,8 +53,20 @@ public class BailianAgentService {
         payload.put("parameters", new HashMap<>());
         payload.put("debug", new HashMap<>());
 
-        Map<String, Object> response = postJson(appId, payload);
+        log.info("百炼 runAgent 请求 agent={} appIdSuffix={} promptLen={}",
+                agentName, appIdSuffix(appId), query == null ? 0 : query.length());
+
+        Map<String, Object> response = postJson(appId, payload, agentName);
         String text = extractText(response);
+        assertAgentRoleCompatible(agentName, text);
+
+        try {
+            log.info("百炼 runAgent 完整响应 JSON（DashScope 原始 body 解析结果）: {}",
+                    OBJECT_MAPPER.writeValueAsString(response));
+        } catch (Exception e) {
+            log.info("百炼 runAgent 完整响应 JSON（序列化失败）: {}", response);
+        }
+        log.info("百炼 runAgent 提取 text 长度={} 预览={}", text.length(), preview(text, 200));
 
         Map<String, Object> out = new HashMap<>();
         out.put("agent", agentName);
@@ -99,29 +113,43 @@ public class BailianAgentService {
         return value.trim();
     }
 
-    /**
-     * 百炼 URL 中的应用 ID 一般为 UUID；若配置为 32 位无连字符十六进制，规范为 8-4-4-4-12 再请求。
-     */
-    private static String normalizeDashScopeAppIdPathSegment(String raw) {
-        if (raw == null) {
-            return null;
+    private static String appIdSuffix(String appId) {
+        if (appId == null || appId.length() < 4) {
+            return appId == null ? "" : appId;
         }
-        String t = raw.trim();
-        String compact = t.replace("-", "").toLowerCase(Locale.ROOT);
-        if (compact.length() == 32 && compact.matches("[0-9a-f]{32}")) {
-            return compact.substring(0, 8) + "-" + compact.substring(8, 12) + "-" + compact.substring(12, 16) + "-"
-                    + compact.substring(16, 20) + "-" + compact.substring(20, 32);
-        }
-        return t;
+        return appId.substring(appId.length() - 4);
     }
 
-    private Map<String, Object> postJson(String appId, Map<String, Object> payload) {
+    private static String preview(String s, int max) {
+        if (s == null) {
+            return "";
+        }
+        String oneLine = s.replace('\n', ' ').replace('\r', ' ');
+        return oneLine.length() <= max ? oneLine : oneLine.substring(0, max) + "...";
+    }
+
+    /** 百炼应用内置角色与请求 [ROLE] 不一致时，HTTP 仍可能 200，但 text 不是业务所需 JSON */
+    private void assertAgentRoleCompatible(String agentName, String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        if ("echo".equalsIgnoreCase(agentName)
+                && (text.contains("role-mismatch") || text.contains("CA-Ledger-DATA"))) {
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "百炼 echo 应用角色不匹配：当前 bailian.echo-app-id 对应的是 Ledger（数据治理）应用，"
+                            + "无法执行哲学辩题（CA-Echo-LLM）。请在 hackAstone 子空间内创建/选用 Echo 类应用，"
+                            + "并将其 APP_ID 填入 bailian.echo-app-id。");
+        }
+    }
+
+    private Map<String, Object> postJson(String appId, Map<String, Object> payload, String agentName) {
         String apiKey = config.getApiKey();
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new HackAstoneBizException(ResultEnum.PARAM_ERROR.getCode(),
                     "缺少百炼 API Key：请在 application.yml 配置 bailian.api-key，或设置环境变量 DASHSCOPE_API_KEY / BAILIAN_API_KEY");
         }
         String endpoint = config.getEndpoint().replaceAll("/$", "") + "/" + appId + "/completion";
+        log.info("百炼 请求 agent={} POST {}", agentName, endpoint);
         HttpURLConnection conn = null;
         try {
             URL url = new URL(endpoint);
@@ -154,8 +182,10 @@ public class BailianAgentService {
                 } else if (body != null && body.contains("InternalError")) {
                     detail += "。此为百炼服务端内部错误：可稍后重试；或在百炼控制台查看该应用/调用的监控与日志。请保存 JSON 中的 request_id 便于向阿里云工单或技术支持反馈。";
                 }
+                log.warn("百炼 响应(失败) HTTP {} agent={} 响应体(完整)={}", code, agentName, body);
                 throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(), detail);
             }
+            log.info("百炼 响应(成功) HTTP {} agent={} 响应体(完整)={}", code, agentName, body);
             return OBJECT_MAPPER.readValue(body, new TypeReference<Map<String, Object>>() {});
         } catch (HackAstoneBizException e) {
             throw e;

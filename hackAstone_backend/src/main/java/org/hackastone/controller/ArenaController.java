@@ -2,6 +2,7 @@ package org.hackastone.controller;
 
 import org.hackastone.base.util.Result;
 import org.hackastone.biz.ArenaDataService;
+import org.hackastone.biz.ArenaEchoPrompts;
 import org.hackastone.biz.BailianAgentService;
 import org.hackastone.config.BailianAgentConfig;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,13 +111,8 @@ public class ArenaController {
         String philosopherName = String.valueOf(request.getOrDefault("philosopherName", "某位思想家"));
         String philosopherSchool = String.valueOf(request.getOrDefault("philosopherSchool", "哲学"));
         String keyIdeas = String.valueOf(request.getOrDefault("keyIdeas", ""));
-        String prompt = "[ROLE]\nCA-Echo-LLM\n\n[TASK]\n生成哲学辩论题目和双方观点，要求返回 JSON。\n\n"
-                + "[REPO_CONTEXT]\nproject=hackAstone\n\n[TARGET_FILES]\nNONE\n\n[API_CONTRACT]\nNONE\n\n"
-                + "[ACCEPTANCE_CRITERIA]\n返回字段 question/philosopherView/oppositeView/judgeQuestions/fullExplanation\n\n"
-                + "[CONSTRAINTS]\n中文输出；judgeQuestions 至少3条；不要 markdown 包裹\n\n[RETURN_FORMAT]\njson\n\n"
-                + "上下文：思想家=" + philosopherName + "；学派=" + philosopherSchool + "；关键思想=" + keyIdeas
-                + "\n请仅返回 JSON 对象。";
-        return Result.success(bailianAgentService.runEcho(prompt));
+        return Result.success(bailianAgentService.runEcho(
+                ArenaEchoPrompts.debateTopic(philosopherName, philosopherSchool, keyIdeas)));
     }
 
     /**
@@ -129,10 +125,8 @@ public class ArenaController {
         List<Map<String, Object>> participants = request.get("participants") instanceof List
                 ? (List<Map<String, Object>>) request.get("participants")
                 : new ArrayList<>();
-        String prompt = "[ROLE]\nCA-Echo-LLM\n\n[TASK]\n根据辩题给每位思想家生成一段开场发言，返回 JSON 数组。"
-                + "\n\n[RETURN_FORMAT]\njson\n\n辩题：" + topic + "\n参与者：" + participants
-                + "\n输出格式：{\"messages\":[{\"speaker\":\"philosopherId\",\"content\":\"...\"}]}\n仅返回 JSON。";
-        return Result.success(bailianAgentService.runEcho(prompt));
+        return Result.success(bailianAgentService.runEcho(
+                ArenaEchoPrompts.roundtableOpenings(topic, String.valueOf(participants))));
     }
 
     /**
@@ -146,10 +140,8 @@ public class ArenaController {
         List<Map<String, Object>> participants = request.get("participants") instanceof List
                 ? (List<Map<String, Object>>) request.get("participants")
                 : new ArrayList<>();
-        String prompt = "[ROLE]\nCA-Echo-LLM\n\n[TASK]\n用户在圆桌辩论中发言后，给每位思想家各生成一条回应，返回 JSON。"
-                + "\n\n[RETURN_FORMAT]\njson\n\n辩题：" + topic + "\n用户发言：" + userInput + "\n参与者：" + participants
-                + "\n输出格式：{\"messages\":[{\"speaker\":\"philosopherId\",\"content\":\"...\"}]}\n仅返回 JSON。";
-        return Result.success(bailianAgentService.runEcho(prompt));
+        return Result.success(bailianAgentService.runEcho(
+                ArenaEchoPrompts.roundtableReply(topic, userInput, String.valueOf(participants))));
     }
 
     /**
@@ -167,20 +159,9 @@ public class ArenaController {
         String keyIdeas = String.valueOf(request.getOrDefault("keyIdeas", ""));
         String history = String.valueOf(request.getOrDefault("history", ""));
 
-        String prompt = "[ROLE]\nCA-Echo-LLM\n\n"
-                + "[TASK]\n围绕给定道德困境继续一轮哲学讨论：先以哲学家身份回应用户，再以 Judge 身份追问，并判断是否可以进入总结。\n\n"
-                + "[REPO_CONTEXT]\nproject=hackAstone\n\n[TARGET_FILES]\nNONE\n\n[API_CONTRACT]\nNONE\n\n"
-                + "[ACCEPTANCE_CRITERIA]\n返回 philosopherReply/judgeQuestion/continueDebate 三个字段\n\n"
-                + "[CONSTRAINTS]\n中文输出；哲学家回应要体现其思想风格；仅返回 JSON；continueDebate 为布尔值\n\n"
-                + "[RETURN_FORMAT]\njson\n\n"
-                + "道德困境：" + moralDilemmaTitle + " (" + moralDilemmaEnglishTitle + ")\n"
-                + "问题：" + dilemmaQuestion + "\n"
-                + "用户立场：" + userStance + "\n"
-                + "哲学家：" + philosopherName + "；学派：" + philosopherSchool + "；关键思想：" + keyIdeas + "\n"
-                + "讨论提醒：" + promptLead + "\n"
-                + "历史：\n"
-                + history;
-        return Result.success(bailianAgentService.runEcho(prompt));
+        return Result.success(bailianAgentService.runEcho(ArenaEchoPrompts.dilemmaTurn(
+                moralDilemmaTitle, moralDilemmaEnglishTitle, dilemmaQuestion, promptLead, userStance,
+                philosopherName, philosopherSchool, keyIdeas, history)));
     }
 
     /**
@@ -195,18 +176,7 @@ public class ArenaController {
         String philosopherSchool = String.valueOf(request.getOrDefault("philosopherSchool", ""));
         String history = String.valueOf(request.getOrDefault("history", ""));
 
-        String prompt = "[ROLE]\nCA-Echo-LLM\n\n"
-                + "[TASK]\n根据道德困境讨论历史生成一份完整总结，解释用户立场与哲学家回应的张力。\n\n"
-                + "[REPO_CONTEXT]\nproject=hackAstone\n\n[TARGET_FILES]\nNONE\n\n[API_CONTRACT]\nNONE\n\n"
-                + "[ACCEPTANCE_CRITERIA]\n返回 fullExplanation 字段\n\n"
-                + "[CONSTRAINTS]\n中文输出；条理清晰；保留哲学家风格；仅返回 JSON\n\n"
-                + "[RETURN_FORMAT]\njson\n\n"
-                + "道德困境：" + moralDilemmaTitle + "\n"
-                + "问题：" + dilemmaQuestion + "\n"
-                + "用户立场：" + userStance + "\n"
-                + "哲学家：" + philosopherName + "；学派：" + philosopherSchool + "\n"
-                + "历史：\n"
-                + history;
-        return Result.success(bailianAgentService.runEcho(prompt));
+        return Result.success(bailianAgentService.runEcho(ArenaEchoPrompts.dilemmaSummary(
+                moralDilemmaTitle, dilemmaQuestion, userStance, philosopherName, philosopherSchool, history)));
     }
 }
