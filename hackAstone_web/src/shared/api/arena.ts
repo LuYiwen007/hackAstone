@@ -1,10 +1,19 @@
 import type { Battle } from "../../app/data/battles";
 import type { Philosopher } from "../../app/data/philosophers";
 import type { DebateTopicContent } from "../../app/data/debateTopicTypes";
+import type { ArenaLocale } from "../i18n/format";
 import { apiGet, apiBaseUrl } from "./client";
 
 export type RegionMeta = { id: string; name: string; x: number; y: number };
-export type TimePeriodMeta = { year: number; label: string; era: string };
+export type TimePeriodMeta = {
+  id: string;
+  year: number;
+  label: string;
+  era: string;
+  startYear?: number;
+  endYear?: number;
+  showAll?: boolean;
+};
 
 export type ArenaCatalogPayload = {
   philosophers: Philosopher[];
@@ -31,8 +40,17 @@ export type MindProfilePayload = {
   }[];
 };
 
-export function fetchArenaCatalog() {
-  return apiGet<ArenaCatalogPayload>("/arena/catalog");
+export type ArenaI18nPayload = {
+  locale: ArenaLocale;
+  strings: Record<string, string>;
+};
+
+export function fetchArenaI18n(locale: ArenaLocale) {
+  return apiGet<ArenaI18nPayload>(`/arena/i18n?locale=${locale}`);
+}
+
+export function fetchArenaCatalog(locale: ArenaLocale = "en") {
+  return apiGet<ArenaCatalogPayload>(`/arena/catalog?locale=${locale}`);
 }
 
 export function fetchMindProfile() {

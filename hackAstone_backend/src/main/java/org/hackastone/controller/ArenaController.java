@@ -76,9 +76,15 @@ public class ArenaController {
     /**
      * 认知竞技场静态数据：思想家、地区、时间轴、学科辩题、哲学辩题文案
      */
+    @GetMapping("/i18n")
+    public Result<Map<String, Object>> i18n(@org.springframework.web.bind.annotation.RequestParam(value = "locale", defaultValue = "en") String locale) {
+        return Result.success(arenaDataService.getI18nPayload(locale));
+    }
+
     @GetMapping("/catalog")
-    public Result<Map<String, Object>> catalog() {
-        return Result.success(arenaDataService.getCatalog());
+    public Result<Map<String, Object>> catalog(
+            @org.springframework.web.bind.annotation.RequestParam(value = "locale", defaultValue = "en") String locale) {
+        return Result.success(arenaDataService.getCatalog(locale));
     }
 
     /**

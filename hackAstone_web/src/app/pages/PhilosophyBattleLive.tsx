@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { useParams, Link } from "react-router";
 import { ArrowLeft, AlertCircle, MessageSquare } from "lucide-react";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
+import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleContext";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { DebateSummary } from "../components/DebateSummary";
 import { generateTopic, runEchoQuery } from "../../shared/api/arena";
@@ -30,8 +32,10 @@ type SummaryResult = {
 
 export function PhilosophyBattleLive() {
   const { id } = useParams();
+  const { t, locale } = useArenaLocale();
   const { philosophers } = useArenaCatalog();
   const philosopher = philosophers.find((p) => p.id === id);
+  const displayName = philosopher ? philosopherDisplayName(philosopher, locale) : "";
 
   const [stage, setStage] = useState<Stage>("topic");
   const [choice, setChoice] = useState<Choice>(null);
@@ -51,7 +55,7 @@ export function PhilosophyBattleLive() {
     let cancelled = false;
     setTopicLoading(true);
     setTopicLoadError(null);
-    generateTopic(philosopher.nameCN, philosopher.school, philosopher.keyIdeas)
+    generateTopic(displayName, philosopher.school, philosopher.keyIdeas)
       .then((resp) => {
         if (cancelled) return;
         const parsed = parseJsonPayload<DebateTopicContent>(resp.text);
@@ -59,12 +63,12 @@ export function PhilosophyBattleLive() {
           setTopic(parsed);
           setFullExplanation(parsed.fullExplanation || "");
         } else {
-          throw new Error("模型未返回有效的辩题 JSON");
+          throw new Error(t("error.topicJson"));
         }
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        const msg = err instanceof Error ? err.message : "辩题生成失败";
+        const msg = err instanceof Error ? err.message : t("error.topicFailed");
         setTopic(null);
         setTopicLoadError(msg);
         toast.error(msg);
@@ -75,20 +79,39 @@ export function PhilosophyBattleLive() {
     return () => {
       cancelled = true;
     };
-  }, [philosopher?.id, topicReloadToken]);
+  }, [philosopher?.id, topicReloadToken, displayName, t]);
 
   if (!philosopher) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">思想家不存在</h2>
+          <h2 className="text-2xl font-bold mb-4">{t("battle.notFound")}</h2>
           <Link to="/" className="text-purple-500 hover:underline">
-            返回哲学辩论
+            {t("battle.notFoundBack")}
           </Link>
         </div>
       </div>
     );
   }
+
+  const choiceLabel = (c: Exclude<Choice, null>) => {
+    if (c === "agree") return t("battle.agree");
+    if (c === "disagree") return t("battle.disagree");
+    return t("battle.uncertain");
+  };
+
+  const formatHistory = (msgs: DebateMessage[]) =>
+    msgs
+      .map((m) => {
+        const roleLabel =
+          m.role === "user"
+            ? t("battle.history.user")
+            : m.role === "judge"
+              ? t("battle.history.judge")
+              : displayName;
+        return `${roleLabel}: ${m.content}`;
+      })
+      .join("\n");
 
   const handleChoose = (selected: Exclude<Choice, null>) => {
     if (!topic) return;
@@ -99,7 +122,7 @@ export function PhilosophyBattleLive() {
       {
         id: `judge-opening-${Date.now()}`,
         role: "judge",
-        content: `你选择了「${selected === "agree" ? "同意" : selected === "disagree" ? "不同意" : "不确定"}」。请先陈述你的第一轮理由。`,
+        content: t("battle.choiceOpening", { choice: choiceLabel(selected) }),
       },
     ]);
   };
@@ -118,16 +141,14 @@ export function PhilosophyBattleLive() {
     ];
     setMessages(nextMessages);
 
-    const historyText = nextMessages
-      .map((m) => `${m.role === "user" ? "用户" : m.role === "judge" ? "裁判" : philosopher.nameCN}：${m.content}`)
-      .join("\n");
+    const historyText = formatHistory(nextMessages);
 
     const turnQuery = [
       "[ROLE]",
       "CA-Echo-LLM",
       "",
       "[TASK]",
-      "继续一轮哲学辩论：先给哲学家回应，再给裁判追问，并判断是否继续辩论。",
+      t("battle.prompt.turnTask"),
       "",
       "[REPO_CONTEXT]",
       "project=hackAstone",
@@ -139,18 +160,18 @@ export function PhilosophyBattleLive() {
       "NONE",
       "",
       "[ACCEPTANCE_CRITERIA]",
-      "返回 philosopherReply/judgeQuestion/continueDebate 三个字段",
+      t("battle.prompt.turnCriteria"),
       "",
       "[CONSTRAINTS]",
-      "中文；仅返回 JSON；continueDebate 为布尔值",
+      t("battle.prompt.constraints"),
       "",
       "[RETURN_FORMAT]",
       "json",
       "",
-      `辩题：${topic.question}`,
-      `哲学家：${philosopher.nameCN}（${philosopher.school}）`,
-      `用户立场：${choice}`,
-      "历史：",
+      t("battle.prompt.topic", { question: topic.question }),
+      t("battle.prompt.philosopher", { name: displayName, school: philosopher.school }),
+      t("battle.prompt.stance", { choice: choiceLabel(choice) }),
+      t("battle.prompt.history"),
       historyText,
     ].join("\n");
 
@@ -158,7 +179,7 @@ export function PhilosophyBattleLive() {
       const resp = await runEchoQuery(turnQuery);
       const parsed = parseJsonPayload<TurnResult>(resp.text);
       if (!parsed?.philosopherReply || !parsed?.judgeQuestion) {
-        throw new Error("模型未返回有效的辩论轮次 JSON");
+        throw new Error(t("error.turnJson"));
       }
       const turn = parsed;
       setMessages((prev) => [
@@ -168,7 +189,7 @@ export function PhilosophyBattleLive() {
       ]);
       setCanReveal(turn.continueDebate === false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "辩论生成失败";
+      const msg = err instanceof Error ? err.message : t("error.turnFailed");
       toast.error(msg);
       setMessages((prev) => prev.filter((m) => m.id !== userMsgId));
       setUserInput(content);
@@ -183,16 +204,14 @@ export function PhilosophyBattleLive() {
     setIsGeneratingSummary(true);
     setFullExplanation("");
 
-    const history = messages
-      .map((m) => `${m.role === "user" ? "用户" : m.role === "judge" ? "裁判" : philosopher.nameCN}：${m.content}`)
-      .join("\n");
+    const history = formatHistory(messages);
 
     const summaryQuery = [
       "[ROLE]",
       "CA-Echo-LLM",
       "",
       "[TASK]",
-      "根据辩论历史生成完整总结解释。",
+      t("battle.prompt.summaryTask"),
       "",
       "[REPO_CONTEXT]",
       "project=hackAstone",
@@ -204,18 +223,18 @@ export function PhilosophyBattleLive() {
       "NONE",
       "",
       "[ACCEPTANCE_CRITERIA]",
-      "返回 fullExplanation 字段",
+      t("battle.prompt.summaryCriteria"),
       "",
       "[CONSTRAINTS]",
-      "中文；仅返回 JSON；内容有层次",
+      t("battle.prompt.summaryConstraints"),
       "",
       "[RETURN_FORMAT]",
       "json",
       "",
-      `辩题：${topic.question}`,
-      `哲学家：${philosopher.nameCN}`,
-      `用户立场：${choice}`,
-      "历史：",
+      t("battle.prompt.topic", { question: topic.question }),
+      t("battle.prompt.philosopherShort", { name: displayName }),
+      t("battle.prompt.stance", { choice: choiceLabel(choice) }),
+      t("battle.prompt.history"),
       history,
     ].join("\n");
 
@@ -225,10 +244,10 @@ export function PhilosophyBattleLive() {
       if (parsed?.fullExplanation) {
         setFullExplanation(parsed.fullExplanation);
       } else {
-        throw new Error("模型未返回 fullExplanation");
+        throw new Error(t("error.summaryField"));
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "总结生成失败";
+      const msg = err instanceof Error ? err.message : t("error.summaryFailed");
       toast.error(msg);
     } finally {
       setIsGeneratingSummary(false);
@@ -242,11 +261,14 @@ export function PhilosophyBattleLive() {
           <div className="flex items-center justify-between mb-4">
             <Link to="/" className="flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors">
               <ArrowLeft className="w-5 h-5" />
-              <span>返回地图</span>
+              <span>{t("battle.backToMap")}</span>
             </Link>
-            <div className="text-sm">
-              <div className="font-bold">{philosopher.nameCN}</div>
-              <div className="text-zinc-500">{philosopher.school}</div>
+            <div className="flex items-center gap-3">
+              <LanguageSwitcher />
+              <div className="text-sm text-right">
+                <div className="font-bold">{displayName}</div>
+                <div className="text-zinc-500">{philosopher.school}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -256,7 +278,7 @@ export function PhilosophyBattleLive() {
         {stage === "topic" && (
           <div className="max-w-4xl mx-auto">
             {topicLoading && (
-              <div className="text-center py-20 text-zinc-400">正在通过后端生成辩题…</div>
+              <div className="text-center py-20 text-zinc-400">{t("battle.generatingTopic")}</div>
             )}
             {!topicLoading && topicLoadError && (
               <div className="text-center py-16 space-y-4">
@@ -266,7 +288,7 @@ export function PhilosophyBattleLive() {
                   onClick={() => setTopicReloadToken((t) => t + 1)}
                   className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 font-semibold"
                 >
-                  重试
+                  {t("battle.retry")}
                 </button>
               </div>
             )}
@@ -274,15 +296,15 @@ export function PhilosophyBattleLive() {
               <>
                 <div className="text-center mb-12">
                   <h1 className="text-4xl font-bold mb-6">{topic.question}</h1>
-                  <p className="text-zinc-400">辩题与观点由后端大模型生成</p>
+                  <p className="text-zinc-400">{t("battle.topicAiNote")}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-6 rounded-xl border-2 border-purple-600/30 bg-zinc-900">
-                    <div className="font-bold mb-3">{philosopher.nameCN} 立场</div>
+                    <div className="font-bold mb-3">{t("battle.philosopherStance", { name: displayName })}</div>
                     <p className="text-zinc-300 leading-relaxed">{topic.philosopherView}</p>
                   </div>
                   <div className="p-6 rounded-xl border-2 border-zinc-700 bg-zinc-900">
-                    <div className="font-bold mb-3">反方立场</div>
+                    <div className="font-bold mb-3">{t("battle.oppositeStance")}</div>
                     <p className="text-zinc-300 leading-relaxed">{topic.oppositeView}</p>
                   </div>
                 </div>
@@ -290,7 +312,7 @@ export function PhilosophyBattleLive() {
                   onClick={() => setStage("choose")}
                   className="w-full mt-8 py-4 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors font-bold text-lg"
                 >
-                  开始辩论
+                  {t("battle.startDebate")}
                 </button>
               </>
             )}
@@ -300,13 +322,13 @@ export function PhilosophyBattleLive() {
         {stage === "choose" && topic && (
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">你的立场？</h2>
-              <p className="text-zinc-400">接下来会进入多轮辩论，可连续输入观点</p>
+              <h2 className="text-3xl font-bold mb-4">{t("battle.yourStance")}</h2>
+              <p className="text-zinc-400">{t("battle.stanceHint")}</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <button onClick={() => handleChoose("agree")} className="p-8 rounded-xl border-2 border-purple-600 bg-purple-950/30">同意</button>
-              <button onClick={() => handleChoose("disagree")} className="p-8 rounded-xl border-2 border-zinc-700 bg-zinc-900">不同意</button>
-              <button onClick={() => handleChoose("uncertain")} className="p-8 rounded-xl border-2 border-zinc-700 bg-zinc-900">不确定</button>
+              <button onClick={() => handleChoose("agree")} className="p-8 rounded-xl border-2 border-purple-600 bg-purple-950/30">{t("battle.agree")}</button>
+              <button onClick={() => handleChoose("disagree")} className="p-8 rounded-xl border-2 border-zinc-700 bg-zinc-900">{t("battle.disagree")}</button>
+              <button onClick={() => handleChoose("uncertain")} className="p-8 rounded-xl border-2 border-zinc-700 bg-zinc-900">{t("battle.uncertain")}</button>
             </div>
           </div>
         )}
@@ -315,18 +337,18 @@ export function PhilosophyBattleLive() {
           <div className="max-w-4xl mx-auto">
             <div className="mb-6 text-zinc-400 flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
-              <span>每轮将由哲学家回应 + 裁判追问；是否结束由 Agent 决定</span>
+              <span>{t("battle.roundHint")}</span>
             </div>
             <div className="space-y-4 mb-6">
               {messages.map((m) => (
                 <div key={m.id} className={`p-4 rounded-lg border ${m.role === "user" ? "bg-purple-950/30 border-purple-800" : m.role === "philosopher" ? "bg-zinc-900 border-zinc-700" : "bg-yellow-950/20 border-yellow-700/40"}`}>
                   <div className="text-xs mb-2 text-zinc-500">
-                    {m.role === "user" ? "你" : m.role === "philosopher" ? philosopher.nameCN : "Judge"}
+                    {m.role === "user" ? t("battle.you") : m.role === "philosopher" ? displayName : t("battle.judge")}
                   </div>
                   <p className="whitespace-pre-wrap">{m.content}</p>
                 </div>
               ))}
-              {isThinking && <div className="text-zinc-500 italic">Agent 思考中...</div>}
+              {isThinking && <div className="text-zinc-500 italic">{t("battle.agentThinking")}</div>}
             </div>
 
             <div className="flex gap-3">
@@ -334,7 +356,7 @@ export function PhilosophyBattleLive() {
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && void handleUserTurn()}
-                placeholder="继续输入你的观点..."
+                placeholder={t("battle.inputPlaceholder")}
                 className="flex-1 p-3 bg-zinc-950 border border-zinc-700 rounded-lg"
               />
               <button onClick={() => void handleUserTurn()} disabled={!userInput.trim() || isThinking} className="px-6 py-3 bg-purple-600 rounded-lg disabled:opacity-50">
@@ -347,18 +369,18 @@ export function PhilosophyBattleLive() {
               disabled={!canReveal && messages.length < 4}
               className="w-full mt-6 py-3 rounded-lg bg-yellow-600 hover:bg-yellow-700 disabled:bg-zinc-700"
             >
-              进入总结
+              {t("battle.enterSummary")}
             </button>
           </div>
         )}
 
         {stage === "reveal" && topic && (
           <div className="max-w-4xl mx-auto bg-zinc-900 border border-zinc-800 rounded-xl p-8">
-            <h3 className="text-2xl font-bold mb-4">完整分析</h3>
+            <h3 className="text-2xl font-bold mb-4">{t("battle.fullAnalysis")}</h3>
             <p className="text-zinc-300 whitespace-pre-line">
               {isGeneratingSummary
-                ? "Agent 正在生成总结..."
-                : fullExplanation || "模型未能生成总结，请检查后端服务后重试。"}
+                ? t("battle.summaryGenerating")
+                : fullExplanation || t("battle.summaryFailed")}
             </p>
             <DebateSummary
               philosopher={philosopher}
@@ -367,8 +389,8 @@ export function PhilosophyBattleLive() {
               userReason={messages.filter((m) => m.role === "user").map((m) => m.content).join("\n")}
             />
             <div className="mt-6 flex gap-4">
-              <Link to="/" className="flex-1 py-3 rounded-lg border border-zinc-700 text-center">返回地图</Link>
-              <Link to="/profile" className="flex-1 py-3 rounded-lg bg-purple-600 text-center">查看思维画像</Link>
+              <Link to="/" className="flex-1 py-3 rounded-lg border border-zinc-700 text-center">{t("battle.backHome")}</Link>
+              <Link to="/profile" className="flex-1 py-3 rounded-lg bg-purple-600 text-center">{t("battle.viewProfile")}</Link>
             </div>
           </div>
         )}

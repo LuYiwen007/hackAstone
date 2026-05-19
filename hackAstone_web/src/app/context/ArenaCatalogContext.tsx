@@ -7,16 +7,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  philosophers as fallbackPhilosophers,
-  regions as fallbackRegions,
-  timePeriods as fallbackTimePeriods,
-  type Philosopher,
-} from "../data/philosophers";
+import { philosophers as fallbackPhilosophers, type Philosopher } from "../data/philosophers";
+import { regions as fallbackRegions, timePeriods as fallbackTimePeriods } from "../data/catalogMeta";
 import { battles as fallbackBattles, type Battle } from "../data/battles";
 import { debateTopicsByPhilosopher } from "../data/debateTopics";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { fetchArenaCatalog, type RegionMeta, type TimePeriodMeta } from "../../shared/api/arena";
+import { useArenaLocale } from "./ArenaLocaleContext";
 
 export type ArenaCatalogContextValue = {
   philosophers: Philosopher[];
@@ -36,6 +33,7 @@ const fallbackDebateTopics: Record<string, DebateTopicContent> = {
 };
 
 export function ArenaCatalogProvider({ children }: { children: ReactNode }) {
+  const { locale } = useArenaLocale();
   const [philosophers, setPhilosophers] = useState<Philosopher[]>(fallbackPhilosophers);
   const [regions, setRegions] = useState<RegionMeta[]>(fallbackRegions);
   const [timePeriods, setTimePeriods] = useState<TimePeriodMeta[]>(fallbackTimePeriods);
@@ -46,7 +44,7 @@ export function ArenaCatalogProvider({ children }: { children: ReactNode }) {
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    fetchArenaCatalog()
+    fetchArenaCatalog(locale)
       .then((data) => {
         setPhilosophers(data.philosophers);
         setRegions(data.regions);
@@ -60,7 +58,7 @@ export function ArenaCatalogProvider({ children }: { children: ReactNode }) {
         setCatalogError(e.message);
         setCatalogFromServer(false);
       });
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     load();
