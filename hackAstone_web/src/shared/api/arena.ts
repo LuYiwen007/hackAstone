@@ -1,8 +1,11 @@
 import type { Battle } from "../../app/data/battles";
+import type { DisciplineBattleBilingual } from "../../app/data/battleLocale";
 import type { Philosopher } from "../../app/data/philosophers";
 import type { DebateTopicContent } from "../../app/data/debateTopicTypes";
 import type { ArenaLocale } from "../i18n/format";
 import { apiGet, apiPost } from "./client";
+
+export type { DisciplineBattleBilingual };
 
 export type RegionMeta = { id: string; name: string; x: number; y: number };
 export type TimePeriodMeta = {
@@ -62,6 +65,7 @@ type AgentRunResponse = {
   appId: string;
   text: string;
   cached: boolean;
+  battle?: DisciplineBattleBilingual;
 };
 
 export function runAgent(
@@ -74,6 +78,14 @@ export function runAgent(
 
 export function runEchoQuery(query: string) {
   return runAgent("echo", query, []);
+}
+
+/** 学科辩论 AI 出题：一次返回中英文两套对局文案 */
+export function generateDisciplineBattle(categoryEn: string, categoryZh: string) {
+  return apiPost<AgentRunResponse>("/arena/agent/discipline/battle", {
+    categoryEn,
+    categoryZh,
+  });
 }
 
 export function generateTopic(

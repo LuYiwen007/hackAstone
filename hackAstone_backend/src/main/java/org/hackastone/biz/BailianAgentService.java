@@ -32,12 +32,12 @@ public class BailianAgentService {
     @Autowired
     private BailianAgentConfig config;
 
-    public Map<String, Object> runAgent(String agentName, String query, List<String> imageList) {
+    private Map<String, Object> runAgent(String agentName, String query, List<String> imageList, boolean useCache) {
         String appId = resolveAppId(agentName);
         String cacheKey = appId + "::" + query;
-        CacheEntry hit = cache.get(cacheKey);
+        CacheEntry hit = useCache ? cache.get(cacheKey) : null;
         long now = System.currentTimeMillis();
-        if (hit != null && now - hit.timestamp <= config.getCacheTtlMs()) {
+        if (useCache && hit != null && now - hit.timestamp <= config.getCacheTtlMs()) {
             Map<String, Object> out = new HashMap<>(hit.data);
             out.put("cached", true);
             return out;
@@ -74,7 +74,9 @@ public class BailianAgentService {
         out.put("text", text);
         // 不把百炼完整 JSON 回传给前端：体积大且偶发导致响应序列化失败（HTTP 500）
         out.put("cached", false);
-        cache.put(cacheKey, new CacheEntry(now, out));
+        if (useCache) {
+            cache.put(cacheKey, new CacheEntry(now, out));
+        }
         return out;
     }
 
@@ -83,7 +85,16 @@ public class BailianAgentService {
     }
 
     public Map<String, Object> runEcho(String query) {
-        return runAgent("echo", query, Collections.emptyList());
+        return runEcho(query, true);
+    }
+
+    /** @param useCache false 用于学科 AI 出题等需每次重新生成的场景 */
+    public Map<String, Object> runEcho(String query, boolean useCache) {
+        return runAgent("echo", query, Collections.emptyList(), useCache);
+    }
+
+    public Map<String, Object> runAgent(String agentName, String query, List<String> imageList) {
+        return runAgent(agentName, query, imageList, true);
     }
 
     private String resolveAppId(String agentName) {

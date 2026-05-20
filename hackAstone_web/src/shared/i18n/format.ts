@@ -1,7 +1,8 @@
 export type ArenaLocale = "en" | "zh";
 
 export const DEFAULT_LOCALE: ArenaLocale = "en";
-export const LOCALE_STORAGE_KEY = "arena-locale";
+/** Bumped so first-time visitors default to English (v1 may have stored zh). */
+export const LOCALE_STORAGE_KEY = "arena-locale-v2";
 
 export function normalizeLocale(raw: string | null | undefined): ArenaLocale {
   if (!raw) return DEFAULT_LOCALE;

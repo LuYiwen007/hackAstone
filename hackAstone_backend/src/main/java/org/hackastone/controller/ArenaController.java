@@ -5,6 +5,9 @@ import org.hackastone.base.util.auth.UserContext;
 import org.hackastone.biz.ArenaDataService;
 import org.hackastone.biz.ArenaEchoPrompts;
 import org.hackastone.biz.BailianAgentService;
+import org.hackastone.biz.DisciplineBattleParser;
+import org.hackastone.base.util.exception.HackAstoneBizException;
+import org.hackastone.base.util.constants.ResultEnum;
 import org.hackastone.biz.BattleRecordService;
 import org.hackastone.biz.UserProfileService;
 import org.hackastone.config.BailianAgentConfig;
@@ -153,6 +156,30 @@ public class ArenaController {
     /**
      * 哲学辩题生成（默认走 echo agent）
      */
+    /**
+     * 学科辩论 AI 出题：返回与 catalog battles 相同结构（question / builderView / breakerView / judgeQuestions / reveal）
+     */
+    @PostMapping("/agent/discipline/battle")
+    public Result<Map<String, Object>> disciplineBattle(@RequestBody Map<String, Object> request) {
+        String categoryEn = String.valueOf(request.getOrDefault("categoryEn", "General"));
+        String categoryZh = String.valueOf(request.getOrDefault("categoryZh", "全部"));
+        Map<String, Object> agentOut = bailianAgentService.runEcho(
+                ArenaEchoPrompts.disciplineBattle(categoryEn, categoryZh), false);
+        String text = String.valueOf(agentOut.getOrDefault("text", ""));
+        Map<String, Object> battle = DisciplineBattleParser.parse(text);
+        if (battle == null) {
+            String preview = text.length() > 280 ? text.substring(0, 280) + "..." : text;
+            if (text.contains("role-mismatch") || text.contains("CA-Ledger-DATA")) {
+                throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                        "百炼 echo 应用角色不匹配，无法生成学科辩论 JSON。请配置正确的 Echo 应用 ID。");
+            }
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "模型未返回可用的学科辩论 JSON。响应预览：" + preview);
+        }
+        agentOut.put("battle", battle);
+        return Result.success(agentOut);
+    }
+
     @PostMapping("/agent/topic")
     public Result<Map<String, Object>> topic(@RequestBody Map<String, Object> request) {
         String philosopherName = String.valueOf(request.getOrDefault("philosopherName", "某位思想家"));

@@ -37,6 +37,21 @@ public final class ArenaEchoPrompts {
             + "\"messages\":[{\"speaker\":\"philosopherId\",\"content\":\"string\"}]"
             + "}";
 
+    private static final String DISCIPLINE_BATTLE_LOCALE_SCHEMA = "{"
+            + "\"question\":\"string\","
+            + "\"category\":\"string\","
+            + "\"builderView\":\"string\","
+            + "\"breakerView\":\"string\","
+            + "\"judgeQuestions\":[\"string\",\"string\",\"string\"],"
+            + "\"reveal\":\"string\""
+            + "}";
+
+    /** 学科辩论 AI 出题：一次返回中英文两套（en + zh） */
+    public static final String DISCIPLINE_BATTLE_BILINGUAL_JSON_SCHEMA = "{"
+            + "\"en\":" + DISCIPLINE_BATTLE_LOCALE_SCHEMA + ","
+            + "\"zh\":" + DISCIPLINE_BATTLE_LOCALE_SCHEMA
+            + "}";
+
     private static String header(String task, String acceptance, String constraints, String returnSchema) {
         return "[ROLE]\n" + ROLE + "\n\n"
                 + "[TASK]\n" + task + "\n\n"
@@ -117,6 +132,27 @@ public final class ArenaEchoPrompts {
                 + "哲学家：" + philosopherName + "；学派：" + school + "；关键思想：" + keyIdeas + "\n"
                 + "讨论提醒：" + promptLead + "\n"
                 + "历史：\n" + history;
+    }
+
+    /**
+     * 学科辩论 AI 出题（/arena/agent/discipline/battle）— 一次生成中英文两套完整对局文案。
+     */
+    public static String disciplineBattle(String categoryEn, String categoryZh) {
+        String task = "Generate ONE discipline debate match in Builder vs Breaker format, with FULL content in BOTH English (en) and Chinese (zh). "
+                + "Each locale block must have: question, category, builderView, breakerView, judgeQuestions (exactly 3), reveal.";
+        String acceptance = "Top-level keys must be exactly: en, zh. Each block must include all fields with non-empty strings; judgeQuestions length 3.";
+        String constraints = "en block entirely in English; zh block entirely in Chinese; same debate topic and logical structure in both; "
+                + "builderView = Builder stance; breakerView = Breaker stance; reveal transcends false binary; field names match schema";
+        return header(task, acceptance, constraints, DISCIPLINE_BATTLE_BILINGUAL_JSON_SCHEMA)
+                + "Category (English label for en.category): " + categoryEn + "\n"
+                + "Category (Chinese label for zh.category): " + categoryZh + "\n"
+                + "If category is General/全部, pick any compelling domain and use matching category labels in en/zh.\n"
+                + "Example shape (content must be your own):\n"
+                + "{\"en\":{\"question\":\"...\",\"category\":\"Business\",\"builderView\":\"...\",\"breakerView\":\"...\","
+                + "\"judgeQuestions\":[\"?\",\"?\",\"?\"],\"reveal\":\"...\"},"
+                + "\"zh\":{\"question\":\"...\",\"category\":\"商业\",\"builderView\":\"...\",\"breakerView\":\"...\","
+                + "\"judgeQuestions\":[\"？\",\"？\",\"？\"],\"reveal\":\"...\"}}\n"
+                + "Keep each view 80-150 words; reveal 120-200 words; output ONLY the JSON object.";
     }
 
     public static String dilemmaSummary(String title, String question, String userStance,
