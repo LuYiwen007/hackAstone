@@ -3,26 +3,41 @@
 <mapper namespace="org.hackastone.base.dal.mapper.UserMapper">
 
     <resultMap id="BaseResultMap" type="org.hackastone.base.dal.entity.UserEntity">
-        <id column="user_id" property="userId" jdbcType="VARCHAR"/>
+        <id column="id" property="userId" jdbcType="VARCHAR"/>
         <result column="username" property="username" jdbcType="VARCHAR"/>
-        <result column="password" property="password" jdbcType="VARCHAR"/>
+        <result column="phone" property="phone" jdbcType="VARCHAR"/>
+        <result column="password_hash" property="password" jdbcType="VARCHAR"/>
         <result column="nickname" property="nickname" jdbcType="VARCHAR"/>
-        <result column="role" property="role" jdbcType="VARCHAR"/>
-        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="avatar_url" property="avatarUrl" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="ext_info" property="extInfo" jdbcType="VARCHAR"/>
         <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
     </resultMap>
 
     <insert id="insert" parameterType="org.hackastone.base.dal.entity.UserEntity">
-        INSERT INTO ha_user_account 
-        (user_id, username, password, nickname, role, status, created_at)
-        VALUES 
-        (#{userId}, #{username}, #{password}, #{nickname}, 'USER', 1, NOW())
+        INSERT INTO ha_user
+        (id, username, password_hash, nickname, status, created_at, updated_at)
+        VALUES
+        (#{userId}, #{username}, #{password}, #{nickname}, 'ENABLED', NOW(), NOW())
     </insert>
 
     <select id="selectByUsername" resultMap="BaseResultMap">
-        SELECT user_id, username, password, nickname, role, status, created_at
-        FROM ha_user_account
+        SELECT id, username, phone, password_hash, nickname, avatar_url, status, ext_info, created_at, updated_at
+        FROM ha_user
         WHERE username = #{username}
     </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT id, username, phone, password_hash, nickname, avatar_url, status, ext_info, created_at, updated_at
+        FROM ha_user
+        WHERE id = #{userId}
+    </select>
+
+    <update id="updateExtInfo">
+        UPDATE ha_user
+        SET ext_info = #{extInfo}, updated_at = NOW()
+        WHERE id = #{userId}
+    </update>
 
 </mapper>

@@ -1,9 +1,12 @@
 package org.hackastone.controller;
 
 import org.hackastone.base.util.Result;
+import org.hackastone.base.util.auth.UserContext;
 import org.hackastone.biz.ArenaDataService;
 import org.hackastone.biz.ArenaEchoPrompts;
 import org.hackastone.biz.BailianAgentService;
+import org.hackastone.biz.BattleRecordService;
+import org.hackastone.biz.UserProfileService;
 import org.hackastone.config.BailianAgentConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +32,10 @@ public class ArenaController {
     private BailianAgentService bailianAgentService;
     @Autowired
     private BailianAgentConfig bailianAgentConfig;
+    @Autowired
+    private UserProfileService userProfileService;
+    @Autowired
+    private BattleRecordService battleRecordService;
 
     /**
      * 百炼连接相关配置自检（不返回密钥，仅便于排查「连不上」类问题）
@@ -88,11 +95,45 @@ public class ArenaController {
     }
 
     /**
-     * 思维画像（当前为演示数据，后续可对齐用户与对局统计）
+     * 保存对局记录
+     */
+    @PostMapping("/battle/record")
+    public Result<String> saveBattleRecord(@RequestBody Map<String, Object> request) {
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
+
+        org.hackastone.base.dal.entity.BattleRecordEntity record = new org.hackastone.base.dal.entity.BattleRecordEntity();
+        record.setUserId(userId);
+        record.setBattleType(String.valueOf(request.getOrDefault("battleType", "battle")));
+        record.setTopic(String.valueOf(request.getOrDefault("topic", "")));
+        record.setUserChoice(String.valueOf(request.getOrDefault("userChoice", "")));
+        record.setJudgeSummary(String.valueOf(request.getOrDefault("judgeSummary", "")));
+        record.setChangedStance(Boolean.TRUE.equals(request.get("changedStance")) ? 1 : 0);
+        Object messages = request.get("messages");
+        if (messages != null) {
+            try {
+                record.setMessages(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(messages));
+            } catch (Exception e) {
+                record.setMessages(null);
+            }
+        }
+
+        battleRecordService.saveRecord(record);
+        return Result.success(record.getId());
+    }
+
+    /**
+     * 思维画像：基于当前登录用户返回个性化数据
      */
     @GetMapping("/profile")
     public Result<Map<String, Object>> profile() {
-        return Result.success(arenaDataService.getProfile());
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.success(arenaDataService.getProfile());
+        }
+        return Result.success(userProfileService.getOrCreateProfile(userId));
     }
 
     /**
@@ -175,7 +216,7 @@ public class ArenaController {
      */
     @PostMapping("/agent/dilemma/summary")
     public Result<Map<String, Object>> dilemmaSummary(@RequestBody Map<String, Object> request) {
-        String moralDilemmaTitle = String.valueOf(request.getOrDefault("moralDilemmaTitle", ""));
+        String moralDilemmaTitle = String.valueOf(request.getOrDefault("moralDilemmaEnglishTitle", ""));
         String dilemmaQuestion = String.valueOf(request.getOrDefault("question", ""));
         String userStance = String.valueOf(request.getOrDefault("userStance", ""));
         String philosopherName = String.valueOf(request.getOrDefault("philosopherName", ""));

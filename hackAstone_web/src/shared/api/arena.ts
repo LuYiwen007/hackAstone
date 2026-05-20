@@ -2,7 +2,7 @@ import type { Battle } from "../../app/data/battles";
 import type { Philosopher } from "../../app/data/philosophers";
 import type { DebateTopicContent } from "../../app/data/debateTopicTypes";
 import type { ArenaLocale } from "../i18n/format";
-import { apiGet, apiBaseUrl } from "./client";
+import { apiGet, apiPost } from "./client";
 
 export type RegionMeta = { id: string; name: string; x: number; y: number };
 export type TimePeriodMeta = {
@@ -64,50 +64,6 @@ type AgentRunResponse = {
   cached: boolean;
 };
 
-async function readErrorMessage(res: Response): Promise<string> {
-  const raw = await res.text();
-  const trimmed = raw.replace(/\s+/g, " ").trim();
-  try {
-    const body = JSON.parse(raw) as {
-      message?: string;
-      error?: string;
-      path?: string;
-      status?: number;
-    };
-    if (body.message) return body.message;
-    if (body.error) return body.error;
-  } catch {
-    /* 非 JSON（如 Spring Whitelabel HTML） */
-  }
-  if (trimmed.length > 0 && trimmed.length < 2000) {
-    return `HTTP ${res.status}：${trimmed.slice(0, 800)}`;
-  }
-  return `HTTP ${res.status}`;
-}
-
-async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const p = path.startsWith("/") ? path : `/${path}`;
-  const base = apiBaseUrl();
-  const url = base ? `${base}${p}` : `/api${p}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-  const json = (await res.json()) as {
-    success: boolean;
-    message: string;
-    data: T;
-  };
-  if (!json.success) {
-    throw new Error(json.message || "请求失败");
-  }
-  return json.data;
-}
-
 export function runAgent(
   agent: "atlas" | "nova" | "forge" | "ledger" | "echo" | "sentinel",
   query: string,
@@ -128,7 +84,7 @@ export function generateTopic(
   return apiPost<AgentRunResponse>("/arena/agent/topic", {
     philosopherName,
     philosopherSchool,
-    keyIdeas: keyIdeas.join("、"),
+    keyIdeas: keyIdeas.join("。"),
   });
 }
 
@@ -171,4 +127,15 @@ export function generateDilemmaSummary(body: {
   history: string;
 }) {
   return apiPost<AgentRunResponse>("/arena/agent/dilemma/summary", body);
+}
+
+export function saveBattleRecord(body: {
+  battleType: string;
+  topic: string;
+  userChoice: string;
+  judgeSummary: string;
+  changedStance: boolean;
+  messages?: unknown;
+}) {
+  return apiPost<string>("/arena/battle/record", body);
 }

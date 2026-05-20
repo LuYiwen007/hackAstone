@@ -7,7 +7,8 @@ import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleCo
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { DebateSummary } from "../components/DebateSummary";
-import { generateTopic, runEchoQuery } from "../../shared/api/arena";
+import { generateTopic, runEchoQuery, saveBattleRecord } from "../../shared/api/arena";
+import { isLoggedIn } from "../../shared/api/client";
 import { parseJsonPayload } from "../../shared/jsonPayload";
 
 type Stage = "topic" | "choose" | "debate" | "reveal";
@@ -243,6 +244,18 @@ export function PhilosophyBattleLive() {
       const parsed = parseJsonPayload<SummaryResult>(resp.text);
       if (parsed?.fullExplanation) {
         setFullExplanation(parsed.fullExplanation);
+        if (isLoggedIn()) {
+          saveBattleRecord({
+            battleType: "philosophy",
+            topic: topic.question,
+            userChoice: choiceLabel(choice),
+            judgeSummary: parsed.fullExplanation,
+            changedStance: false,
+            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          }).catch(() => {
+            // 保存失败静默处理
+          });
+        }
       } else {
         throw new Error(t("error.summaryField"));
       }

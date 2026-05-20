@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router";
 import { ArrowLeft, MessageSquare, AlertCircle, Swords, Users, User } from "lucide-react";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
+import { saveBattleRecord } from "../../shared/api/arena";
+import { isLoggedIn } from "../../shared/api/client";
 
 type Stage = "choose" | "reason" | "judge" | "reveal";
 type Choice = "builder" | "breaker" | "uncertain" | null;
@@ -48,6 +50,21 @@ export function Battle() {
       setStage("reveal");
     }
   };
+
+  useEffect(() => {
+    if (stage === "reveal" && isLoggedIn()) {
+      saveBattleRecord({
+        battleType: "battle",
+        topic: battle.question,
+        userChoice: choice ?? "--",
+        judgeSummary: battle.reveal ?? "",
+        changedStance: false,
+      }).catch(() => {
+        // 保存失败静默处理，不影响用户体验
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">

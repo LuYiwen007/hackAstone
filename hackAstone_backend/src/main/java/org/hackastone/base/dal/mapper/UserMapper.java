@@ -16,4 +16,14 @@ public interface UserMapper {
      * 根据用户名查询（用于登录和检查重名）
      */
     UserEntity selectByUsername(@Param("username") String username);
+
+    /**
+     * 根据用户ID查询
+     */
+    UserEntity selectById(@Param("userId") String userId);
+
+    /**
+     * 更新扩展信息
+     */
+    int updateExtInfo(@Param("userId") String userId, @Param("extInfo") String extInfo);
 }

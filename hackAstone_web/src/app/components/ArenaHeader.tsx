@@ -1,7 +1,8 @@
-import { AlertCircle, Swords, User, Users, UsersRound } from "lucide-react";
-import { Link } from "react-router";
+import { AlertCircle, LogIn, LogOut, Swords, User, Users, UsersRound } from "lucide-react";
+import { Link, useNavigate } from "react-router";
 import { useArenaLocale } from "../context/ArenaLocaleContext";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { getAuth, clearAuth, isLoggedIn } from "../../shared/api/client";
 
 type ArenaPage = "home" | "disciplines" | "roundtable" | "dilemma";
 
@@ -18,6 +19,14 @@ type ArenaHeaderProps = {
 
 export function ArenaHeader({ currentPage, theme }: ArenaHeaderProps) {
   const { t } = useArenaLocale();
+  const navigate = useNavigate();
+  const loggedIn = isLoggedIn();
+  const auth = getAuth();
+
+  const handleLogout = () => {
+    clearAuth();
+    window.location.reload();
+  };
 
   const pageMeta: Record<
     ArenaPage,
@@ -49,13 +58,34 @@ export function ArenaHeader({ currentPage, theme }: ArenaHeaderProps) {
 
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Link
-              to="/profile"
-              className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800"
-            >
-              <User className="h-4 w-4" />
-              <span className="text-sm">{t("nav.profile")}</span>
-            </Link>
+            {loggedIn ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="text-sm max-w-[80px] truncate">
+                    {auth?.nickname || auth?.username || t("nav.profile")}
+                  </span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 transition-colors hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
+                  title={t("nav.logout")}
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800 text-zinc-300 hover:text-white"
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="text-sm">{t("nav.login")}</span>
+              </Link>
+            )}
           </div>
         </div>
 

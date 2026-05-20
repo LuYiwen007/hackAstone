@@ -6,6 +6,7 @@ import { MindProfile } from "./pages/MindProfile";
 import { PhilosophyBattleLive } from "./pages/PhilosophyBattleLive";
 import { RoundtableDebate } from "./pages/RoundtableDebate";
 import { Dilemma } from "./pages/Dilemma";
+import { LoginPage } from "./pages/LoginPage";
 
 export const router = createBrowserRouter([
   {
@@ -35,5 +36,9 @@ export const router = createBrowserRouter([
   {
     path: "/dilemma",
     Component: Dilemma,
+  },
+  {
+    path: "/login",
+    Component: LoginPage,
   },
 ]);

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Plus, X, Sparkles, MessageSquare, User } from "lucide-react";
 import type { Philosopher } from "../data/philosophers";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
+import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleContext";
 import { generateRoundtableOpenings, generateRoundtableReply } from "../../shared/api/arena";
 import { parseJsonPayload } from "../../shared/jsonPayload";
 import { ArenaHeader } from "../components/ArenaHeader";
@@ -18,6 +19,7 @@ type Stage = "setup" | "debate" | "summary";
 
 export function RoundtableDebate() {
   const { philosophers } = useArenaCatalog();
+  const { t } = useArenaLocale();
   const [stage, setStage] = useState<Stage>("setup");
   const [selectedPhilosophers, setSelectedPhilosophers] = useState<Philosopher[]>([]);
   const [debateTopic, setDebateTopic] = useState("");
@@ -85,10 +87,10 @@ export function RoundtableDebate() {
           setMessages(openingMessages);
           return;
         }
-        throw new Error("模型未返回有效的开场 JSON");
+        throw new Error(t("roundtable.error.openingJson"));
       })
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : "圆桌开场生成失败";
+        const msg = err instanceof Error ? err.message : t("roundtable.error.openingFailed");
         toast.error(msg);
         setStage("setup");
         setMessages([]);
@@ -126,10 +128,10 @@ export function RoundtableDebate() {
           setMessages((prev) => [...prev, ...responses]);
           return;
         }
-        throw new Error("模型未返回有效的圆桌回应 JSON");
+        throw new Error(t("roundtable.error.replyJson"));
       })
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : "圆桌回应生成失败";
+        const msg = err instanceof Error ? err.message : t("roundtable.error.replyFailed");
         toast.error(msg);
         setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
         setUserInput(userText);
@@ -160,9 +162,9 @@ export function RoundtableDebate() {
             {/* 选择思想家 */}
             <section>
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <span className="text-orange-500">1.</span> 选择思想家
+                <span className="text-orange-500">1.</span> {t("roundtable.step1")}
                 <span className="text-sm font-normal text-zinc-400 ml-2">
-                  （2-4位，可跨时空）
+                  {t("roundtable.step1Hint")}
                 </span>
               </h2>
 
@@ -170,7 +172,7 @@ export function RoundtableDebate() {
               {selectedPhilosophers.length > 0 && (
                 <div className="mb-6 p-4 bg-zinc-900 border border-orange-900/30 rounded-lg">
                   <h3 className="text-sm font-semibold text-orange-500 mb-3">
-                    已选择 {selectedPhilosophers.length} / 4
+                    {t("roundtable.selected", { count: selectedPhilosophers.length })}
                   </h3>
                   <div className="flex flex-wrap gap-3">
                     {selectedPhilosophers.map(p => (
@@ -218,7 +220,7 @@ export function RoundtableDebate() {
                         <div className="font-semibold text-white text-sm">{p.nameCN}</div>
                         <div className="text-xs text-zinc-500 mt-1">{p.school}</div>
                         {isSelected && (
-                          <div className="text-xs text-orange-500 mt-1">✓ 已选择</div>
+                          <div className="text-xs text-orange-500 mt-1">✓ {t("roundtable.selected")}</div>
                         )}
                       </button>
                     );
@@ -229,7 +231,7 @@ export function RoundtableDebate() {
             {/* 选择辩题 */}
             <section>
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <span className="text-orange-500">2.</span> 选择或输入辩题
+                <span className="text-orange-500">2.</span> {t("roundtable.step2")}
               </h2>
 
               <div className="space-y-4">
@@ -254,7 +256,7 @@ export function RoundtableDebate() {
                 {/* 自定义辩题 */}
                 <div className="p-4 bg-zinc-900 border border-dashed border-zinc-700 rounded-lg">
                   <label className="block text-sm font-semibold text-zinc-400 mb-2">
-                    或者，输入你自己的辩题：
+                    {t("roundtable.customTopic")}
                   </label>
                   <input
                     type="text"
@@ -263,7 +265,7 @@ export function RoundtableDebate() {
                       setCustomTopic(e.target.value);
                       setDebateTopic(e.target.value);
                     }}
-                    placeholder="例如：元宇宙是否会导致人类逃避现实？"
+                    placeholder={t("roundtable.customPlaceholder")}
                     className="w-full p-3 bg-zinc-950 border border-zinc-700 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-orange-900/50"
                   />
                 </div>
@@ -278,11 +280,11 @@ export function RoundtableDebate() {
                 className="px-8 py-4 bg-orange-600 hover:bg-orange-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-bold rounded-lg transition-colors flex items-center gap-2 mx-auto"
               >
                 <Sparkles className="w-5 h-5" />
-                开始圆桌辩论
+                {t("roundtable.start")}
               </button>
               {(selectedPhilosophers.length < 2 || !debateTopic) && (
                 <p className="text-sm text-zinc-500 mt-2">
-                  请至少选择2位思想家并设定辩题
+                  {t("roundtable.needMore")}
                 </p>
               )}
             </div>
@@ -298,7 +300,7 @@ export function RoundtableDebate() {
                 {debateTopic}
               </h2>
               <div className="flex items-center justify-center gap-4 text-sm text-zinc-400">
-                <span>参与者：</span>
+                <span>{t("roundtable.participants")}</span>
                 {selectedPhilosophers.map(p => (
                   <span key={p.id} className="text-white">{p.nameCN}</span>
                 ))}
@@ -333,7 +335,7 @@ export function RoundtableDebate() {
                             </>
                           )}
                           {msg.speaker === "user" && (
-                            <span className="font-semibold text-orange-500">你</span>
+                            <span className="font-semibold text-orange-500">{t("roundtable.you")}</span>
                           )}
                         </div>
                         <div className={`p-4 rounded-lg ${
@@ -365,7 +367,7 @@ export function RoundtableDebate() {
                     </div>
                     <div className="flex-1">
                       <div className="p-4 bg-zinc-800 border border-zinc-700 rounded-lg">
-                        <p className="text-zinc-500 italic">思想家们正在思考...</p>
+                        <p className="text-zinc-500 italic">{t("roundtable.thinking")}</p>
                       </div>
                     </div>
                   </div>
@@ -381,7 +383,7 @@ export function RoundtableDebate() {
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleUserSend()}
-                  placeholder="插话或提出新的观点..."
+                  placeholder={t("roundtable.inputPlaceholder")}
                   className="flex-1 p-3 bg-zinc-950 border border-zinc-700 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-orange-900/50"
                 />
                 <button
@@ -390,7 +392,7 @@ export function RoundtableDebate() {
                   className="px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-lg transition-colors flex items-center gap-2"
                 >
                   <MessageSquare className="w-5 h-5" />
-                  发送
+                  {t("roundtable.send")}
                 </button>
               </div>
             </div>
