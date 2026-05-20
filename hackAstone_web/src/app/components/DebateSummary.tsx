@@ -4,7 +4,13 @@ import { Lightbulb, FileText, Download, Save } from "lucide-react";
 import { Philosopher } from "../data/philosophers";
 import { ModernApplication } from "./ModernApplication";
 import { ConceptCards } from "./ConceptCards";
-import { runEchoQuery } from "../../shared/api/arena";
+import {
+  buildDebateNoteKey,
+  fetchDebateNote,
+  runEchoQuery,
+  saveDebateNote,
+} from "../../shared/api/arena";
+import { getAuth, isLoggedIn } from "../../shared/api/client";
 import { parseJsonPayload } from "../../shared/jsonPayload";
 
 interface DebateSummaryProps {
@@ -12,6 +18,8 @@ interface DebateSummaryProps {
   question: string;
   userChoice: "agree" | "disagree" | "uncertain" | null;
   userReason: string;
+  /** 笔记来源类型，用于按用户隔离存储 */
+  sourceType?: string;
 }
 
 type AiDebateInsight = {
@@ -58,11 +66,41 @@ function buildInsightPrompt(
   ].join("\n");
 }
 
-export function DebateSummary({ philosopher, question, userChoice, userReason }: DebateSummaryProps) {
+export function DebateSummary({
+  philosopher,
+  question,
+  userChoice,
+  userReason,
+  sourceType = "debate",
+}: DebateSummaryProps) {
   const [notes, setNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
   const [insight, setInsight] = useState<AiDebateInsight | null>(null);
   const [insightLoading, setInsightLoading] = useState(true);
+  const [noteSaving, setNoteSaving] = useState(false);
+  const sourceKey = buildDebateNoteKey(philosopher.id, question);
+  const loggedIn = isLoggedIn();
+  const auth = getAuth();
+
+  useEffect(() => {
+    if (!loggedIn) {
+      setNotes("");
+      return;
+    }
+    let cancelled = false;
+    fetchDebateNote(sourceType, sourceKey)
+      .then((res) => {
+        if (!cancelled && res.content) {
+          setNotes(res.content);
+        }
+      })
+      .catch(() => {
+        /* 无笔记或网络错误时保持空白 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn, auth?.userId, sourceType, sourceKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,9 +132,26 @@ export function DebateSummary({ philosopher, question, userChoice, userReason }:
     };
   }, [philosopher.id, question, userChoice, userReason]);
 
-  const handleSaveNotes = () => {
-    console.log("保存笔记:", notes);
-    alert("笔记已保存到你的学习档案！");
+  const handleSaveNotes = async () => {
+    if (!loggedIn) {
+      toast.error("请先登录后再保存笔记");
+      return;
+    }
+    setNoteSaving(true);
+    try {
+      await saveDebateNote({
+        sourceType,
+        sourceKey,
+        topic: question,
+        content: notes,
+      });
+      toast.success("笔记已保存到你的学习档案");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "保存失败";
+      toast.error(msg);
+    } finally {
+      setNoteSaving(false);
+    }
   };
 
   const handleDownload = () => {
@@ -240,10 +295,11 @@ ${notes || "（暂无笔记）"}
               <button
                 type="button"
                 onClick={handleSaveNotes}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors font-bold"
+                disabled={noteSaving}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors font-bold disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                <span>保存笔记</span>
+                <span>{noteSaving ? "保存中…" : loggedIn ? "保存笔记" : "登录后保存"}</span>
               </button>
               <button
                 type="button"

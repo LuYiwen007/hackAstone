@@ -7,23 +7,20 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UserMapper {
 
-    /**
-     * 新增用户
-     */
     int insert(UserEntity userEntity);
 
-    /**
-     * 根据用户名查询（用于登录和检查重名）
-     */
     UserEntity selectByUsername(@Param("username") String username);
 
-    /**
-     * 根据用户ID查询
-     */
+    UserEntity selectByEmail(@Param("email") String email);
+
+    UserEntity selectByNickname(@Param("nickname") String nickname);
+
+    /** 昵称、邮箱或历史 username 登录 */
+    UserEntity selectByLoginAccount(@Param("account") String account);
+
     UserEntity selectById(@Param("userId") String userId);
 
-    /**
-     * 更新扩展信息
-     */
     int updateExtInfo(@Param("userId") String userId, @Param("extInfo") String extInfo);
+
+    int updatePasswordHash(@Param("userId") String userId, @Param("passwordHash") String passwordHash);
 }

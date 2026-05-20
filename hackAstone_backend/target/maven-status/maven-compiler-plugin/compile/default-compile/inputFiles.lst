@@ -4,10 +4,12 @@
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/entity/IdSequenceEntity.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/entity/PlanEntity.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/entity/UserEntity.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/entity/UserNoteEntity.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/mapper/BattleRecordMapper.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/mapper/IdSequenceMapper.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/mapper/PlanMapper.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/mapper/UserMapper.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/dal/mapper/UserNoteMapper.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/util/Result.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/util/auth/JwtUtil.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/base/util/auth/UserContext.java
@@ -23,9 +25,11 @@
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/DisciplineBattleParser.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/RoundtableMessagesParser.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/UserBiz.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/UserNoteService.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/UserProfileService.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/config/AuthInterceptor.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/config/BailianAgentConfig.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/config/DatabaseSchemaInitializer.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/config/GlobalExceptionHandler.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/config/WebConfig.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/config/WebCorsConfig.java
@@ -38,3 +42,4 @@
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/UserLoginRequest.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/UserRegisterRequest.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/core/component/IdGenerator.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/core/component/PasswordHasher.java

@@ -24,19 +24,24 @@ public class UserController {
     private BizTemplate bizTemplate;
 
     @PostMapping("/register")
-    public Result<String> register(@RequestBody UserRegisterRequest request) {
-        return bizTemplate.execute(() -> userBiz.register(request.getUsername(), request.getPassword(), request.getNickname()));
+    public Result<Map<String, Object>> register(@RequestBody UserRegisterRequest request) {
+        return bizTemplate.execute(() -> {
+            String userId = userBiz.register(request.getEmail(), request.getPassword(), request.getNickname());
+            Map<String, Object> body = new HashMap<>();
+            body.put("userId", userId);
+            return body;
+        });
     }
 
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody UserLoginRequest request) {
         return bizTemplate.execute(() -> {
-            UserEntity user = userBiz.login(request.getUsername(), request.getPassword());
-            String token = JwtUtil.generateToken(user.getUserId(), user.getUsername());
+            UserEntity user = userBiz.login(request.getAccount(), request.getPassword());
+            String token = JwtUtil.generateToken(user.getUserId(), user.getEmail() != null ? user.getEmail() : user.getUserId());
             Map<String, Object> result = new HashMap<>();
             result.put("token", token);
             result.put("userId", user.getUserId());
-            result.put("username", user.getUsername());
+            result.put("email", user.getEmail());
             result.put("nickname", user.getNickname());
             return result;
         });

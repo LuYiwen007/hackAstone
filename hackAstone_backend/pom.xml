@@ -69,6 +69,12 @@
             <version>2.3.1</version>
         </dependency>
 
+        <!-- BCrypt 密码哈希（仅 crypto，不引入完整 Security 过滤器链） -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

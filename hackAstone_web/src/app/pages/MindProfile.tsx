@@ -53,7 +53,7 @@ export function MindProfile() {
         setError(msg);
       })
       .finally(() => setLoading(false));
-  }, [loggedIn, t]);
+  }, [loggedIn, auth?.userId, t]);
 
   const { biases, stats, recentBattles } = data;
   const statsWithIcons = stats.map((s) => ({ ...s, icon: Users }));

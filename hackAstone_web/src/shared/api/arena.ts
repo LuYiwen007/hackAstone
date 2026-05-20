@@ -169,3 +169,28 @@ export function saveBattleRecord(body: {
 }) {
   return apiPost<string>("/arena/battle/record", body);
 }
+
+export function buildDebateNoteKey(philosopherId: string, question: string) {
+  return `${philosopherId}|${question.trim()}`;
+}
+
+export type DebateNotePayload = {
+  id?: string;
+  content?: string;
+  topic?: string;
+  updatedAt?: string;
+};
+
+export function fetchDebateNote(sourceType: string, sourceKey: string) {
+  const q = new URLSearchParams({ sourceType, sourceKey });
+  return apiGet<DebateNotePayload>(`/arena/notes?${q.toString()}`);
+}
+
+export function saveDebateNote(body: {
+  sourceType: string;
+  sourceKey: string;
+  topic: string;
+  content: string;
+}) {
+  return apiPost<{ id: string; content: string }>("/arena/notes", body);
+}
