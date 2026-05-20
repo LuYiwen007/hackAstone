@@ -48,10 +48,6 @@ struct RoundtableView: View {
             .padding(.bottom, 28)
         }
         .background(ArenaTheme.background)
-        .navigationTitle(L.roundtableNavTitle)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
         .alert(L.apiRequestFailedTitle, isPresented: Binding(
             get: { errorAlert != nil },
             set: { if !$0 { errorAlert = nil } }
@@ -149,6 +145,7 @@ struct RoundtableView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L.customTopicLabel).font(.caption.weight(.semibold)).foregroundStyle(ArenaTheme.textMuted)
                     TextField(L.customTopicPlaceholder, text: $customTopic)
+                        .arenaInputTextStyle()
                         .textFieldStyle(.roundedBorder)
                         .onChange(of: customTopic) { _, v in
                             debateTopic = v
@@ -229,6 +226,7 @@ struct RoundtableView: View {
 
             HStack(spacing: 10) {
                 TextField(L.roundtableInputPlaceholder, text: $userInput)
+                    .arenaInputTextStyle()
                     .textFieldStyle(.roundedBorder)
                 Button(L.send) { sendUser() }
                     .buttonStyle(.borderedProminent)
@@ -296,9 +294,11 @@ struct RoundtableView: View {
         Task {
             do {
                 let resp = try await ArenaAPI.generateRoundtableOpenings(topic: debateTopic, participants: participants)
-                if let parsed = JsonPayload.parse(resp.text, as: RTMessagesPayload.self),
-                   let arr = parsed.messages, !arr.isEmpty
-                {
+                let arr: [RoundtableMessageSlice]? = resp.roundtableMessages?.pick(english: L.prefersEnglish)
+                    ?? JsonPayload.parse(resp.text, as: RTMessagesPayload.self)?.messages?.map {
+                        RoundtableMessageSlice(speaker: $0.speaker, content: $0.content)
+                    }
+                if let arr, !arr.isEmpty {
                     await MainActor.run {
                         messages = arr.enumerated().map { i, m in
                             RTMessage(id: "o-\(m.speaker)-\(i)", speaker: m.speaker, content: m.content)
@@ -329,9 +329,11 @@ struct RoundtableView: View {
         Task {
             do {
                 let resp = try await ArenaAPI.generateRoundtableReply(topic: debateTopic, userInput: text, participants: participants)
-                if let parsed = JsonPayload.parse(resp.text, as: RTMessagesPayload.self),
-                   let arr = parsed.messages, !arr.isEmpty
-                {
+                let arr: [RoundtableMessageSlice]? = resp.roundtableMessages?.pick(english: L.prefersEnglish)
+                    ?? JsonPayload.parse(resp.text, as: RTMessagesPayload.self)?.messages?.map {
+                        RoundtableMessageSlice(speaker: $0.speaker, content: $0.content)
+                    }
+                if let arr, !arr.isEmpty {
                     let more = arr.enumerated().map { i, m in
                         RTMessage(id: "r-\(m.speaker)-\(i)-\(UUID().uuidString)", speaker: m.speaker, content: m.content)
                     }

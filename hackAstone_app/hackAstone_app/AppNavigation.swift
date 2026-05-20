@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum AppRoute: Hashable {
+    case login
     case disciplines
     case profile
     case roundtable

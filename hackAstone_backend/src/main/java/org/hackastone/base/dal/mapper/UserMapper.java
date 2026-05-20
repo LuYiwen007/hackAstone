@@ -23,4 +23,8 @@ public interface UserMapper {
     int updateExtInfo(@Param("userId") String userId, @Param("extInfo") String extInfo);
 
     int updatePasswordHash(@Param("userId") String userId, @Param("passwordHash") String passwordHash);
+
+    int updateNickname(@Param("userId") String userId, @Param("nickname") String nickname);
+
+    UserEntity selectByNicknameExceptUser(@Param("nickname") String nickname, @Param("userId") String userId);
 }

@@ -3,9 +3,12 @@ package org.hackastone.controller;
 import org.hackastone.base.dal.entity.UserEntity;
 import org.hackastone.base.util.Result;
 import org.hackastone.base.util.auth.JwtUtil;
+import org.hackastone.base.util.auth.UserContext;
 import org.hackastone.base.util.template.BizTemplate;
 import org.hackastone.biz.UserBiz;
+import org.hackastone.controller.model.UserChangePasswordRequest;
 import org.hackastone.controller.model.UserLoginRequest;
+import org.hackastone.controller.model.UserProfileUpdateRequest;
 import org.hackastone.controller.model.UserRegisterRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -37,13 +40,54 @@ public class UserController {
     public Result<Map<String, Object>> login(@RequestBody UserLoginRequest request) {
         return bizTemplate.execute(() -> {
             UserEntity user = userBiz.login(request.getAccount(), request.getPassword());
-            String token = JwtUtil.generateToken(user.getUserId(), user.getEmail() != null ? user.getEmail() : user.getUserId());
-            Map<String, Object> result = new HashMap<>();
-            result.put("token", token);
-            result.put("userId", user.getUserId());
-            result.put("email", user.getEmail());
-            result.put("nickname", user.getNickname());
-            return result;
+            return toSessionMap(user);
         });
+    }
+
+    @GetMapping("/me")
+    public Result<Map<String, Object>> me() {
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
+        return bizTemplate.execute(() -> toProfileMap(userBiz.getCurrentUser(userId)));
+    }
+
+    @PutMapping("/profile")
+    public Result<Map<String, Object>> updateProfile(@RequestBody UserProfileUpdateRequest request) {
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
+        return bizTemplate.execute(() -> toProfileMap(userBiz.updateNickname(userId, request.getNickname())));
+    }
+
+    @PutMapping("/password")
+    public Result<String> changePassword(@RequestBody UserChangePasswordRequest request) {
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
+        return bizTemplate.execute(() -> {
+            userBiz.changePassword(userId, request.getOldPassword(), request.getNewPassword());
+            return "ok";
+        });
+    }
+
+    private static Map<String, Object> toSessionMap(UserEntity user) {
+        String token = JwtUtil.generateToken(user.getUserId(), user.getEmail() != null ? user.getEmail() : user.getUserId());
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", token);
+        result.putAll(toProfileMap(user));
+        return result;
+    }
+
+    private static Map<String, Object> toProfileMap(UserEntity user) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("userId", user.getUserId());
+        m.put("email", user.getEmail());
+        m.put("nickname", user.getNickname());
+        m.put("avatarUrl", user.getAvatarUrl());
+        return m;
     }
 }

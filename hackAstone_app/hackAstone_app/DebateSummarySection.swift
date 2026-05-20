@@ -1,18 +1,27 @@
 import SwiftUI
 
-/// 对齐 Web `DebateSummary`：通过后端 Echo 生成结构化智能总结。
+/// 对齐 Web `DebateSummary`：Echo 智能总结 + 按用户 uid 保存笔记。
 struct DebateSummarySection: View {
     @EnvironmentObject private var locale: AppLocaleStore
+    @EnvironmentObject private var auth: AuthStore
     let philosopher: Philosopher
     let question: String
     let userChoice: PhilosophyChoice?
     let userReason: String
+    var sourceType: String = "debate"
 
     @State private var insight: AiDebateInsight?
     @State private var isLoading = true
     @State private var loadError: String?
+    @State private var notes = ""
+    @State private var showNotes = false
+    @State private var noteSaving = false
+    @State private var noteMessage: String?
 
     private var L: ArenaL10n { locale.L }
+    private var sourceKey: String {
+        ArenaBilingualParsing.buildDebateNoteKey(philosopherId: philosopher.id, question: question)
+    }
 
     var body: some View {
         let displayName = philosopher.displayName(isEnglish: L.prefersEnglish)
@@ -28,13 +37,60 @@ struct DebateSummarySection: View {
             } else if let s = insight {
                 insightContent(s: s, displayName: displayName)
             }
+
+            notesSection
         }
         .padding(16)
         .background(ArenaTheme.surface)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(ArenaTheme.border))
         .padding(.top, 8)
-        .task(id: "\(philosopher.id)-\(question.hashValue)-\(userReason.hashValue)-\(String(describing: userChoice))") {
+        .task(id: "\(philosopher.id)-\(question.hashValue)-\(userReason.hashValue)-\(String(describing: userChoice))-\(auth.session?.userId ?? "")") {
             await loadInsight()
+        }
+        .task(id: "\(sourceKey)-\(auth.session?.userId ?? "")") {
+            await loadNote()
+        }
+    }
+
+    private var notesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                showNotes.toggle()
+            } label: {
+                HStack {
+                    Label(L.personalNotes, systemImage: "note.text")
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: showNotes ? "chevron.down" : "chevron.right")
+                        .foregroundStyle(ArenaTheme.textMuted)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if showNotes {
+                TextEditor(text: $notes)
+                    .arenaInputTextStyle()
+                    .frame(minHeight: 120)
+                    .padding(8)
+                    .background(ArenaTheme.background)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
+                Button {
+                    Task { await saveNote() }
+                } label: {
+                    Text(noteSaving ? L.savingNote : (auth.isLoggedIn ? L.saveNote : L.loginToSaveNote))
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.purple)
+                .disabled(noteSaving || !auth.isLoggedIn)
+                if let noteMessage {
+                    Text(noteMessage)
+                        .font(.caption)
+                        .foregroundStyle(ArenaTheme.textMuted)
+                }
+            }
         }
     }
 
@@ -103,15 +159,45 @@ struct DebateSummarySection: View {
                   !parsed.deepQuestions.isEmpty else {
                 throw NSError(domain: "summary", code: 1, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
             }
-            await MainActor.run {
-                insight = parsed
-            }
+            await MainActor.run { insight = parsed }
         } catch {
-            await MainActor.run {
-                loadError = (error as NSError).localizedDescription
-            }
+            await MainActor.run { loadError = error.localizedDescription }
         }
         await MainActor.run { isLoading = false }
+    }
+
+    private func loadNote() async {
+        guard auth.isLoggedIn else {
+            await MainActor.run { notes = "" }
+            return
+        }
+        do {
+            if let content = try await ArenaAPI.fetchDebateNote(sourceType: sourceType, sourceKey: sourceKey) {
+                await MainActor.run { notes = content }
+            }
+        } catch {
+            /* 无笔记时忽略 */
+        }
+    }
+
+    private func saveNote() async {
+        guard auth.isLoggedIn else { return }
+        await MainActor.run {
+            noteSaving = true
+            noteMessage = nil
+        }
+        do {
+            try await ArenaAPI.saveDebateNote(
+                sourceType: sourceType,
+                sourceKey: sourceKey,
+                topic: question,
+                content: notes
+            )
+            await MainActor.run { noteMessage = L.noteSaved }
+        } catch {
+            await MainActor.run { noteMessage = error.localizedDescription }
+        }
+        await MainActor.run { noteSaving = false }
     }
 
     private func buildInsightPrompt() -> String {

@@ -41,9 +41,6 @@ struct ArenaL10n {
         return "\(periodLabel) 的 \(regionName) 目前没有可展示的哲学家。"
     }
     var backToMap: String { en ? "Back to map" : "返回地图" }
-    var accountSettingsMacOnly: String {
-        en ? "Account, avatar, and language settings are available on iOS." : "账号、头像与语言设置在 iOS 版提供。"
-    }
 
     func regionName(id: String) -> String {
         if !en {
@@ -126,9 +123,6 @@ struct ArenaL10n {
     var nicknamePrompt: String { en ? "Name shown in the app" : "用于展示的名称" }
     var email: String { en ? "Email" : "邮箱" }
     var password: String { en ? "Password" : "密码" }
-    var newPassword: String { en ? "New password" : "新密码" }
-    var confirmPassword: String { en ? "Confirm password" : "确认新密码" }
-    var savePassword: String { en ? "Save password" : "保存密码" }
     var language: String { en ? "Language" : "语言" }
     var languagePickerTitle: String { en ? "App language" : "界面语言" }
     var simplifiedChinese: String { en ? "简体中文" : "简体中文" }
@@ -138,10 +132,49 @@ struct ArenaL10n {
             ? "Some system UI follows the device language; in-app labels use your choice here."
             : "部分系统组件仍随系统语言；此处选择决定应用内可见文案语言。"
     }
-    var passwordMismatch: String { en ? "Passwords do not match" : "两次输入的密码不一致" }
-    var passwordTooShort: String { en ? "At least 6 characters" : "密码至少 6 位" }
-    var passwordSavedDemo: String {
-        en ? "Saved (demo, not sent to a server)" : "已保存（演示环境，未连接服务器）"
+    // MARK: - Login / register（与 Web login.* 对齐）
+
+    var loginTitle: String { en ? "Login" : "登录" }
+    var registerTitle: String { en ? "Register" : "注册账号" }
+    var loginSubtitle: String { en ? "Enter your cognitive arena" : "进入你的认知竞技场" }
+    var registerSubtitle: String { en ? "Create your mind profile account" : "创建你的思维画像账号" }
+    var loginAccountLabel: String { en ? "Nickname or email" : "昵称或邮箱" }
+    var loginAccountPlaceholder: String { en ? "Enter nickname or email" : "输入昵称或邮箱" }
+    var emailPlaceholder: String { en ? "Enter email" : "输入邮箱" }
+    var passwordPlaceholder: String { en ? "Enter password" : "输入密码" }
+    var loginSubmit: String { en ? "Login" : "登录" }
+    var registerSubmit: String { en ? "Register & login" : "注册并登录" }
+    var loginProcessing: String { en ? "Processing…" : "处理中..." }
+    var hasAccount: String { en ? "Already have an account?" : "已有账号？" }
+    var noAccount: String { en ? "Don't have an account?" : "还没有账号？" }
+    var loginNow: String { en ? "Login now" : "直接登录" }
+    var registerNow: String { en ? "Register now" : "立即注册" }
+    var profileGuestTitle: String { en ? "Your mind profile" : "你的思维画像" }
+    var profileGuestHint: String {
+        en ? "Login to view your personalized mind analysis." : "登录后即可查看属于你的个性化思维分析。"
+    }
+    var profileLoginRegister: String { en ? "Login / Register" : "登录 / 注册" }
+    var saveNote: String { en ? "Save note" : "保存笔记" }
+    var savingNote: String { en ? "Saving…" : "保存中…" }
+    var loginToSaveNote: String { en ? "Login to save" : "登录后保存" }
+    var noteSaved: String { en ? "Note saved" : "笔记已保存" }
+    var personalNotes: String { en ? "Personal notes" : "个人笔记" }
+    var notesPlaceholder: String {
+        en ? "Record your thoughts from this debate…" : "记录你对这次辩论的思考…"
+    }
+    var aiGenerateBattle: String { en ? "AI generate topic" : "AI 智能出题" }
+    var aiGenerating: String { en ? "Generating…" : "生成中…" }
+    var logout: String { en ? "Log out" : "退出登录" }
+
+    var profileSaved: String { en ? "Profile saved" : "资料已保存" }
+    var emailReadOnlyHint: String {
+        en ? "Email is used for login and cannot be changed here." : "邮箱用于登录，此处不可修改。"
+    }
+    var loginToManageAccount: String {
+        en ? "Please log in to manage your account." : "请先登录后再管理账号信息。"
+    }
+    var accountSettingsMacOnly: String {
+        en ? "Account settings are available on iPhone and iPad." : "账号设置请在 iPhone / iPad 应用中使用。"
     }
 
     // MARK: - Disciplines
@@ -491,6 +524,8 @@ struct ArenaL10n {
     }
     var dilemmaRecommended: String { en ? "Recommended" : "推荐哲学家" }
     var dilemmaAllPhilosophers: String { en ? "All philosophers" : "全部哲学家" }
+    var dilemmaExpandPhilosophers: String { en ? "Show more" : "展开更多" }
+    var dilemmaCollapsePhilosophers: String { en ? "Collapse" : "收起" }
     var dilemmaFeaturedBadge: String { en ? "Featured" : "推荐" }
     var dilemmaRechoosePhilosopher: String { en ? "Pick another philosopher" : "重新选择哲学家" }
     var dilemmaCurrentDilemmaLabel: String { en ? "Current dilemma" : "当前困境" }

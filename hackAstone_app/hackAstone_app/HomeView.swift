@@ -8,6 +8,7 @@ private enum HomeMainTab {
 struct HomeView: View {
     @EnvironmentObject private var catalog: ArenaCatalogStore
     @EnvironmentObject private var locale: AppLocaleStore
+    @EnvironmentObject private var auth: AuthStore
     @Binding var path: NavigationPath
 
     @State private var homeMainTab: HomeMainTab = .philosophy
@@ -47,10 +48,6 @@ struct HomeView: View {
             .padding(.bottom, 28)
         }
         .background(ArenaTheme.background)
-        .navigationTitle(homeMainTab == .philosophy ? L.philosophyDebate : L.disciplinesDebate)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
         .sheet(item: $selectedPhilosopher) { p in
             PhilosopherDetailSheet(
                 philosopher: p,
@@ -84,35 +81,49 @@ struct HomeView: View {
         return 16
     }
 
+    /// 与第二行功能按钮（圆桌 / 困境 / 画像）一致的字号
+    private static let headerChipFont: Font = .caption.weight(.semibold)
+
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
+            // 第一行：登录 / 设置，靠右
             HStack {
-                HStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(LinearGradient(colors: [ArenaTheme.headerGradientStart, ArenaTheme.headerGradientEnd], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 40, height: 40)
-                        Image(systemName: "person.3.fill")
-                            .foregroundStyle(.white)
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Cognitive Arena")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(ArenaTheme.textPrimary)
-                        Text(L.homeSubtitle)
-                            .font(.caption)
+                Spacer(minLength: 0)
+                if auth.isLoggedIn {
+                    Button {
+                        showAccountSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(Self.headerChipFont)
                             .foregroundStyle(ArenaTheme.textMuted)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 6)
                     }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        path.append(AppRoute.login)
+                    } label: {
+                        Label {
+                            Text(L.loginTitle)
+                                .font(Self.headerChipFont)
+                        } icon: {
+                            Image(systemName: "person.crop.circle")
+                                .font(Self.headerChipFont)
+                        }
+                        .foregroundStyle(ArenaTheme.orangeAccent)
+                    }
+                    .buttonStyle(.plain)
                 }
-                Spacer()
             }
 
+            // 第二行：圆桌 / 道德困境 / 思维画像
             HStack(spacing: 8) {
                 Button {
                     path.append(AppRoute.roundtable)
                 } label: {
                     Label(L.roundtableDebate, systemImage: "person.3.sequence.fill")
-                        .font(.caption.weight(.semibold))
+                        .font(Self.headerChipFont)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
@@ -129,7 +140,7 @@ struct HomeView: View {
                     path.append(AppRoute.dilemma)
                 } label: {
                     Label(L.moralDilemma, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption.weight(.semibold))
+                        .font(Self.headerChipFont)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
@@ -146,7 +157,7 @@ struct HomeView: View {
                     path.append(AppRoute.profile)
                 } label: {
                     Label(L.mindProfile, systemImage: "person.fill")
-                        .font(.caption.weight(.semibold))
+                        .font(Self.headerChipFont)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
@@ -158,17 +169,9 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
-
-                Button {
-                    showAccountSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .padding(10)
-                        .foregroundStyle(ArenaTheme.textMuted)
-                }
-                .buttonStyle(.plain)
             }
 
+            // 第三行：哲学辩论 / 学科辩论
             HStack(spacing: 8) {
                 Button {
                     homeMainTab = .philosophy
@@ -202,9 +205,11 @@ struct HomeView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                Spacer(minLength: 0)
             }
         }
-        .padding(.vertical, 12)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
     }
 
     private var hero: some View {

@@ -79,10 +79,6 @@ struct PhilosophyBattleView: View {
                 missing
             }
         }
-        .navigationTitle(L.philosophyNavTitle)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
     }
 
     private var missing: some View {
@@ -237,6 +233,7 @@ struct PhilosophyBattleView: View {
             if isThinking { Text(L.agentThinking).font(.caption).foregroundStyle(ArenaTheme.textMuted) }
             HStack(spacing: 10) {
                 TextField(L.continueYourThought, text: $userInput)
+                    .arenaInputTextStyle()
                     .textFieldStyle(.roundedBorder)
                 Button {
                     Task { await handleUserTurn(philosopher: philosopher) }
@@ -479,6 +476,35 @@ struct PhilosophyBattleView: View {
             let resp = try await ArenaAPI.runEcho(query: summaryQuery)
             if let parsed = JsonPayload.parse(resp.text, as: SummaryOnly.self), let fe = parsed.fullExplanation, !fe.isEmpty {
                 fullExplanation = fe
+                if AuthStore.bearerToken != nil, let top = topic {
+                    let choiceText: String = {
+                        switch choice {
+                        case .agree: return L.agree
+                        case .disagree: return L.disagree
+                        case .uncertain: return L.uncertain
+                        case nil: return "--"
+                        }
+                    }()
+                    Task {
+                        try? await ArenaAPI.saveBattleRecord(
+                            battleType: "philosophy",
+                            topic: top.question,
+                            userChoice: choiceText,
+                            judgeSummary: fe,
+                            changedStance: false,
+                            messages: messages.map { m in
+                                let roleName: String = {
+                                    switch m.role {
+                                    case .user: return "user"
+                                    case .philosopher: return "philosopher"
+                                    case .judge: return "judge"
+                                    }
+                                }()
+                                return ["role": roleName, "content": m.content]
+                            }
+                        )
+                    }
+                }
             } else {
                 errorAlert = L.topicBadJson
             }

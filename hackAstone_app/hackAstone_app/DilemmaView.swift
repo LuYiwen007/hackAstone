@@ -41,6 +41,11 @@ struct DilemmaView: View {
     @State private var fullExplanation = ""
     @State private var isGeneratingSummary = false
     @State private var errorAlert: String?
+    /// 「全部哲学家」默认展示数量；每次展开 +5，全部展开后显示收起
+    @State private var otherPhilosophersVisible = 2
+
+    private static let otherPhilosophersPeek = 2
+    private static let otherPhilosophersPageSize = 5
 
     private var L: ArenaL10n { locale.L }
     private var en: Bool { L.prefersEnglish }
@@ -65,9 +70,22 @@ struct DilemmaView: View {
         return catalog.philosophers.filter { !preferred.contains($0.id) }.sorted { $0.period < $1.period }
     }
 
+    private var visibleOtherPhilosophers: [Philosopher] {
+        Array(otherPhilosophers.prefix(otherPhilosophersVisible))
+    }
+
+    private var otherPhilosophersFullyExpanded: Bool {
+        otherPhilosophersVisible >= otherPhilosophers.count
+    }
+
+    private var showsOtherPhilosophersExpandControl: Bool {
+        otherPhilosophers.count > Self.otherPhilosophersPeek
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                backToHomeBar
                 switch stage {
                 case .setup:
                     setupContent
@@ -85,15 +103,6 @@ struct DilemmaView: View {
             .padding(.bottom, 32)
         }
         .background(ArenaTheme.background)
-        .navigationTitle(L.dilemmaNavTitle)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button(L.backToHome) { path = NavigationPath() }
-            }
-        }
         .alert(L.apiRequestFailedTitle, isPresented: Binding(
             get: { errorAlert != nil },
             set: { if !$0 { errorAlert = nil } }
@@ -102,6 +111,18 @@ struct DilemmaView: View {
         } message: {
             Text(errorAlert ?? "")
         }
+    }
+
+    private var backToHomeBar: some View {
+        HStack {
+            Button { path = NavigationPath() } label: {
+                Label(L.backToHome, systemImage: "chevron.left")
+                    .foregroundStyle(ArenaTheme.textMuted)
+            }
+            .buttonStyle(.plain)
+            Spacer()
+        }
+        .padding(.vertical, 4)
     }
 
     private var setupContent: some View {
@@ -227,9 +248,28 @@ struct DilemmaView: View {
                         .font(.caption)
                         .foregroundStyle(ArenaTheme.textMuted)
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 260))], spacing: 12) {
-                        ForEach(otherPhilosophers) { p in
+                        ForEach(visibleOtherPhilosophers) { p in
                             philosopherChoiceCard(p, featured: false)
                         }
+                    }
+                    if showsOtherPhilosophersExpandControl {
+                        Button {
+                            if otherPhilosophersFullyExpanded {
+                                otherPhilosophersVisible = Self.otherPhilosophersPeek
+                            } else {
+                                otherPhilosophersVisible = min(
+                                    otherPhilosophersVisible + Self.otherPhilosophersPageSize,
+                                    otherPhilosophers.count
+                                )
+                            }
+                        } label: {
+                            Text(otherPhilosophersFullyExpanded ? L.dilemmaCollapsePhilosophers : L.dilemmaExpandPhilosophers)
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(ArenaTheme.cyanAccent)
                     }
                 }
             }
@@ -372,6 +412,7 @@ struct DilemmaView: View {
 
             HStack(spacing: 10) {
                 TextField(L.dilemmaInputPlaceholder(name: philosopher.displayName(isEnglish: en)), text: $userInput)
+                    .arenaInputTextStyle()
                     .textFieldStyle(.roundedBorder)
                 Button {
                     Task { await handleUserTurn(dilemma: dilemma, option: option, philosopher: philosopher) }
@@ -448,7 +489,8 @@ struct DilemmaView: View {
                 philosopher: philosopher,
                 question: "\(dilemma.title(en))：\(dilemma.question(en))",
                 userChoice: .uncertain,
-                userReason: messages.filter { $0.role == .user }.map(\.content).joined(separator: "\n")
+                userReason: messages.filter { $0.role == .user }.map(\.content).joined(separator: "\n"),
+                sourceType: "dilemma"
             )
 
             HStack(spacing: 12) {
@@ -478,6 +520,7 @@ struct DilemmaView: View {
         selectedDilemmaId = id
         selectedOptionId = nil
         selectedPhilosopherId = nil
+        otherPhilosophersVisible = Self.otherPhilosophersPeek
         stage = .setup
         messages = []
         userInput = ""
@@ -488,6 +531,7 @@ struct DilemmaView: View {
     private func selectOption(_ id: String) {
         selectedOptionId = id
         selectedPhilosopherId = nil
+        otherPhilosophersVisible = Self.otherPhilosophersPeek
         stage = .setup
         messages = []
         userInput = ""
@@ -551,15 +595,21 @@ struct DilemmaView: View {
                 keyIdeas: philosopher.keyIdeas.joined(separator: "、"),
                 history: historyText
             )
-            let dto = JsonPayload.parse(resp.text, as: DilemmaTurnDTO.self)
-            guard let dto, let pr = dto.philosopherReply, let jq = dto.judgeQuestion else {
+            let turn = resp.dilemmaTurn?.pick(english: en)
+                ?? JsonPayload.parse(resp.text, as: DilemmaTurnDTO.self).map {
+                    DilemmaTurnSliceParsed(
+                        philosopherReply: $0.philosopherReply ?? "",
+                        judgeQuestion: $0.judgeQuestion ?? "",
+                        continueDebate: $0.continueDebate ?? true
+                    )
+                }
+            guard let turn, !turn.philosopherReply.isEmpty, !turn.judgeQuestion.isEmpty else {
                 throw NSError(domain: "dilemma", code: 1, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
             }
-            let continueDebate = dto.continueDebate ?? true
             await MainActor.run {
-                messages.append(DMMessage(id: "ph-\(UUID().uuidString)", role: .philosopher, content: pr))
-                messages.append(DMMessage(id: "jg-\(UUID().uuidString)", role: .judge, content: jq))
-                canReveal = continueDebate == false
+                messages.append(DMMessage(id: "ph-\(UUID().uuidString)", role: .philosopher, content: turn.philosopherReply))
+                messages.append(DMMessage(id: "jg-\(UUID().uuidString)", role: .judge, content: turn.judgeQuestion))
+                canReveal = turn.continueDebate == false
                 isThinking = false
             }
         } catch {
@@ -599,8 +649,19 @@ struct DilemmaView: View {
                 philosopherSchool: philosopher.school,
                 history: history
             )
-            if let parsed = JsonPayload.parse(resp.text, as: DilemmaSummaryDTO.self), let fe = parsed.fullExplanation, !fe.isEmpty {
-                await MainActor.run { fullExplanation = fe }
+            let summaryText = resp.dilemmaSummary?.pick(english: en)
+                ?? JsonPayload.parse(resp.text, as: DilemmaSummaryDTO.self)?.fullExplanation
+            if let summaryText, !summaryText.isEmpty {
+                await MainActor.run { fullExplanation = summaryText }
+                if AuthStore.bearerToken != nil {
+                    try? await ArenaAPI.saveBattleRecord(
+                        battleType: "dilemma",
+                        topic: dilemma.title(en),
+                        userChoice: option.label(en),
+                        judgeSummary: summaryText,
+                        changedStance: false
+                    )
+                }
             } else {
                 await MainActor.run { errorAlert = L.topicBadJson }
             }

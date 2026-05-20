@@ -22,7 +22,10 @@ struct BattleView: View {
     @State private var judgeIndex = 0
     @State private var showShortReasonAlert = false
 
-    private var battle: Battle? { catalog.battles.first { $0.id == battleId } }
+    private var battle: Battle? {
+        catalog.battleForDisplay(id: battleId, english: L.prefersEnglish)
+            ?? catalog.allBattles(english: L.prefersEnglish).first { $0.id == battleId }
+    }
 
     var body: some View {
         Group {
@@ -42,14 +45,32 @@ struct BattleView: View {
                 missingBattle
             }
         }
-        .navigationTitle(L.battleNavTitle)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
         .alert(L.reasonTooShortTitle, isPresented: $showShortReasonAlert) {
             Button(L.reasonTooShortOK, role: .cancel) {}
         } message: {
             Text(L.reasonTooShortMessage)
+        }
+        .onChange(of: stage) { _, newStage in
+            if newStage == .reveal, let battle, AuthStore.bearerToken != nil {
+                Task {
+                    try? await ArenaAPI.saveBattleRecord(
+                        battleType: "battle",
+                        topic: battle.question,
+                        userChoice: choiceLabel,
+                        judgeSummary: battle.reveal,
+                        changedStance: false
+                    )
+                }
+            }
+        }
+    }
+
+    private var choiceLabel: String {
+        switch choice {
+        case .builder: return "Builder"
+        case .breaker: return "Breaker"
+        case .uncertain: return L.uncertainChoiceTitle
+        case nil: return "--"
         }
     }
 
@@ -67,7 +88,7 @@ struct BattleView: View {
     }
 
     private func header(battle: Battle) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        HStack(alignment: .center) {
             Button {
                 path = NavigationPath()
                 path.append(AppRoute.disciplines)
@@ -75,19 +96,11 @@ struct BattleView: View {
                 Label(L.backToDisciplines, systemImage: "chevron.left")
                     .foregroundStyle(ArenaTheme.textMuted)
             }
-            HStack {
-                Text(L.disciplinesDebate)
-                    .font(.subheadline.weight(.bold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.orange.opacity(0.85))
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                Spacer()
-                Text(battle.category)
-                    .font(.caption)
-                    .foregroundStyle(ArenaTheme.textMuted)
-            }
+            .buttonStyle(.plain)
+            Spacer()
+            Text(battle.category)
+                .font(.caption)
+                .foregroundStyle(ArenaTheme.textMuted)
         }
     }
 
@@ -202,12 +215,12 @@ struct BattleView: View {
                 Image(systemName: "bubble.left.and.bubble.right.fill").foregroundStyle(ArenaTheme.orangeAccent)
             }
             TextEditor(text: $reason)
+                .arenaInputTextStyle()
                 .frame(minHeight: 160)
                 .padding(8)
                 .scrollContentBackground(.hidden)
                 .background(ArenaTheme.background)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
-                .foregroundStyle(ArenaTheme.textPrimary)
             HStack {
                 Text(L.characterCount(reason.count)).font(.caption).foregroundStyle(ArenaTheme.textMuted)
                 Spacer()
