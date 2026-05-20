@@ -14,6 +14,13 @@ struct PhilosopherDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    HStack {
+                        Spacer()
+                        Button(L.close, action: onClose)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(ArenaTheme.textMuted)
+                    }
+
                     HStack(alignment: .top, spacing: 14) {
                         PhilosopherAvatarView(philosopher: philosopher, size: 64)
                         VStack(alignment: .leading, spacing: 6) {
@@ -100,16 +107,8 @@ struct PhilosopherDetailSheet: View {
                 .padding(20)
             }
             .background(ArenaTheme.background)
-            .navigationTitle(L.philosopherNavTitle)
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(L.close, action: onClose)
-                }
-            }
         }
+        .arenaPushedScreenChrome()
     }
 
     @ViewBuilder

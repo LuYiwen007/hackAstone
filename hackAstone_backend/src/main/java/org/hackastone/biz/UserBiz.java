@@ -94,6 +94,45 @@ public class UserBiz {
         return user;
     }
 
+    public UserEntity getCurrentUser(String userId) {
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null || !"ENABLED".equals(user.getStatus())) {
+            throw new HackAstoneBizException(ResultEnum.USER_NOT_EXIST);
+        }
+        user.setPassword(null);
+        return user;
+    }
+
+    public UserEntity updateNickname(String userId, String nickname) {
+        String trimmedNickname = trim(nickname);
+        if (!StringUtils.hasText(trimmedNickname)) {
+            throw new HackAstoneBizException(ResultEnum.PARAM_ERROR.getCode(), "昵称不能为空");
+        }
+        UserEntity existing = userMapper.selectByNicknameExceptUser(trimmedNickname, userId);
+        if (existing != null) {
+            throw new HackAstoneBizException(ResultEnum.USER_EXIST.getCode(), "该昵称已被使用");
+        }
+        userMapper.updateNickname(userId, trimmedNickname);
+        return getCurrentUser(userId);
+    }
+
+    public void changePassword(String userId, String oldPassword, String newPassword) {
+        if (!StringUtils.hasText(oldPassword) || !StringUtils.hasText(newPassword)) {
+            throw new HackAstoneBizException(ResultEnum.PARAM_ERROR);
+        }
+        if (newPassword.length() < 6) {
+            throw new HackAstoneBizException(ResultEnum.PARAM_ERROR.getCode(), "新密码至少 6 位");
+        }
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new HackAstoneBizException(ResultEnum.USER_NOT_EXIST);
+        }
+        if (!passwordHasher.matches(oldPassword, user.getPassword())) {
+            throw new HackAstoneBizException(ResultEnum.PASSWORD_ERROR);
+        }
+        userMapper.updatePasswordHash(userId, passwordHasher.hash(newPassword));
+    }
+
     private static String normalizeEmail(String email) {
         return trim(email).toLowerCase(Locale.ROOT);
     }

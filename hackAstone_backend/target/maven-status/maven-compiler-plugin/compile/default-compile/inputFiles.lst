@@ -39,7 +39,9 @@
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/AiPlanDraftRequest.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/AiPlanDraftResponse.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/AiPlanStageDto.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/UserChangePasswordRequest.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/UserLoginRequest.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/UserProfileUpdateRequest.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/controller/model/UserRegisterRequest.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/core/component/IdGenerator.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/core/component/PasswordHasher.java

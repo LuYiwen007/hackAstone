@@ -1,18 +1,65 @@
 import SwiftUI
 
+private enum DisciplineCategory: Int, CaseIterable {
+    case all, business, psychology, learning, hot
+
+    func matches(_ battleCategory: String, english: Bool) -> Bool {
+        let c = battleCategory.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch self {
+        case .all: return true
+        case .business: return c == "business" || c == "商业"
+        case .psychology: return c == "psychology" || c == "心理学"
+        case .learning: return c == "learning" || c == "学习方法"
+        case .hot: return c == "hot topics" || c == "热点问题"
+        }
+    }
+
+    var apiEn: String {
+        switch self {
+        case .all: return "General"
+        case .business: return "Business"
+        case .psychology: return "Psychology"
+        case .learning: return "Learning"
+        case .hot: return "Hot topics"
+        }
+    }
+
+    var apiZh: String {
+        switch self {
+        case .all: return "全部"
+        case .business: return "商业"
+        case .psychology: return "心理学"
+        case .learning: return "学习方法"
+        case .hot: return "热点问题"
+        }
+    }
+}
+
 /// 学科辩论主体（列表与推荐），可在首页内嵌或作为独立导航页使用。
 struct DisciplinesContentView: View {
     @EnvironmentObject private var catalog: ArenaCatalogStore
     @EnvironmentObject private var locale: AppLocaleStore
     @Binding var path: NavigationPath
 
+    @State private var selectedCategory: DisciplineCategory = .all
+    @State private var aiLoading = false
+    @State private var aiError: String?
+
     private var L: ArenaL10n { locale.L }
+
+    private var filteredBattles: [Battle] {
+        catalog.allBattles(english: L.prefersEnglish).filter { selectedCategory.matches($0.category, english: L.prefersEnglish) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             hero
             categoryRow
-            if let first = catalog.battles.first {
+            aiGenerateButton
+            if let aiError {
+                Text(aiError).font(.caption).foregroundStyle(.red.opacity(0.9))
+            }
+            if let first = filteredBattles.first {
                 featured(first)
             }
             allBattles
@@ -36,17 +83,40 @@ struct DisciplinesContentView: View {
     private var categoryRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                ForEach(L.disciplineCategories, id: \.self) { c in
-                    Text(c)
-                        .font(.caption.weight(.medium))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(ArenaTheme.surface)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
-                        .foregroundStyle(ArenaTheme.textPrimary)
+                ForEach(Array(DisciplineCategory.allCases.enumerated()), id: \.offset) { idx, cat in
+                    let label = L.disciplineCategories[safe: idx] ?? cat.apiZh
+                    Button {
+                        selectedCategory = cat
+                    } label: {
+                        Text(label)
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(selectedCategory == cat ? Color.orange.opacity(0.25) : ArenaTheme.surface)
+                            .foregroundStyle(selectedCategory == cat ? ArenaTheme.orangeAccent : ArenaTheme.textPrimary)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(selectedCategory == cat ? ArenaTheme.orangeAccent.opacity(0.6) : ArenaTheme.border))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private var aiGenerateButton: some View {
+        Button {
+            Task { await handleAiGenerate() }
+        } label: {
+            HStack {
+                if aiLoading { ProgressView().tint(.white) }
+                Text(aiLoading ? L.aiGenerating : L.aiGenerateBattle)
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.orange)
+        .disabled(aiLoading)
     }
 
     private func featured(_ battle: Battle) -> some View {
@@ -107,7 +177,7 @@ struct DisciplinesContentView: View {
                 .font(.title3.weight(.bold))
                 .foregroundStyle(ArenaTheme.textPrimary)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 12)], spacing: 12) {
-                ForEach(catalog.battles) { b in
+                ForEach(filteredBattles) { b in
                     Button {
                         path.append(AppRoute.battle(id: b.id))
                     } label: {
@@ -133,6 +203,37 @@ struct DisciplinesContentView: View {
             }
         }
     }
+
+    private func handleAiGenerate() async {
+        await MainActor.run {
+            aiLoading = true
+            aiError = nil
+        }
+        do {
+            let resp = try await ArenaAPI.generateDisciplineBattle(
+                categoryEn: selectedCategory.apiEn,
+                categoryZh: selectedCategory.apiZh
+            )
+            guard let bilingual = resp.disciplineBattle else {
+                throw ArenaAPIError.serverMessage(L.topicBadJson)
+            }
+            let id = catalog.addGeneratedBattle(bilingual)
+            await MainActor.run {
+                path.append(AppRoute.battle(id: id))
+            }
+        } catch {
+            await MainActor.run {
+                aiError = error.localizedDescription
+            }
+        }
+        await MainActor.run { aiLoading = false }
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
 }
 
 /// 从导航栈进入的学科辩论整页（带返回首页的顶栏）。
@@ -153,52 +254,20 @@ struct DisciplinesView: View {
             .padding(.bottom, 28)
         }
         .background(ArenaTheme.background)
-        .navigationTitle(L.disciplinesDebate)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
     }
 
     private var pushedHeader: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                HStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(LinearGradient(colors: [.red, .orange], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 40, height: 40)
-                        Image(systemName: "figure.fencing")
-                            .foregroundStyle(.white)
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Cognitive Arena")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(ArenaTheme.textPrimary)
-                        Text(L.cognitiveArena)
-                            .font(.caption)
-                            .foregroundStyle(ArenaTheme.textMuted)
-                    }
-                }
-                Spacer()
+        HStack {
+            Button {
+                path = NavigationPath()
+            } label: {
+                Label(L.backToPhilosophy, systemImage: "chevron.left")
+                    .font(.subheadline)
+                    .foregroundStyle(ArenaTheme.textMuted)
             }
-            HStack(spacing: 8) {
-                Button {
-                    path = NavigationPath()
-                } label: {
-                    Label(L.backToPhilosophy, systemImage: "chevron.left")
-                        .font(.subheadline)
-                        .foregroundStyle(ArenaTheme.textMuted)
-                }
-                .buttonStyle(.plain)
-                Text(L.disciplinesDebate)
-                    .font(.subheadline.weight(.bold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.orange.opacity(0.85))
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
+            .buttonStyle(.plain)
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
     }
 }

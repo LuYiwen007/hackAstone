@@ -2,31 +2,86 @@ import SwiftUI
 
 struct MindProfileView: View {
     @EnvironmentObject private var locale: AppLocaleStore
+    @EnvironmentObject private var auth: AuthStore
     @Binding var path: NavigationPath
     @State private var data = MindProfileView.fallback
     @State private var loadError: String?
+    @State private var loading = true
 
     private var L: ArenaL10n { locale.L }
 
     var body: some View {
+        Group {
+            if !auth.isLoggedIn {
+                guestView
+            } else {
+                loggedInView
+            }
+        }
+        .background(ArenaTheme.background)
+        .task(id: auth.session?.userId) {
+            guard auth.isLoggedIn else {
+                loading = false
+                return
+            }
+            await load()
+        }
+    }
+
+    private var guestView: some View {
+        VStack(spacing: 24) {
+            Button {
+                path = NavigationPath()
+            } label: {
+                Label(L.backHome, systemImage: "chevron.left")
+                    .foregroundStyle(ArenaTheme.textMuted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+
+            Spacer()
+            Text("🧠").font(.system(size: 56))
+            Text(L.profileGuestTitle)
+                .font(.title.weight(.bold))
+                .foregroundStyle(ArenaTheme.textPrimary)
+            Text(L.profileGuestHint)
+                .font(.body)
+                .foregroundStyle(ArenaTheme.textMuted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Button {
+                path.append(AppRoute.login)
+            } label: {
+                Text(L.profileLoginRegister)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .padding(.horizontal, 32)
+            Spacer()
+        }
+    }
+
+    private var loggedInView: some View {
         ScrollView {
             VStack(spacing: 24) {
                 header
-                statsGrid
-                biasesSection
-                insightsSection
-                recentSection
-                cta
+                if loading {
+                    ProgressView()
+                        .padding(.vertical, 40)
+                } else {
+                    statsGrid
+                    biasesSection
+                    insightsSection
+                    recentSection
+                    cta
+                }
             }
             .padding(16)
             .padding(.bottom, 32)
         }
-        .background(ArenaTheme.background)
-        .navigationTitle(L.mindProfileNavTitle)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
-        .task { await load() }
     }
 
     private var header: some View {
@@ -46,6 +101,11 @@ struct MindProfileView: View {
                 .foregroundStyle(ArenaTheme.textPrimary)
             Text(L.mindProfileSubtitle)
                 .foregroundStyle(ArenaTheme.textMuted)
+            if let name = auth.session?.displayName, !name.isEmpty {
+                Text(name)
+                    .font(.subheadline)
+                    .foregroundStyle(ArenaTheme.orangeAccent)
+            }
             if let loadError {
                 Text(loadError)
                     .font(.caption)
@@ -78,53 +138,41 @@ struct MindProfileView: View {
     }
 
     private var biasesSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Image(systemName: "person.3.fill").foregroundStyle(ArenaTheme.orangeAccent)
-                Text(L.biasMapTitle)
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(ArenaTheme.textPrimary)
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L.biasMapTitle)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(ArenaTheme.textPrimary)
             Text(L.biasMapFootnote)
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundStyle(ArenaTheme.textMuted)
-            VStack(spacing: 18) {
-                ForEach(Array(data.biases.enumerated()), id: \.offset) { _, b in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .top) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(L.localizeBiasName(b.name)).font(.headline).foregroundStyle(ArenaTheme.textPrimary)
-                                Text(L.localizeBiasDescription(b.description)).font(.caption).foregroundStyle(ArenaTheme.textMuted)
-                            }
+            if data.biases.isEmpty {
+                Text(L.prefersEnglish ? "Complete debates while logged in to build your bias map." : "登录后完成辩论，即可生成你的偏差地图。")
+                    .font(.caption)
+                    .foregroundStyle(ArenaTheme.textMuted)
+            } else {
+                ForEach(Array(data.biases.enumerated()), id: \.offset) { _, bias in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(L.localizeBiasName(bias.name))
+                                .font(.headline)
                             Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("\(b.percentage)%").font(.title2.weight(.bold))
-                                Text(L.occurrences(b.instances)).font(.caption2).foregroundStyle(ArenaTheme.textMuted)
-                            }
+                            Text("\(bias.percentage)%")
+                                .font(.headline)
+                                .foregroundStyle(ArenaTheme.orangeAccent)
                         }
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(ArenaTheme.background).frame(height: 8)
-                                Capsule()
-                                    .fill(barColor(b.color))
-                                    .frame(width: geo.size.width * CGFloat(b.percentage) / 100, height: 8)
-                            }
-                        }
-                        .frame(height: 8)
+                        Text(L.localizeBiasDescription(bias.description))
+                            .font(.caption)
+                            .foregroundStyle(ArenaTheme.textMuted)
+                        Text(L.occurrences(bias.instances))
+                            .font(.caption2)
+                            .foregroundStyle(ArenaTheme.textMuted)
                     }
+                    .padding(14)
+                    .background(ArenaTheme.surface)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
                 }
             }
-            .padding(16)
-            .background(ArenaTheme.surface)
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(ArenaTheme.border))
         }
-    }
-
-    private func barColor(_ webClass: String) -> Color {
-        if webClass.contains("red") { return .red.opacity(0.75) }
-        if webClass.contains("orange") { return .orange.opacity(0.8) }
-        if webClass.contains("yellow") { return .yellow.opacity(0.75) }
-        return .orange
     }
 
     private var insightsSection: some View {
@@ -132,70 +180,83 @@ struct MindProfileView: View {
             Text(L.keyInsights)
                 .font(.title2.weight(.bold))
                 .foregroundStyle(ArenaTheme.textPrimary)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], spacing: 12) {
-                insightCard(title: L.insightWatchOutTitle, accent: .red, body: L.insightWatchOutBody)
-                insightCard(title: L.insightStrengthTitle, accent: .blue, body: L.insightStrengthBody)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L.insightWatchOutTitle)
+                    .font(.headline)
+                    .foregroundStyle(.red.opacity(0.9))
+                Text(L.insightWatchOutBody)
+                    .font(.caption)
+                    .foregroundStyle(ArenaTheme.textMuted)
             }
-        }
-    }
+            .padding(14)
+            .background(ArenaTheme.surface)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
 
-    private func insightCard(title: String, accent: Color, body: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline).foregroundStyle(accent.opacity(0.9))
-            Text(body).font(.subheadline).foregroundStyle(Color(red: 0.82, green: 0.84, blue: 0.86))
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L.insightStrengthTitle)
+                    .font(.headline)
+                    .foregroundStyle(ArenaTheme.cyanAccent)
+                Text(L.insightStrengthBody)
+                    .font(.caption)
+                    .foregroundStyle(ArenaTheme.textMuted)
+            }
+            .padding(14)
+            .background(ArenaTheme.surface)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(ArenaTheme.surface)
-        .overlay(alignment: .leading) {
-            Rectangle().fill(accent).frame(width: 4)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(ArenaTheme.border))
     }
 
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L.recentThoughts)
                 .font(.title2.weight(.bold))
-            ForEach(Array(data.recentBattles.enumerated()), id: \.offset) { _, b in
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .top) {
-                        Text(L.localizeRecentQuestion(b.question)).font(.headline).foregroundStyle(ArenaTheme.textPrimary)
+                .foregroundStyle(ArenaTheme.textPrimary)
+            if data.recentBattles.isEmpty {
+                Text(L.prefersEnglish ? "No recent matches yet." : "暂无近期对局记录。")
+                    .font(.caption)
+                    .foregroundStyle(ArenaTheme.textMuted)
+            } else {
+                ForEach(Array(data.recentBattles.enumerated()), id: \.offset) { _, b in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(b.question)
+                            .font(.headline)
+                            .foregroundStyle(ArenaTheme.textPrimary)
                         if b.changed {
                             Text(L.stanceChanged)
-                                .font(.caption2.weight(.bold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.orange.opacity(0.2))
-                                .foregroundStyle(Color.orange)
-                                .clipShape(Capsule())
+                                .font(.caption2)
+                                .foregroundStyle(ArenaTheme.orangeAccent)
+                        }
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(L.yourPick)
+                                    .font(.caption2)
+                                    .foregroundStyle(ArenaTheme.textMuted)
+                                Text(b.choice)
+                                    .font(.caption)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(L.judgeFollowUpShort)
+                                    .font(.caption2)
+                                    .foregroundStyle(ArenaTheme.textMuted)
+                                Text(b.judgeComment)
+                                    .font(.caption)
+                            }
                         }
                     }
-                    HStack(alignment: .top, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(L.yourPick).font(.caption).foregroundStyle(ArenaTheme.textMuted)
-                            Text(L.localizeRecentChoice(b.choice)).font(.subheadline).foregroundStyle(ArenaTheme.textPrimary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(L.judgeFollowUpShort).font(.caption).foregroundStyle(ArenaTheme.textMuted)
-                            Text(L.localizeRecentJudge(b.judgeComment)).font(.subheadline).foregroundStyle(ArenaTheme.textPrimary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(ArenaTheme.surface)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
                 }
-                .padding(16)
-                .background(ArenaTheme.surface)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
             }
         }
     }
 
     private var cta: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             Text(L.growthQuote)
-                .font(.subheadline)
+                .font(.caption)
+                .italic()
                 .foregroundStyle(ArenaTheme.textMuted)
                 .multilineTextAlignment(.center)
             HStack(spacing: 12) {
@@ -217,22 +278,32 @@ struct MindProfileView: View {
     }
 
     private func load() async {
+        await MainActor.run { loading = true }
         do {
-            data = try await ArenaAPI.fetchMindProfile()
-            loadError = nil
+            let profile = try await ArenaAPI.fetchMindProfile()
+            await MainActor.run {
+                data = profile
+                loadError = nil
+            }
         } catch {
-            loadError = error.localizedDescription
-            data = Self.fallback
+            await MainActor.run {
+                loadError = error.localizedDescription
+                data = Self.emptyProfile
+            }
         }
+        await MainActor.run { loading = false }
     }
+
+    private static let emptyProfile = MindProfilePayload(biases: [], stats: [
+        MindProfileStat(label: "已完成对局", value: "0"),
+        MindProfileStat(label: "改变立场次数", value: "0"),
+        MindProfileStat(label: "思维盲区", value: "0"),
+        MindProfileStat(label: "准确判断率", value: "--"),
+    ], recentBattles: [])
 
     private static let fallback = MindProfilePayload(
         biases: [
             MindProfileBias(name: "确认偏差", description: "倾向于寻找支持已有观点的证据", percentage: 72, color: "bg-red-500", instances: 13),
-            MindProfileBias(name: "权威依赖", description: "容易被权威或逻辑清晰的论述说服", percentage: 58, color: "bg-orange-500", instances: 9),
-            MindProfileBias(name: "过度自信", description: "在不确定的情况下表现出过高的确定性", percentage: 45, color: "bg-yellow-500", instances: 7),
-            MindProfileBias(name: "忽略反例", description: "倾向于忽视与观点相悖的案例", percentage: 64, color: "bg-red-500", instances: 11),
-            MindProfileBias(name: "二元思维", description: "倾向于用非黑即白的方式看待问题", percentage: 51, color: "bg-orange-500", instances: 8),
         ],
         stats: [
             MindProfileStat(label: "已完成对局", value: "18"),
@@ -240,10 +311,6 @@ struct MindProfileView: View {
             MindProfileStat(label: "思维盲区", value: "5"),
             MindProfileStat(label: "准确判断率", value: "61%"),
         ],
-        recentBattles: [
-            MindProfileRecentBattle(question: "努力 vs 选择，哪个更重要？", choice: "我不确定", judgeComment: "你忽略了时间维度", changed: true),
-            MindProfileRecentBattle(question: "多任务处理真的有效吗？", choice: "支持 Breaker", judgeComment: "你的假设是所有任务都需要高认知", changed: false),
-            MindProfileRecentBattle(question: "AI 会让人变笨吗？", choice: "支持 Builder", judgeComment: "你混淆了工具和依赖性", changed: true),
-        ]
+        recentBattles: []
     )
 }

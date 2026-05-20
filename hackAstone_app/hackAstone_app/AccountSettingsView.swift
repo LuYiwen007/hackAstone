@@ -5,9 +5,6 @@ import UIKit
 
 private enum UserAccountStore {
     static let avatarKey = "user_avatar_jpeg_data"
-    static let displayNameKey = "user_display_name"
-    static let emailKey = "user_email"
-    static let languageKey = "app_language_code"
 
     static var avatarData: Data? {
         get { UserDefaults.standard.data(forKey: avatarKey) }
@@ -18,49 +15,57 @@ private enum UserAccountStore {
     }
 }
 
-/// 全屏账号与偏好设置（不向用户暴露后端连接信息）。
+/// 账号信息走后端；头像仍仅存本地。语言跟随系统，无手动切换。
 struct AccountSettingsView: View {
     @EnvironmentObject private var locale: AppLocaleStore
+    @EnvironmentObject private var auth: AuthStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var displayName: String = UserDefaults.standard.string(forKey: UserAccountStore.displayNameKey) ?? ""
-    @State private var email: String = UserDefaults.standard.string(forKey: UserAccountStore.emailKey) ?? ""
-
-    private var L: ArenaL10n { locale.L }
-    @State private var newPassword = ""
-    @State private var confirmPassword = ""
+    @State private var nickname = ""
+    @State private var email = ""
     @State private var pickerItem: PhotosPickerItem?
     @State private var avatarUIImage: UIImage?
-    @State private var passwordMessage: String?
+    @State private var profileMessage: String?
+    @State private var loadingProfile = false
+    @State private var saving = false
+
+    private var L: ArenaL10n { locale.L }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    avatarSection
-                    accountSection
-                    passwordSection
-                    languageSection
+                    HStack {
+                        Text(L.accountNavTitle)
+                            .font(.headline)
+                            .foregroundStyle(ArenaTheme.textPrimary)
+                        Spacer()
+                        Button(L.done) {
+                            Task { await saveAndDismiss() }
+                        }
+                        .fontWeight(.semibold)
+                        .disabled(!auth.isLoggedIn || saving)
+                    }
+
+                    if !auth.isLoggedIn {
+                        Text(L.loginToManageAccount)
+                            .font(.subheadline)
+                            .foregroundStyle(ArenaTheme.textMuted)
+                    } else {
+                        avatarSection
+                        accountSection
+                        logoutSection
+                    }
                 }
                 .padding(20)
                 .padding(.bottom, 40)
             }
             .background(ArenaTheme.background)
-            .navigationTitle(L.accountNavTitle)
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(L.done) {
-                        persistProfile()
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                }
-            }
         }
-        .preferredColorScheme(.dark)
+        .arenaPushedScreenChrome()
+        .task {
+            await loadProfileFromServer()
+        }
         .onAppear {
             if let data = UserAccountStore.avatarData, let img = UIImage(data: data) {
                 avatarUIImage = img
@@ -122,10 +127,27 @@ struct AccountSettingsView: View {
             Text(L.accountInfo)
                 .font(.headline)
                 .foregroundStyle(ArenaTheme.textPrimary)
-            labeledField(title: L.nickname, text: $displayName, prompt: L.nicknamePrompt)
-            labeledField(title: L.email, text: $email, prompt: "name@example.com")
-                .textInputAutocapitalization(.never)
-                .keyboardType(.emailAddress)
+            if loadingProfile {
+                ProgressView()
+            }
+            labeledField(title: L.nickname, text: $nickname, prompt: L.nicknamePrompt)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L.email).font(.caption).foregroundStyle(ArenaTheme.textMuted)
+                Text(email.isEmpty ? "—" : email)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(ArenaTheme.background.opacity(0.6))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
+                    .foregroundStyle(ArenaTheme.textMuted)
+                Text(L.emailReadOnlyHint)
+                    .font(.caption2)
+                    .foregroundStyle(ArenaTheme.textMuted)
+            }
+            if let profileMessage {
+                Text(profileMessage)
+                    .font(.caption)
+                    .foregroundStyle(profileMessage == L.profileSaved ? Color.green : Color.orange)
+            }
         }
         .padding(16)
         .background(ArenaTheme.surface)
@@ -137,88 +159,63 @@ struct AccountSettingsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.caption).foregroundStyle(ArenaTheme.textMuted)
             TextField(prompt, text: text)
+                .arenaInputTextStyle()
                 .padding(12)
                 .background(ArenaTheme.background)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
-                .foregroundStyle(ArenaTheme.textPrimary)
         }
     }
 
-    private var passwordSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L.password)
-                .font(.headline)
-                .foregroundStyle(ArenaTheme.textPrimary)
-            SecureField(L.newPassword, text: $newPassword)
-                .padding(12)
-                .background(ArenaTheme.background)
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
-                .foregroundStyle(ArenaTheme.textPrimary)
-            SecureField(L.confirmPassword, text: $confirmPassword)
-                .padding(12)
-                .background(ArenaTheme.background)
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
-                .foregroundStyle(ArenaTheme.textPrimary)
-            Button(L.savePassword) {
-                savePasswordTapped()
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(ArenaTheme.cyanAccent)
-            .disabled(newPassword.isEmpty)
-            if let passwordMessage {
-                Text(passwordMessage)
-                    .font(.caption)
-                    .foregroundStyle(passwordMessage == L.passwordSavedDemo ? Color.green : Color.orange)
-            }
+    private var logoutSection: some View {
+        Button(role: .destructive) {
+            auth.clear()
+            dismiss()
+        } label: {
+            Text(L.logout)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
         }
-        .padding(16)
-        .background(ArenaTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(ArenaTheme.border))
+        .buttonStyle(.bordered)
     }
 
-    private var languageSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L.language)
-                .font(.headline)
-                .foregroundStyle(ArenaTheme.textPrimary)
-            Picker(L.languagePickerTitle, selection: Binding(
-                get: { locale.languageCode },
-                set: { locale.languageCode = $0 }
-            )) {
-                Text(L.simplifiedChinese).tag("zh-Hans")
-                Text(L.english).tag("en")
+    private func loadProfileFromServer() async {
+        guard auth.isLoggedIn else { return }
+        await MainActor.run { loadingProfile = true }
+        do {
+            let profile = try await ArenaAPI.fetchCurrentUser()
+            await MainActor.run {
+                nickname = profile.nickname
+                email = profile.email ?? ""
+                auth.refreshProfile(userId: profile.userId, nickname: profile.nickname, email: profile.email)
             }
-            .pickerStyle(.segmented)
-            Text(L.languageFootnote)
-                .font(.caption2)
-                .foregroundStyle(ArenaTheme.textMuted)
+        } catch {
+            await MainActor.run {
+                profileMessage = error.localizedDescription
+            }
         }
-        .padding(16)
-        .background(ArenaTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(ArenaTheme.border))
+        await MainActor.run { loadingProfile = false }
     }
 
-    private func savePasswordTapped() {
-        guard newPassword == confirmPassword else {
-            passwordMessage = L.passwordMismatch
+    private func saveAndDismiss() async {
+        guard auth.isLoggedIn else {
+            dismiss()
             return
         }
-        guard newPassword.count >= 6 else {
-            passwordMessage = L.passwordTooShort
-            return
+        await MainActor.run { saving = true }
+        do {
+            let profile = try await ArenaAPI.updateProfile(nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines))
+            await MainActor.run {
+                auth.refreshProfile(userId: profile.userId, nickname: profile.nickname, email: profile.email)
+                profileMessage = L.profileSaved
+            }
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            await MainActor.run { dismiss() }
+        } catch {
+            await MainActor.run {
+                profileMessage = error.localizedDescription
+            }
         }
-        // 演示：不落库、不暴露后端；仅本地提示。
-        newPassword = ""
-        confirmPassword = ""
-        passwordMessage = L.passwordSavedDemo
-    }
-
-    private func persistProfile() {
-        UserDefaults.standard.set(displayName, forKey: UserAccountStore.displayNameKey)
-        UserDefaults.standard.set(email, forKey: UserAccountStore.emailKey)
-        UserDefaults.standard.set(locale.languageCode, forKey: UserAccountStore.languageKey)
+        await MainActor.run { saving = false }
     }
 }
 

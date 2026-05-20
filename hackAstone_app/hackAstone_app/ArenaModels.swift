@@ -82,9 +82,3 @@ struct MindProfilePayload: Codable, Hashable {
     var recentBattles: [MindProfileRecentBattle]
 }
 
-struct AgentRunResponse: Hashable {
-    let agent: String
-    let appId: String
-    let text: String
-    let cached: Bool
-}

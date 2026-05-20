@@ -13,4 +13,9 @@ enum ArenaTheme {
     static let purpleAccent = Color(red: 0.65, green: 0.33, blue: 0.96)
     static let headerGradientStart = Color(red: 0.06, green: 0.72, blue: 0.83)
     static let headerGradientEnd = Color(red: 0.23, green: 0.51, blue: 0.96)
+
+    /// 用户输入文字：深色模式白字，浅色模式黑字
+    static func inputText(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? textPrimary : .black
+    }
 }

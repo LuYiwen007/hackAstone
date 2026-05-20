@@ -6,15 +6,25 @@ enum ArenaConfiguration {
     private static let apiKey = "arena_api_base_url"
     private static let assetsKey = "arena_assets_base_url"
 
-    /// 云主机公网 IP（CentOS 实例），与后端 `server.port` + `context-path` 一致；不要末尾 `/`
-    private static let defaultProductionApiBase = "http://47.107.253.140:8080/api"
+    /// 云主机公网 IP；模拟器 Debug 默认本机后端，真机/Release 用云地址
+    private static var defaultApiBase: String {
+        #if DEBUG
+        #if targetEnvironment(simulator)
+        return "http://127.0.0.1:8080/api"
+        #else
+        return "http://47.107.253.140:8080/api"
+        #endif
+        #else
+        return "http://47.107.253.140:8080/api"
+        #endif
+    }
 
     /// 例如 `http://47.107.253.140:8080/api`（不要末尾 `/`）
     static var apiBaseURLString: String {
         get {
             let raw = UserDefaults.standard.string(forKey: apiKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
             if let raw, !raw.isEmpty { return raw.trimmingSuffixSlash() }
-            return defaultProductionApiBase
+            return defaultApiBase
         }
         set { UserDefaults.standard.set(newValue.trimmingSuffixSlash(), forKey: apiKey) }
     }

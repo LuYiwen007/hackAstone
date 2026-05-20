@@ -1,20 +1,39 @@
 import Combine
 import Foundation
-import SwiftUI
 
-/// 应用内界面语言（与系统语言独立）；写入 `UserDefaults` 键 `app_language_code`。
+/// 跟随系统语言（不持久化手动切换）；中文系统 → zh，其它 → en。
 final class AppLocaleStore: ObservableObject {
-    static let languageKey = "app_language_code"
+    @Published private(set) var languageCode: String
 
-    @Published var languageCode: String {
-        didSet {
-            UserDefaults.standard.set(languageCode, forKey: Self.languageKey)
-        }
+    /// 传给后端 catalog 的 locale 参数
+    var catalogLocale: String {
+        prefersEnglish ? "en" : "zh"
     }
 
-    init() {
-        languageCode = UserDefaults.standard.string(forKey: Self.languageKey) ?? "zh-Hans"
+    var prefersEnglish: Bool {
+        !languageCode.lowercased().hasPrefix("zh")
     }
 
     var L: ArenaL10n { ArenaL10n(languageCode: languageCode) }
+
+    init() {
+        languageCode = Self.resolveSystemLanguageCode()
+    }
+
+    func refreshFromSystem() {
+        let next = Self.resolveSystemLanguageCode()
+        if languageCode != next {
+            languageCode = next
+        }
+    }
+
+    /// 根据 `Locale.preferredLanguages` / 当前区域判断界面语言
+    static func resolveSystemLanguageCode() -> String {
+        let preferred = Locale.preferredLanguages.first ?? Locale.current.identifier
+        let lower = preferred.lowercased()
+        if lower.hasPrefix("zh") {
+            return "zh-Hans"
+        }
+        return "en"
+    }
 }
