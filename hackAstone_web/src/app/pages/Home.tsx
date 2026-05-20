@@ -12,6 +12,7 @@ import {
 } from "../data/catalogMeta";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleContext";
+import { philosopherForLocale } from "../data/philosopherLocale";
 import { formatMessage } from "../../shared/i18n/format";
 
 const MAP_VIEWBOX = { width: 1000, height: 520 };
@@ -416,7 +417,9 @@ export function Home() {
             </h3>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {regionPhilosophers.map((philosopher) => (
+              {regionPhilosophers.map((philosopher) => {
+                const p = philosopherForLocale(philosopher, locale);
+                return (
                 <button
                   key={philosopher.id}
                   type="button"
@@ -433,21 +436,22 @@ export function Home() {
                         {locale === "zh" ? philosopher.name : philosopher.nameCN}
                       </p>
                       <p className="mt-1 text-xs text-zinc-600">
-                        {philosopher.school}
+                        {p.school}
                         {locale === "en" ? ` · ${philosopher.period > 0 ? philosopher.period : `${Math.abs(philosopher.period)} BCE`}` : ` · ${philosopher.period}`}
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-1 text-xs text-zinc-500">
-                    {philosopher.keyIdeas.slice(0, 2).map((idea) => (
+                    {p.keyIdeas.slice(0, 2).map((idea) => (
                       <div key={idea} className="truncate">
                         • {idea}
                       </div>
                     ))}
                   </div>
                 </button>
-              ))}
+              );
+              })}
             </div>
 
             <button

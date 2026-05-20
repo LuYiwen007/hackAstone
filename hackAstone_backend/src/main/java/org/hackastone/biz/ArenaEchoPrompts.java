@@ -32,9 +32,39 @@ public final class ArenaEchoPrompts {
     /** 辩论总结 */
     public static final String DEBATE_SUMMARY_JSON_SCHEMA = "{\"fullExplanation\":\"string\"}";
 
-    /** 圆桌消息 */
+    private static final String DILEMMA_TURN_LOCALE_SCHEMA = "{"
+            + "\"philosopherReply\":\"string\","
+            + "\"judgeQuestion\":\"string\","
+            + "\"continueDebate\":true"
+            + "}";
+
+    /** 道德困境单轮：双语 philosopherReply + judgeQuestion */
+    public static final String DILEMMA_TURN_BILINGUAL_JSON_SCHEMA = "{"
+            + "\"en\":" + DILEMMA_TURN_LOCALE_SCHEMA + ","
+            + "\"zh\":" + DILEMMA_TURN_LOCALE_SCHEMA
+            + "}";
+
+    private static final String DILEMMA_SUMMARY_LOCALE_SCHEMA = "{\"fullExplanation\":\"string\"}";
+
+    /** 道德困境总结：双语 fullExplanation */
+    public static final String DILEMMA_SUMMARY_BILINGUAL_JSON_SCHEMA = "{"
+            + "\"en\":" + DILEMMA_SUMMARY_LOCALE_SCHEMA + ","
+            + "\"zh\":" + DILEMMA_SUMMARY_LOCALE_SCHEMA
+            + "}";
+
+    /** 圆桌消息（单语，已废弃，请用双语 schema） */
     public static final String ROUNDTABLE_JSON_SCHEMA = "{"
             + "\"messages\":[{\"speaker\":\"philosopherId\",\"content\":\"string\"}]"
+            + "}";
+
+    private static final String ROUNDTABLE_LOCALE_MESSAGES_SCHEMA = "{"
+            + "\"messages\":[{\"speaker\":\"philosopherId\",\"content\":\"string\"}]"
+            + "}";
+
+    /** 圆桌开场/回应：一次返回中英文两套 messages */
+    public static final String ROUNDTABLE_BILINGUAL_JSON_SCHEMA = "{"
+            + "\"en\":" + ROUNDTABLE_LOCALE_MESSAGES_SCHEMA + ","
+            + "\"zh\":" + ROUNDTABLE_LOCALE_MESSAGES_SCHEMA
             + "}";
 
     private static final String DISCIPLINE_BATTLE_LOCALE_SCHEMA = "{"
@@ -102,19 +132,21 @@ public final class ArenaEchoPrompts {
 
     public static String roundtableOpenings(String topic, String participantsJson) {
         return header(
-                "根据辩题为每位参与者生成一段开场发言。",
-                "messages 数组长度与参与者数量一致；speaker 为参与者 id；content 非空",
-                "中文；每位思想家风格鲜明",
-                ROUNDTABLE_JSON_SCHEMA
-        ) + "辩题：" + topic + "\n参与者：" + participantsJson;
+                "根据辩题为每位参与者生成一段开场发言，同时输出英文(en)与中文(zh)两套 messages。",
+                "en.messages 与 zh.messages 长度相同、speaker 顺序一致且与参与者数量一致；speaker 为参与者 id；content 非空",
+                "en 用自然英文，zh 用自然中文；每位思想家风格鲜明；每条 content 约 80-150 字",
+                ROUNDTABLE_BILINGUAL_JSON_SCHEMA
+        ) + "辩题：" + topic + "\n参与者：" + participantsJson + "\n"
+                + "Example: {\"en\":{\"messages\":[{\"speaker\":\"plato\",\"content\":\"...\"}]},"
+                + "\"zh\":{\"messages\":[{\"speaker\":\"plato\",\"content\":\"...\"}]}}";
     }
 
     public static String roundtableReply(String topic, String userInput, String participantsJson) {
         return header(
-                "用户圆桌发言后，为每位参与者各生成一条回应。",
-                "messages 中每位参与者一条；speaker 为 philosopherId",
-                "中文；回应须针对用户发言",
-                ROUNDTABLE_JSON_SCHEMA
+                "用户圆桌发言后，为每位参与者各生成一条回应，同时输出英文(en)与中文(zh)两套 messages。",
+                "en.messages 与 zh.messages 一一对应；每位参与者一条；speaker 为 philosopherId",
+                "en 用自然英文，zh 用自然中文；回应须针对用户发言；每条 content 约 60-120 字",
+                ROUNDTABLE_BILINGUAL_JSON_SCHEMA
         ) + "辩题：" + topic + "\n用户发言：" + userInput + "\n参与者：" + participantsJson;
     }
 
@@ -122,10 +154,10 @@ public final class ArenaEchoPrompts {
                                      String userStance, String philosopherName, String school, String keyIdeas,
                                      String history) {
         return header(
-                "围绕道德困境继续一轮讨论：哲学家回应 + Judge 追问 + 是否可总结。",
-                "必须包含 philosopherReply, judgeQuestion, continueDebate（布尔）",
-                "中文；哲学家回应体现其思想；仅返回 JSON",
-                DEBATE_TURN_JSON_SCHEMA
+                "围绕道德困境继续一轮讨论：同时输出英文(en)与中文(zh)两套 philosopherReply、judgeQuestion、continueDebate。",
+                "en 与 zh 结构相同；continueDebate 布尔值两边一致；字段非空",
+                "en 用自然英文，zh 用自然中文；哲学家回应体现其思想；各段约 80-150 字",
+                DILEMMA_TURN_BILINGUAL_JSON_SCHEMA
         ) + "道德困境：" + title + " (" + titleEn + ")\n"
                 + "问题：" + question + "\n"
                 + "用户立场：" + userStance + "\n"
@@ -158,10 +190,10 @@ public final class ArenaEchoPrompts {
     public static String dilemmaSummary(String title, String question, String userStance,
                                         String philosopherName, String school, String history) {
         return header(
-                "根据道德困境讨论历史生成完整总结。",
-                "必须包含 fullExplanation",
-                "中文；解释用户立场与哲学家回应的张力",
-                DEBATE_SUMMARY_JSON_SCHEMA
+                "根据道德困境讨论历史生成完整总结，同时输出英文(en)与中文(zh)两套 fullExplanation。",
+                "en.fullExplanation 与 zh.fullExplanation 均非空",
+                "en 用自然英文，zh 用自然中文；解释用户立场与哲学家回应的张力；各约 150-250 字",
+                DILEMMA_SUMMARY_BILINGUAL_JSON_SCHEMA
         ) + "道德困境：" + title + "\n"
                 + "问题：" + question + "\n"
                 + "用户立场：" + userStance + "\n"

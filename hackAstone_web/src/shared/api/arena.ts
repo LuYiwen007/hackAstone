@@ -60,12 +60,30 @@ export function fetchMindProfile() {
   return apiGet<MindProfilePayload>("/arena/profile");
 }
 
+export type RoundtableMessagesBilingual = {
+  en: Array<{ speaker: string; content: string }>;
+  zh: Array<{ speaker: string; content: string }>;
+};
+
+export type DilemmaTurnBilingual = {
+  en: { philosopherReply: string; judgeQuestion: string; continueDebate: boolean };
+  zh: { philosopherReply: string; judgeQuestion: string; continueDebate: boolean };
+};
+
+export type DilemmaSummaryBilingual = {
+  en: { fullExplanation: string };
+  zh: { fullExplanation: string };
+};
+
 type AgentRunResponse = {
   agent: string;
   appId: string;
   text: string;
   cached: boolean;
   battle?: DisciplineBattleBilingual;
+  roundtableMessages?: RoundtableMessagesBilingual;
+  dilemmaTurn?: DilemmaTurnBilingual;
+  dilemmaSummary?: DilemmaSummaryBilingual;
 };
 
 export function runAgent(

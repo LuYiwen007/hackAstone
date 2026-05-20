@@ -1,56 +1,80 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, X, Sparkles, MessageSquare, User } from "lucide-react";
+import { ArrowLeft, Plus, X, Sparkles, MessageSquare, User } from "lucide-react";
 import type { Philosopher } from "../data/philosophers";
+import { philosopherForLocale } from "../data/philosopherLocale";
+import {
+  ROUNDTABLE_TOPIC_IDS,
+  roundtableTopicDescriptionKey,
+  roundtableTopicTitleKey,
+  type RoundtableTopicId,
+} from "../data/roundtableTopics";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleContext";
 import { generateRoundtableOpenings, generateRoundtableReply } from "../../shared/api/arena";
-import { parseJsonPayload } from "../../shared/jsonPayload";
+import {
+  mergeBilingualToStoredMessages,
+  parseRoundtableMessagesBilingual,
+  roundtableMessageContent,
+  type RoundtableStoredMessage,
+} from "../data/roundtableLocale";
 import { ArenaHeader } from "../components/ArenaHeader";
 
-interface Message {
-  id: string;
-  speaker: "user" | string; // "user" 或思想家ID
-  content: string;
-  timestamp: number;
+function ingestRoundtableAiMessages(
+  resp: { text: string; roundtableMessages?: { en: unknown; zh: unknown } },
+  idPrefix: string
+): RoundtableStoredMessage[] | null {
+  const bilingual =
+    parseRoundtableMessagesBilingual(resp.roundtableMessages) ??
+    parseRoundtableMessagesBilingual(resp.text);
+  if (!bilingual) return null;
+  return mergeBilingualToStoredMessages(bilingual, idPrefix, Date.now());
 }
 
 type Stage = "setup" | "debate" | "summary";
 
 export function RoundtableDebate() {
   const { philosophers } = useArenaCatalog();
-  const { t } = useArenaLocale();
+  const { t, locale } = useArenaLocale();
   const [stage, setStage] = useState<Stage>("setup");
   const [selectedPhilosophers, setSelectedPhilosophers] = useState<Philosopher[]>([]);
-  const [debateTopic, setDebateTopic] = useState("");
+  const [selectedPresetId, setSelectedPresetId] = useState<RoundtableTopicId | null>(null);
   const [customTopic, setCustomTopic] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<RoundtableStoredMessage[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
 
-  // 预设辩题
-  const presetTopics = [
-    {
-      id: "ai-free-will",
-      title: "AI是否会取代人类自由意志？",
-      description: "探讨人工智能、意识与自由选择的关系",
-    },
-    {
-      id: "utopia",
-      title: "理想社会应该追求绝对平等还是自由？",
-      description: "关于正义、公平与个人权利的永恒辩论",
-    },
-    {
-      id: "truth",
-      title: "客观真理是否存在？",
-      description: "认识论的核心问题：真理的本质",
-    },
-    {
-      id: "education",
-      title: "教育的目的是培养工具还是完整的人？",
-      description: "人才培养vs人格教育的现代困境",
-    },
-  ];
+  const presetTopics = useMemo(
+    () =>
+      ROUNDTABLE_TOPIC_IDS.map((id) => ({
+        id,
+        title: t(roundtableTopicTitleKey(id)),
+        description: t(roundtableTopicDescriptionKey(id)),
+      })),
+    [t, locale]
+  );
+
+  const debateTopic = useMemo(() => {
+    if (selectedPresetId) {
+      return t(roundtableTopicTitleKey(selectedPresetId));
+    }
+    return customTopic;
+  }, [selectedPresetId, customTopic, t, locale]);
+
+  const resolvePhilosopher = (p: Philosopher) => {
+    const latest = philosophers.find((x) => x.id === p.id) ?? p;
+    return philosopherForLocale(latest, locale);
+  };
+
+  const toParticipant = (p: Philosopher) => {
+    const latest = philosophers.find((x) => x.id === p.id) ?? p;
+    const loc = philosopherForLocale(latest, locale);
+    return {
+      id: p.id,
+      nameCN: philosopherDisplayName(latest, locale),
+      school: loc.school,
+    };
+  };
 
   const handleAddPhilosopher = (philosopher: Philosopher) => {
     if (selectedPhilosophers.length >= 4) {
@@ -66,24 +90,24 @@ export function RoundtableDebate() {
     setSelectedPhilosophers(selectedPhilosophers.filter(p => p.id !== philosopherId));
   };
 
+  const handleBackToSetup = () => {
+    setStage("setup");
+    setMessages([]);
+    setUserInput("");
+    setIsThinking(false);
+  };
+
   const handleStartDebate = () => {
     if (selectedPhilosophers.length < 2 || !debateTopic) return;
     
     setStage("debate");
     
     setIsThinking(true);
-    const participants = selectedPhilosophers.map((p) => ({ id: p.id, nameCN: p.nameCN, school: p.school }));
+    const participants = selectedPhilosophers.map(toParticipant);
     generateRoundtableOpenings(debateTopic, participants)
       .then((resp) => {
-        const parsed = parseJsonPayload<{ messages?: Array<{ speaker: string; content: string }> }>(resp.text);
-        const serverMessages = parsed?.messages ?? [];
-        if (serverMessages.length > 0) {
-          const openingMessages: Message[] = serverMessages.map((m, index) => ({
-            id: `opening-${m.speaker}-${Date.now()}-${index}`,
-            speaker: m.speaker,
-            content: m.content,
-            timestamp: Date.now() + index * 300,
-          }));
+        const openingMessages = ingestRoundtableAiMessages(resp, "opening");
+        if (openingMessages && openingMessages.length > 0) {
           setMessages(openingMessages);
           return;
         }
@@ -103,7 +127,7 @@ export function RoundtableDebate() {
 
     // 添加用户消息
     const userText = userInput.trim();
-    const userMessage: Message = {
+    const userMessage: RoundtableStoredMessage = {
       id: `user-${Date.now()}`,
       speaker: "user",
       content: userText,
@@ -113,18 +137,11 @@ export function RoundtableDebate() {
     setUserInput("");
 
     setIsThinking(true);
-    const participants = selectedPhilosophers.map((p) => ({ id: p.id, nameCN: p.nameCN, school: p.school }));
+    const participants = selectedPhilosophers.map(toParticipant);
     generateRoundtableReply(debateTopic, userText, participants)
       .then((resp) => {
-        const parsed = parseJsonPayload<{ messages?: Array<{ speaker: string; content: string }> }>(resp.text);
-        const serverMessages = parsed?.messages ?? [];
-        if (serverMessages.length > 0) {
-          const responses = serverMessages.map((m, index) => ({
-            id: `response-${m.speaker}-${Date.now()}-${index}`,
-            speaker: m.speaker,
-            content: m.content,
-            timestamp: Date.now() + index * 300,
-          }));
+        const responses = ingestRoundtableAiMessages(resp, "response");
+        if (responses && responses.length > 0) {
           setMessages((prev) => [...prev, ...responses]);
           return;
         }
@@ -175,14 +192,18 @@ export function RoundtableDebate() {
                     {t("roundtable.selected", { count: selectedPhilosophers.length })}
                   </h3>
                   <div className="flex flex-wrap gap-3">
-                    {selectedPhilosophers.map(p => (
+                    {selectedPhilosophers.map((p) => {
+                      const loc = resolvePhilosopher(p);
+                      return (
                       <div
                         key={p.id}
                         className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2"
                       >
                         <div>
-                          <div className="font-semibold text-white">{p.nameCN}</div>
-                          <div className="text-xs text-zinc-500">{p.school}</div>
+                          <div className="font-semibold text-white">
+                            {philosopherDisplayName(p, locale)}
+                          </div>
+                          <div className="text-xs text-zinc-500">{loc.school}</div>
                         </div>
                         <button
                           onClick={() => handleRemovePhilosopher(p.id)}
@@ -191,7 +212,8 @@ export function RoundtableDebate() {
                           <X className="w-4 h-4 text-zinc-400" />
                         </button>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
               )}
@@ -201,6 +223,7 @@ export function RoundtableDebate() {
                 {philosophers
                   .filter(p => p.majorWorks) // 只显示有详细信息的思想家
                   .map(p => {
+                    const loc = philosopherForLocale(p, locale);
                     const isSelected = selectedPhilosophers.find(sp => sp.id === p.id);
                     const isFull = selectedPhilosophers.length >= 4;
                     
@@ -217,8 +240,10 @@ export function RoundtableDebate() {
                             : "bg-zinc-900 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800"
                         }`}
                       >
-                        <div className="font-semibold text-white text-sm">{p.nameCN}</div>
-                        <div className="text-xs text-zinc-500 mt-1">{p.school}</div>
+                        <div className="font-semibold text-white text-sm">
+                          {philosopherDisplayName(p, locale)}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">{loc.school}</div>
                         {isSelected && (
                           <div className="text-xs text-orange-500 mt-1">✓ {t("roundtable.selected")}</div>
                         )}
@@ -240,9 +265,13 @@ export function RoundtableDebate() {
                   {presetTopics.map(topic => (
                     <button
                       key={topic.id}
-                      onClick={() => setDebateTopic(topic.title)}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPresetId(topic.id);
+                        setCustomTopic("");
+                      }}
                       className={`text-left p-4 border rounded-lg transition-all ${
-                        debateTopic === topic.title
+                        selectedPresetId === topic.id
                           ? "bg-orange-900/30 border-orange-700"
                           : "bg-zinc-900 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800"
                       }`}
@@ -262,8 +291,8 @@ export function RoundtableDebate() {
                     type="text"
                     value={customTopic}
                     onChange={(e) => {
+                      setSelectedPresetId(null);
                       setCustomTopic(e.target.value);
-                      setDebateTopic(e.target.value);
                     }}
                     placeholder={t("roundtable.customPlaceholder")}
                     className="w-full p-3 bg-zinc-950 border border-zinc-700 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-orange-900/50"
@@ -294,6 +323,16 @@ export function RoundtableDebate() {
         {/* Debate Stage */}
         {stage === "debate" && (
           <div className="space-y-6">
+            <button
+              type="button"
+              onClick={handleBackToSetup}
+              disabled={isThinking}
+              className="flex items-center gap-2 text-zinc-400 transition-colors hover:text-zinc-200 disabled:opacity-50"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span>{t("roundtable.backToSetup")}</span>
+            </button>
+
             {/* 辩题 */}
             <div className="bg-gradient-to-r from-orange-900/20 to-red-900/20 border border-orange-900/30 rounded-lg p-6 text-center">
               <h2 className="text-2xl font-bold text-orange-500 mb-2">
@@ -301,8 +340,10 @@ export function RoundtableDebate() {
               </h2>
               <div className="flex items-center justify-center gap-4 text-sm text-zinc-400">
                 <span>{t("roundtable.participants")}</span>
-                {selectedPhilosophers.map(p => (
-                  <span key={p.id} className="text-white">{p.nameCN}</span>
+                {selectedPhilosophers.map((p) => (
+                  <span key={p.id} className="text-white">
+                    {philosopherDisplayName(p, locale)}
+                  </span>
                 ))}
               </div>
             </div>
@@ -312,6 +353,8 @@ export function RoundtableDebate() {
               <div className="space-y-6">
                 {messages.map((msg) => {
                   const philosopher = msg.speaker !== "user" ? getPhilosopher(msg.speaker) : null;
+                  const loc = philosopher ? resolvePhilosopher(philosopher) : null;
+                  const speakerName = philosopher ? philosopherDisplayName(philosopher, locale) : "";
                   
                   return (
                     <div
@@ -321,17 +364,17 @@ export function RoundtableDebate() {
                       {msg.speaker !== "user" && philosopher && (
                         <div className="flex-shrink-0">
                           <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {philosopher.nameCN.slice(0, 1)}
+                            {speakerName.slice(0, 1)}
                           </div>
                         </div>
                       )}
                       
                       <div className={`flex-1 max-w-2xl ${msg.speaker === "user" ? "text-right" : ""}`}>
                         <div className="flex items-center gap-2 mb-1">
-                          {msg.speaker !== "user" && philosopher && (
+                          {msg.speaker !== "user" && philosopher && loc && (
                             <>
-                              <span className="font-semibold text-white">{philosopher.nameCN}</span>
-                              <span className="text-xs text-zinc-500">{philosopher.school}</span>
+                              <span className="font-semibold text-white">{speakerName}</span>
+                              <span className="text-xs text-zinc-500">{loc.school}</span>
                             </>
                           )}
                           {msg.speaker === "user" && (
@@ -344,7 +387,7 @@ export function RoundtableDebate() {
                             : "bg-zinc-800 border border-zinc-700"
                         }`}>
                           <p className="text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                            {msg.content}
+                            {roundtableMessageContent(msg, locale)}
                           </p>
                         </div>
                       </div>
