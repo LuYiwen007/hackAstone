@@ -4,11 +4,19 @@ import { Brain, Eye, EyeOff } from "lucide-react";
 import { apiPost, setAuth } from "../../shared/api/client";
 import { useArenaLocale } from "../context/ArenaLocaleContext";
 
+type LoginResponse = {
+  token: string;
+  userId: string;
+  email?: string;
+  nickname: string;
+};
+
 export function LoginPage() {
   const navigate = useNavigate();
   const { t } = useArenaLocale();
   const [isRegister, setIsRegister] = useState(false);
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,19 +30,28 @@ export function LoginPage() {
 
     try {
       if (isRegister) {
-        await apiPost<string>("/user/register", { username, password, nickname });
-        const loginRes = await apiPost<{ token: string; userId: string; username: string; nickname: string }>(
-          "/user/login",
-          { username, password }
-        );
-        setAuth(loginRes);
+        await apiPost<{ userId: string }>("/user/register", { email, password, nickname });
+        const loginRes = await apiPost<LoginResponse>("/user/login", {
+          account: email,
+          password,
+        });
+        setAuth({
+          token: loginRes.token,
+          userId: loginRes.userId,
+          username: loginRes.email || loginRes.nickname,
+          nickname: loginRes.nickname,
+          email: loginRes.email,
+        });
         navigate("/profile");
       } else {
-        const loginRes = await apiPost<{ token: string; userId: string; username: string; nickname: string }>(
-          "/user/login",
-          { username, password }
-        );
-        setAuth(loginRes);
+        const loginRes = await apiPost<LoginResponse>("/user/login", { account, password });
+        setAuth({
+          token: loginRes.token,
+          userId: loginRes.userId,
+          username: loginRes.email || loginRes.nickname,
+          nickname: loginRes.nickname,
+          email: loginRes.email,
+        });
         navigate("/profile");
       }
     } catch (err: unknown) {
@@ -67,17 +84,33 @@ export function LoginPage() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">{t("login.account")}</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              placeholder={t("login.placeholder.account")}
-            />
-          </div>
+          {isRegister ? (
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-1">{t("login.email")}</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                placeholder={t("login.placeholder.email")}
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-1">{t("login.loginAccount")}</label>
+              <input
+                type="text"
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
+                required
+                autoComplete="username"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                placeholder={t("login.placeholder.loginAccount")}
+              />
+            </div>
+          )}
 
           {isRegister && (
             <div>
@@ -87,6 +120,7 @@ export function LoginPage() {
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 required={isRegister}
+                autoComplete="nickname"
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 placeholder={t("login.placeholder.nickname")}
               />
@@ -101,6 +135,7 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete={isRegister ? "new-password" : "current-password"}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 pr-12 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 placeholder={t("login.placeholder.password")}
               />

@@ -513,6 +513,7 @@ export function Dilemma() {
             </div>
 
             <DebateSummary
+              sourceType="dilemma"
               philosopher={selectedPhilosopher}
               question={`${currentDilemma.title}：${currentDilemma.question}`}
               userChoice="uncertain"

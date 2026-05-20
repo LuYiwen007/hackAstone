@@ -1,0 +1,74 @@
+{
+  "1": {
+    "question": "Effort vs. choice — which matters more?",
+    "category": "Business",
+    "builderView": "Effort is the foundation of success. Whatever your starting point, sustained effort can compensate for a lack of resources. Countless self-made entrepreneurs in history prove this. Effort represents what we can control and our agency — it is the one variable we can fully master.",
+    "breakerView": "Choice sets direction; effort is only execution. Pick the wrong track and more effort only takes you further off course. Someone grinding in a sunset industry is worse off than someone giving normal effort in a sunrise industry. Buffett said choice matters more than effort because choice determines the leverage of effort.",
+    "judgeQuestions": [
+      "Do you think 'effort' and 'choice' are completely independent?",
+      "If someone lacks both good judgment in choices and willingness to work hard, which should be fixed first?",
+      "Does your conclusion ignore time — would the answer differ at different life stages?"
+    ],
+    "reveal": "This is a false binary. In reality, effort and choice reinforce each other:\n\n• Early on, effort builds 'choice capital' (information, networks, skills)\n• Once you can choose well, effort amplifies the value of those choices\n• Best strategy: trade effort for options, then use choices to multiply effort\n\nKey insight: asking 'which matters more' is a trap. A better question: 'At my current stage, should I prioritize building choice capacity or executing the choice I already made?'"
+  },
+  "2": {
+    "question": "Is multitasking actually effective?",
+    "category": "Psychology",
+    "builderView": "Multitasking is a must-have skill today. We live in an age of information overload and must juggle many projects. Research shows brain plasticity lets us train multitasking. Many high performers are multitaskers managing several projects and roles at once.",
+    "breakerView": "Multitasking is an efficiency illusion. Neuroscience shows the brain rapidly switches rather than truly parallel-processing. Each switch has a cognitive cost: more errors, less creativity. Deep work drives high-value output; multitasking is deep work's enemy.",
+    "judgeQuestions": [
+      "What exactly do you mean by 'multitasking'? Is email + meeting the same as coding + writing a proposal?",
+      "How do you measure 'efficiency' — tasks completed or quality of output?",
+      "Are there contexts where multitasking is actually optimal?"
+    ],
+    "reveal": "The key is task type:\n\n• Automatic tasks (music + running): can run in parallel\n• Low-cognitive + high-cognitive (podcast + chores): can combine\n• High-cognitive pairs (writing + coding): must be serial\n\nThe real question is not 'can we multitask' but:\n1. Which tasks can be combined\n2. Protect focus blocks for high-value work\n3. Balance batching vs. deep work dynamically\n\nThe myth comes from confusing task-switching with true multitasking."
+  },
+  "3": {
+    "question": "Will AI make us dumber?",
+    "category": "Hot topics",
+    "builderView": "AI is a cognitive amplifier, like calculators did not destroy math ability. AI outsources repetitive thinking so the brain can focus on higher-order creation and judgment. History shows tools expand rather than shrink human capacity. Those who use AI well gain a large edge.",
+    "breakerView": "AI is hollowing out skills. When we rely on AI for email and decisions, we stop practicing those abilities. GPS eroded sense of direction; search eroded memory; AI will erode deep thinking. Convenience and capability often move in opposite directions.",
+    "judgeQuestions": [
+      "Do you assume human cognition is fixed? How does the brain reallocate after using tools?",
+      "How do you define 'dumber' — raw ability decline or relative competitiveness?",
+      "Which abilities must stay in-house vs. can be outsourced — how do you tell?"
+    ],
+    "reveal": "It depends on how you use it:\n\n❌ Passive mode:\n• AI replaces thinking → skill decay\n• Copy-paste AI output → judgment declines\n\n✅ Active collaboration:\n• AI drafts, human refines → standards rise\n• AI expands options, human filters → creativity grows\n\nKey insight: tools don't make us dumb; dependency can. The real risk is losing metacognition — not knowing when you're thinking vs. copying.\n\nBest practice:\n1. Keep tool-free practice for core skills\n2. Treat AI as sparring partner, not answer machine\n3. Periodically 'unplug from AI' to test real ability"
+  },
+  "4": {
+    "question": "Are introverts suited to be leaders?",
+    "category": "Business",
+    "builderView": "Leadership needs influence and communication — strengths of extroverts. Introverts tire in social settings and struggle to energize teams. Many great leaders in history were charismatic figures who could inspire crowds. Leading means 'standing in front,' which clashes with introverted nature.",
+    "breakerView": "Some of the most successful leaders are introverts: Bill Gates, Warren Buffett, Mark Zuckerberg. Introverts excel at deep thinking, listening, and careful decisions. In complex environments, calm analysis beats fiery speeches. Introversion is not a flaw but a different leadership style.",
+    "judgeQuestions": [
+      "Do you assume only one leadership style? Do different contexts need different leadership?",
+      "What does 'suited' mean — able to do it, do it well, or do it best?",
+      "Are introversion and extroversion a binary or a spectrum?"
+    ],
+    "reveal": "The question is poorly framed:\n\n1️⃣ 'Introvert' is often misunderstood\n• Introvert ≠ shy or bad at social skills\n• Introvert = recharges through solitude\n• Many introverts are strong public speakers\n\n2️⃣ Leadership is multidimensional\n• Transformational leadership may favor extroversion\n• Strategic leadership may favor introversion\n• Servant leadership can fit both\n\n3️⃣ What really matters\n• Not personality type but self-awareness\n• Introvert leaders benefit from:\n  - Managing energy (scheduling alone time)\n  - Building genuine connections (not shallow networking)\n  - Using systems instead of personal charisma alone\n\nBest answer: Yes, but build a leadership system that fits your temperament."
+  },
+  "5": {
+    "question": "Is paid knowledge an intelligence tax?",
+    "category": "Learning",
+    "builderView": "Paid knowledge democratizes education. It makes quality content accessible and breaks elite monopolies. Payment filters serious learners and improves community. Creators reinvest income into better content — a win-win market.",
+    "breakerView": "Paid knowledge sells anxiety, not knowledge. Truly valuable knowledge is often free (papers, open resources). Many paid courses are summaries and platitudes creating a 'learning illusion.' People hoard courses they never finish — paying to soothe guilt about not studying.",
+    "judgeQuestions": [
+      "Are all paid-knowledge products the same?",
+      "What really differs between free and paid knowledge — quality or something else?",
+      "If it's an 'intelligence tax,' why do some people clearly benefit?"
+    ],
+    "reveal": "Distinguish product types:\n\n❌ Low-value paid knowledge:\n• Sells fear ('fall behind or die')\n• Homogenized content (repackaged info)\n• No practice path (theory only)\n\n✅ High-value paid knowledge:\n• Structured experience (saves trial-and-error)\n• Ongoing guidance (not just information)\n• Community of practitioners\n\nThe split is not free vs. paid but:\n\nKnowledge vs. information:\n• Information: searchable facts\n• Knowledge: validated methods\n\nLearning illusion vs. real change:\n• Hoarding courses = emotional comfort ❌\n• Deliberate practice + feedback = growth ✅\n\nTest: Does the product make you feel you learned, or did you actually do the thing?"
+  },
+  "6": {
+    "question": "Does waking up early boost productivity?",
+    "category": "Learning",
+    "builderView": "Early rising is a habit of high performers. Mornings bring the clearest mind, strongest willpower, and fewest interruptions. CEOs like Tim Cook and founders like Jack Dorsey are early risers. Waking early gives a head start to finish the most important work before others are up.",
+    "breakerView": "Early rising is a 'morning person privilege' myth. Biologically clocks differ; forcing change harms health and efficiency. Night workers can get the same focus windows. What matters is sleep quality and energy management, not the clock. Many creative night owls achieve just as much.",
+    "judgeQuestions": [
+      "Do you assume everyone's biological clock can be reshaped?",
+      "How should 'productivity' be measured — quantity of tasks or quality of output?",
+      "Do early-rising benefits come from the hour itself or other factors?"
+    ],
+    "reveal": "Early wake-up is a means, not the goal:\n\n🔍 What actually helps:\n\n1️⃣ Peak willpower\n• Better decisions when self-control is fresh\n• But this tracks time awake, not clock time\n\n2️⃣ Fewer interruptions\n• Mornings are quieter\n• Evenings can be equally quiet\n\n3️⃣ Ritual\n• Fixed routines prime the mind\n• Evening rituals work too\n\n❗The real question:\n\nNot 'what time to wake' but:\n• Consistent sleep schedule\n• Protected blocks for high-cognitive work\n• Alignment with your chronotype\n\nBest approach:\n1. Find your energy peak\n2. Reserve that window for important work\n3. Keep schedule consistent (weekends included)\n\nEarly rise suits morning types; late nights suit evening types. Find your rhythm, don't copy someone else's timetable."
+  }
+}

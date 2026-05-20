@@ -8,8 +8,11 @@ public class UserEntity {
     // 对应数据库 id
     private String userId;
 
-    // 对应数据库 username
+    // 对应数据库 username（内部标识，可与 uid 一致）
     private String username;
+
+    // 对应数据库 email
+    private String email;
 
     // 对应数据库 phone
     private String phone;

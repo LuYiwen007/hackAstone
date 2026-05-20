@@ -11,7 +11,9 @@ import org.hackastone.biz.RoundtableMessagesParser;
 import org.hackastone.base.util.exception.HackAstoneBizException;
 import org.hackastone.base.util.constants.ResultEnum;
 import org.hackastone.biz.BattleRecordService;
+import org.hackastone.biz.UserNoteService;
 import org.hackastone.biz.UserProfileService;
+import org.hackastone.base.dal.entity.UserNoteEntity;
 import org.hackastone.config.BailianAgentConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +43,8 @@ public class ArenaController {
     private UserProfileService userProfileService;
     @Autowired
     private BattleRecordService battleRecordService;
+    @Autowired
+    private UserNoteService userNoteService;
 
     /**
      * 百炼连接相关配置自检（不返回密钥，仅便于排查「连不上」类问题）
@@ -139,6 +143,53 @@ public class ArenaController {
             return Result.success(arenaDataService.getProfile());
         }
         return Result.success(userProfileService.getOrCreateProfile(userId));
+    }
+
+    /**
+     * 保存/更新当前用户的辩论笔记（按 user_id + source 唯一）
+     */
+    @PostMapping("/notes")
+    public Result<Map<String, Object>> saveNote(@RequestBody Map<String, Object> request) {
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
+        String sourceType = String.valueOf(request.getOrDefault("sourceType", "debate"));
+        String sourceKey = String.valueOf(request.getOrDefault("sourceKey", ""));
+        if (sourceKey.isEmpty()) {
+            return Result.fail(400, "sourceKey 不能为空");
+        }
+        String topic = String.valueOf(request.getOrDefault("topic", ""));
+        String content = String.valueOf(request.getOrDefault("content", ""));
+        UserNoteEntity saved = userNoteService.saveOrUpdate(userId, sourceType, sourceKey, topic, content);
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", saved.getId());
+        body.put("content", saved.getContent());
+        body.put("updatedAt", saved.getUpdatedAt());
+        return Result.success(body);
+    }
+
+    /**
+     * 读取当前用户在指定辩题下的笔记
+     */
+    @GetMapping("/notes")
+    public Result<Map<String, Object>> getNote(
+            @org.springframework.web.bind.annotation.RequestParam String sourceType,
+            @org.springframework.web.bind.annotation.RequestParam String sourceKey) {
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
+        UserNoteEntity note = userNoteService.getNote(userId, sourceType, sourceKey);
+        if (note == null) {
+            return Result.success(Collections.emptyMap());
+        }
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", note.getId());
+        body.put("content", note.getContent());
+        body.put("topic", note.getTopic());
+        body.put("updatedAt", note.getUpdatedAt());
+        return Result.success(body);
     }
 
     /**

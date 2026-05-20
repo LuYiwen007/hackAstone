@@ -5,6 +5,7 @@ export type AuthPayload = {
   userId: string;
   username: string;
   nickname: string;
+  email?: string;
 };
 
 export function getAuth(): AuthPayload | null {

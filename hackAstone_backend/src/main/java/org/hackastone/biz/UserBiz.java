@@ -5,11 +5,19 @@ import org.hackastone.base.dal.mapper.UserMapper;
 import org.hackastone.base.util.constants.ResultEnum;
 import org.hackastone.base.util.exception.HackAstoneBizException;
 import org.hackastone.core.component.IdGenerator;
+import org.hackastone.core.component.PasswordHasher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 @Service
 public class UserBiz {
+
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
 
     @Autowired
     private UserMapper userMapper;
@@ -17,55 +25,80 @@ public class UserBiz {
     @Autowired
     private IdGenerator idGenerator;
 
+    @Autowired
+    private PasswordHasher passwordHasher;
+
     /**
-     * 用户注册逻辑
+     * 注册：分配 uid（USR0001…），邮箱与昵称唯一，密码 BCrypt 存储
      */
-    public String register(String username, String password, String nickname) {
-        // 1. 检查用户名是否已存在
-        UserEntity existUser = userMapper.selectByUsername(username);
-        if (existUser != null) {
-            // 如果查到了，说明重名了，抛出异常
-            throw new HackAstoneBizException(ResultEnum.USER_EXIST);
+    public String register(String email, String password, String nickname) {
+        String normalizedEmail = normalizeEmail(email);
+        String trimmedNickname = trim(nickname);
+
+        if (!StringUtils.hasText(normalizedEmail) || !EMAIL_PATTERN.matcher(normalizedEmail).matches()) {
+            throw new HackAstoneBizException(ResultEnum.PARAM_ERROR.getCode(), "邮箱格式不正确");
+        }
+        if (!StringUtils.hasText(trimmedNickname)) {
+            throw new HackAstoneBizException(ResultEnum.PARAM_ERROR.getCode(), "昵称不能为空");
+        }
+        if (!StringUtils.hasText(password) || password.length() < 6) {
+            throw new HackAstoneBizException(ResultEnum.PARAM_ERROR.getCode(), "密码至少 6 位");
         }
 
-        // 2. 生成新用户ID (使用我们刚才写的发号器)
-        // 对应数据库中的 'USR' 类型
+        if (userMapper.selectByEmail(normalizedEmail) != null) {
+            throw new HackAstoneBizException(ResultEnum.USER_EXIST.getCode(), "该邮箱已被注册");
+        }
+        if (userMapper.selectByNickname(trimmedNickname) != null) {
+            throw new HackAstoneBizException(ResultEnum.USER_EXIST.getCode(), "该昵称已被使用");
+        }
+
         String userId = idGenerator.generate("USR", "USR");
 
-        // 3. 组装用户实体
         UserEntity newUser = new UserEntity();
         newUser.setUserId(userId);
-        newUser.setUsername(username);
-        newUser.setNickname(nickname);
-        // 注意：实际项目中密码需要加密（如MD5或BCrypt），这里为了简化先存明文
-        newUser.setPassword(password); 
+        newUser.setUsername(userId);
+        newUser.setEmail(normalizedEmail);
+        newUser.setNickname(trimmedNickname);
+        newUser.setPassword(passwordHasher.hash(password));
 
-        // 4. 存入数据库
         userMapper.insert(newUser);
-
         return userId;
     }
-    /**
-     * 用户登录逻辑
-     */
-    public UserEntity login(String username, String password) {
-        // 1. 根据用户名查询用户
-        UserEntity user = userMapper.selectByUsername(username);
 
-        // 2. 检查用户是否存在
+    /**
+     * 登录：支持昵称或邮箱 + 密码
+     */
+    public UserEntity login(String account, String password) {
+        String loginKey = trim(account);
+        if (loginKey.contains("@")) {
+            loginKey = loginKey.toLowerCase(Locale.ROOT);
+        }
+        if (!StringUtils.hasText(loginKey) || !StringUtils.hasText(password)) {
+            throw new HackAstoneBizException(ResultEnum.PARAM_ERROR);
+        }
+
+        UserEntity user = userMapper.selectByLoginAccount(loginKey);
         if (user == null) {
             throw new HackAstoneBizException(ResultEnum.USER_NOT_EXIST);
         }
 
-        // 3. 检查密码是否正确
-        // (注意：实际项目中密码是加密的，这里我们暂时用明文比对)
-        if (!user.getPassword().equals(password)) {
+        if (!passwordHasher.matches(password, user.getPassword())) {
             throw new HackAstoneBizException(ResultEnum.PASSWORD_ERROR);
         }
 
-        // 4. 登录成功，为了安全，把密码抹掉再返回给前端
+        if (!passwordHasher.isBcryptHash(user.getPassword())) {
+            userMapper.updatePasswordHash(user.getUserId(), passwordHasher.hash(password));
+        }
+
         user.setPassword(null);
-        
         return user;
+    }
+
+    private static String normalizeEmail(String email) {
+        return trim(email).toLowerCase(Locale.ROOT);
+    }
+
+    private static String trim(String value) {
+        return value == null ? "" : value.trim();
     }
 }

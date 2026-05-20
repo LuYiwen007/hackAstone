@@ -31,4 +31,10 @@
         WHERE id = #{id}
     </select>
 
+    <select id="selectByIdAndUserId" resultMap="BaseResultMap">
+        SELECT id, user_id, title, description, plan_type, status, start_date, end_date, priority, tags, ext_info, created_at, updated_at
+        FROM ha_plan
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
 </mapper>
