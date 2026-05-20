@@ -19,7 +19,9 @@
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/ArenaEchoPrompts.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/BailianAgentService.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/BattleRecordService.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/DilemmaAiParser.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/DisciplineBattleParser.java
+/Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/RoundtableMessagesParser.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/UserBiz.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/biz/UserProfileService.java
 /Users/luyiwen/Desktop/hackAstone/hackAstone_backend/src/main/java/org/hackastone/config/AuthInterceptor.java

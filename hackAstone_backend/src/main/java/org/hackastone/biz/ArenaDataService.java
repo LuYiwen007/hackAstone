@@ -7,7 +7,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -22,6 +24,10 @@ public class ArenaDataService implements InitializingBean {
     private Map<String, Map<String, String>> i18nByLocale = new HashMap<>();
     private Map<String, Object> philosophersEnOverlay = Map.of();
     private Map<String, Object> battlesEnOverlay = Map.of();
+    /** 学科辩论静态对局：zh 来自 catalog 基座，en 来自 overlay；避免运行时 mutate catalogBase */
+    private List<Map<String, Object>> bilingualBattlesTemplate = List.of();
+    /** 哲学家卡片：zh 来自 catalog 基座，en 来自 overlay */
+    private List<Map<String, Object>> bilingualPhilosophersTemplate = List.of();
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -32,6 +38,8 @@ public class ArenaDataService implements InitializingBean {
         i18nByLocale.put("zh", readStringMap("arena/i18n-zh.json"));
         philosophersEnOverlay = readResourceMap("arena/locale-en/philosophers.json");
         battlesEnOverlay = readResourceMap("arena/locale-en/battles.json");
+        bilingualBattlesTemplate = buildBilingualBattlesTemplate();
+        bilingualPhilosophersTemplate = buildBilingualPhilosophersTemplate();
     }
 
     private Map<String, Object> readResourceMap(String classpathLocation) throws IOException {
@@ -98,18 +106,194 @@ public class ArenaDataService implements InitializingBean {
         localizeRegions(catalog, strings);
         catalog.put("timePeriods", localizeHomeTimePeriods(strings));
 
-        List<Map<String, Object>> philosophers = (List<Map<String, Object>>) catalog.get("philosophers");
-        if (philosophers != null && "en".equals(normalized)) {
-            applyPhilosopherOverlay(philosophers, philosophersEnOverlay);
-        }
-
-        List<Map<String, Object>> battles = (List<Map<String, Object>>) catalog.get("battles");
-        if (battles != null && "en".equals(normalized)) {
-            applyBattleOverlay(battles, battlesEnOverlay);
-        }
+        catalog.put("philosophers", localizePhilosophers(normalized));
+        catalog.put("battles", localizeBattles(normalized));
 
         catalog.put("locale", normalized);
         return catalog;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> buildBilingualBattlesTemplate() {
+        List<Map<String, Object>> baseBattles = (List<Map<String, Object>>) catalogBase.get("battles");
+        if (baseBattles == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> templates = new ArrayList<>();
+        for (Map<String, Object> battle : baseBattles) {
+            Object id = battle.get("id");
+            if (id == null) {
+                continue;
+            }
+            Map<String, Object> zh = extractBattleLocaleSlice(battle);
+            // 从 battle 再提取一份 en 基座，避免 deepCopy 与 zh 共享引用导致 overlay 污染中文
+            Map<String, Object> en = extractBattleLocaleSlice(battle);
+            Object overlay = battlesEnOverlay.get(id.toString());
+            if (overlay instanceof Map) {
+                mergeBattleLocaleSlice(en, (Map<String, Object>) overlay);
+            }
+            Map<String, Object> locales = new LinkedHashMap<>();
+            locales.put("zh", zh);
+            locales.put("en", en);
+            Map<String, Object> template = new LinkedHashMap<>();
+            template.put("id", id);
+            template.put("locales", locales);
+            templates.add(template);
+        }
+        return List.copyOf(templates);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> buildBilingualPhilosophersTemplate() {
+        List<Map<String, Object>> basePhilosophers = (List<Map<String, Object>>) catalogBase.get("philosophers");
+        if (basePhilosophers == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> templates = new ArrayList<>();
+        for (Map<String, Object> philosopher : basePhilosophers) {
+            Object id = philosopher.get("id");
+            if (id == null) {
+                continue;
+            }
+            Map<String, Object> zh = extractPhilosopherLocaleSlice(philosopher);
+            Map<String, Object> en = extractPhilosopherLocaleSlice(philosopher);
+            Object overlay = philosophersEnOverlay.get(id.toString());
+            if (overlay instanceof Map) {
+                mergePhilosopherLocaleSlice(en, (Map<String, Object>) overlay);
+            }
+            Map<String, Object> locales = new LinkedHashMap<>();
+            locales.put("zh", zh);
+            locales.put("en", en);
+            Map<String, Object> template = new LinkedHashMap<>();
+            template.put("id", id);
+            for (String key : List.of("name", "nameCN", "region", "period", "influences")) {
+                if (philosopher.get(key) != null) {
+                    template.put(key, philosopher.get(key));
+                }
+            }
+            template.put("locales", locales);
+            templates.add(template);
+        }
+        return List.copyOf(templates);
+    }
+
+    private List<Map<String, Object>> localizePhilosophers(String locale) {
+        String key = normalizeLocale(locale);
+        List<Map<String, Object>> philosophers = new ArrayList<>();
+        for (Map<String, Object> template : bilingualPhilosophersTemplate) {
+            philosophers.add(materializePhilosopherForLocale(template, key));
+        }
+        return philosophers;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> materializePhilosopherForLocale(Map<String, Object> template, String locale) {
+        Map<String, Object> philosopher = new LinkedHashMap<>();
+        for (String key : List.of("id", "name", "nameCN", "region", "period", "influences")) {
+            if (template.get(key) != null) {
+                philosopher.put(key, template.get(key));
+            }
+        }
+        Map<String, Object> localesCopy = deepCopyMap((Map<String, Object>) template.get("locales"));
+        philosopher.put("locales", localesCopy);
+        Map<String, Object> slice = (Map<String, Object>) localesCopy.get(locale);
+        if (slice == null) {
+            slice = (Map<String, Object>) localesCopy.get("zh");
+        }
+        if (slice != null) {
+            philosopher.putAll(slice);
+        }
+        return philosopher;
+    }
+
+    private Map<String, Object> extractPhilosopherLocaleSlice(Map<String, Object> philosopher) {
+        Map<String, Object> slice = new LinkedHashMap<>();
+        for (String key : List.of("school", "summary", "birthPlace", "lifespan")) {
+            Object value = philosopher.get(key);
+            if (value != null) {
+                slice.put(key, value);
+            }
+        }
+        copyListField(philosopher, slice, "keyIdeas");
+        copyListField(philosopher, slice, "majorWorks");
+        copyListField(philosopher, slice, "famousQuotes");
+        return slice;
+    }
+
+    private void copyListField(Map<String, Object> source, Map<String, Object> target, String key) {
+        Object value = source.get(key);
+        if (value instanceof List) {
+            target.put(key, new ArrayList<>((List<?>) value));
+        }
+    }
+
+    private void mergePhilosopherLocaleSlice(Map<String, Object> target, Map<String, Object> overlay) {
+        for (String key : List.of("school", "summary", "birthPlace", "lifespan")) {
+            Object value = overlay.get(key);
+            if (value != null) {
+                target.put(key, value);
+            }
+        }
+        copyListField(overlay, target, "keyIdeas");
+        copyListField(overlay, target, "majorWorks");
+        copyListField(overlay, target, "famousQuotes");
+    }
+
+    private List<Map<String, Object>> localizeBattles(String locale) {
+        String key = normalizeLocale(locale);
+        List<Map<String, Object>> battles = new ArrayList<>();
+        for (Map<String, Object> template : bilingualBattlesTemplate) {
+            battles.add(materializeBattleForLocale(template, key));
+        }
+        return battles;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> materializeBattleForLocale(Map<String, Object> template, String locale) {
+        Map<String, Object> battle = new LinkedHashMap<>();
+        battle.put("id", template.get("id"));
+        Map<String, Object> localesCopy = deepCopyMap((Map<String, Object>) template.get("locales"));
+        battle.put("locales", localesCopy);
+        Map<String, Object> slice = (Map<String, Object>) localesCopy.get(locale);
+        if (slice == null) {
+            slice = (Map<String, Object>) localesCopy.get("zh");
+        }
+        if (slice != null) {
+            battle.putAll(slice);
+        }
+        return battle;
+    }
+
+    private Map<String, Object> extractBattleLocaleSlice(Map<String, Object> battle) {
+        Map<String, Object> slice = new LinkedHashMap<>();
+        for (String key : List.of("question", "category", "builderView", "breakerView", "reveal")) {
+            Object value = battle.get(key);
+            if (value != null) {
+                slice.put(key, value);
+            }
+        }
+        Object judge = battle.get("judgeQuestions");
+        if (judge instanceof List) {
+            slice.put("judgeQuestions", new ArrayList<>((List<?>) judge));
+        }
+        return slice;
+    }
+
+    private void mergeBattleLocaleSlice(Map<String, Object> target, Map<String, Object> overlay) {
+        for (String key : List.of("question", "category", "builderView", "breakerView", "reveal")) {
+            Object value = overlay.get(key);
+            if (value != null) {
+                target.put(key, value);
+            }
+        }
+        if (overlay.get("judgeQuestions") instanceof List) {
+            target.put("judgeQuestions", new ArrayList<>((List<?>) overlay.get("judgeQuestions")));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> deepCopyMap(Map<String, Object> source) {
+        return objectMapper.convertValue(source, Map.class);
     }
 
     private void localizeRegions(Map<String, Object> catalog, Map<String, String> strings) {
@@ -149,72 +333,6 @@ public class ArenaDataService implements InitializingBean {
             }
         }
         return periods;
-    }
-
-    @SuppressWarnings("unchecked")
-    private void applyPhilosopherOverlay(
-            List<Map<String, Object>> philosophers,
-            Map<String, Object> overlayById
-    ) {
-        for (Map<String, Object> philosopher : philosophers) {
-            Object id = philosopher.get("id");
-            if (id == null) {
-                continue;
-            }
-            Object overlay = overlayById.get(id.toString());
-            if (!(overlay instanceof Map)) {
-                continue;
-            }
-            Map<String, Object> fields = (Map<String, Object>) overlay;
-            mergePhilosopherField(philosopher, fields, "school");
-            mergePhilosopherField(philosopher, fields, "summary");
-            mergePhilosopherField(philosopher, fields, "birthPlace");
-            mergePhilosopherField(philosopher, fields, "lifespan");
-            if (fields.get("keyIdeas") instanceof List) {
-                philosopher.put("keyIdeas", fields.get("keyIdeas"));
-            }
-            if (fields.get("majorWorks") instanceof List) {
-                philosopher.put("majorWorks", fields.get("majorWorks"));
-            }
-            if (fields.get("famousQuotes") instanceof List) {
-                philosopher.put("famousQuotes", fields.get("famousQuotes"));
-            }
-        }
-    }
-
-    private void mergePhilosopherField(
-            Map<String, Object> philosopher,
-            Map<String, Object> fields,
-            String key
-    ) {
-        Object value = fields.get(key);
-        if (value != null) {
-            philosopher.put(key, value);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void applyBattleOverlay(List<Map<String, Object>> battles, Map<String, Object> overlayById) {
-        for (Map<String, Object> battle : battles) {
-            Object id = battle.get("id");
-            if (id == null) {
-                continue;
-            }
-            Object overlay = overlayById.get(id.toString());
-            if (!(overlay instanceof Map)) {
-                continue;
-            }
-            Map<String, Object> fields = (Map<String, Object>) overlay;
-            for (String key : List.of("question", "category", "builderView", "breakerView", "reveal")) {
-                Object value = fields.get(key);
-                if (value != null) {
-                    battle.put(key, value);
-                }
-            }
-            if (fields.get("judgeQuestions") instanceof List) {
-                battle.put("judgeQuestions", fields.get("judgeQuestions"));
-            }
-        }
     }
 
     /** @deprecated use {@link #getCatalog(String)} */

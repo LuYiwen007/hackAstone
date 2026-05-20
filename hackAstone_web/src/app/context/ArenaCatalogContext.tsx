@@ -7,10 +7,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { philosophers as fallbackPhilosophers, type Philosopher } from "../data/philosophers";
+import { philosophers as fallbackPhilosophersRaw, type Philosopher } from "../data/philosophers";
+import { attachPhilosopherLocales } from "../data/attachPhilosopherLocales";
 import { regions as fallbackRegions, timePeriods as fallbackTimePeriods } from "../data/catalogMeta";
-import { battles as fallbackBattles, type Battle } from "../data/battles";
+import { battles as fallbackBattlesRaw, type Battle } from "../data/battles";
 import type { BattleLocaleSlice } from "../data/battleLocale";
+import { attachBattleLocales } from "../data/attachBattleLocales";
 import { debateTopicsByPhilosopher } from "../data/debateTopics";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { fetchArenaCatalog, type RegionMeta, type TimePeriodMeta } from "../../shared/api/arena";
@@ -58,6 +60,9 @@ const fallbackDebateTopics: Record<string, DebateTopicContent> = {
   ...debateTopicsByPhilosopher,
 };
 
+const fallbackBattles = attachBattleLocales(fallbackBattlesRaw);
+const fallbackPhilosophers = attachPhilosopherLocales(fallbackPhilosophersRaw);
+
 export function ArenaCatalogProvider({ children }: { children: ReactNode }) {
   const { locale } = useArenaLocale();
   const [philosophers, setPhilosophers] = useState<Philosopher[]>(fallbackPhilosophers);
@@ -84,6 +89,8 @@ export function ArenaCatalogProvider({ children }: { children: ReactNode }) {
       .catch((e: Error) => {
         setCatalogError(e.message);
         setCatalogFromServer(false);
+        setPhilosophers(fallbackPhilosophers);
+        setBattles(fallbackBattles);
       });
   }, [locale]);
 

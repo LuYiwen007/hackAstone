@@ -6,6 +6,8 @@ import org.hackastone.biz.ArenaDataService;
 import org.hackastone.biz.ArenaEchoPrompts;
 import org.hackastone.biz.BailianAgentService;
 import org.hackastone.biz.DisciplineBattleParser;
+import org.hackastone.biz.DilemmaAiParser;
+import org.hackastone.biz.RoundtableMessagesParser;
 import org.hackastone.base.util.exception.HackAstoneBizException;
 import org.hackastone.base.util.constants.ResultEnum;
 import org.hackastone.biz.BattleRecordService;
@@ -194,13 +196,10 @@ public class ArenaController {
      */
     @PostMapping("/agent/roundtable/openings")
     public Result<Map<String, Object>> roundtableOpenings(@RequestBody Map<String, Object> request) {
-        String topic = String.valueOf(request.getOrDefault("topic", ""));
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> participants = request.get("participants") instanceof List
-                ? (List<Map<String, Object>>) request.get("participants")
-                : new ArrayList<>();
-        return Result.success(bailianAgentService.runEcho(
-                ArenaEchoPrompts.roundtableOpenings(topic, String.valueOf(participants))));
+        return Result.success(runRoundtableEcho(
+                ArenaEchoPrompts.roundtableOpenings(
+                        String.valueOf(request.getOrDefault("topic", "")),
+                        String.valueOf(request.getOrDefault("participants", "")))));
     }
 
     /**
@@ -208,14 +207,28 @@ public class ArenaController {
      */
     @PostMapping("/agent/roundtable/reply")
     public Result<Map<String, Object>> roundtableReply(@RequestBody Map<String, Object> request) {
-        String topic = String.valueOf(request.getOrDefault("topic", ""));
-        String userInput = String.valueOf(request.getOrDefault("userInput", ""));
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> participants = request.get("participants") instanceof List
-                ? (List<Map<String, Object>>) request.get("participants")
-                : new ArrayList<>();
-        return Result.success(bailianAgentService.runEcho(
-                ArenaEchoPrompts.roundtableReply(topic, userInput, String.valueOf(participants))));
+        return Result.success(runRoundtableEcho(
+                ArenaEchoPrompts.roundtableReply(
+                        String.valueOf(request.getOrDefault("topic", "")),
+                        String.valueOf(request.getOrDefault("userInput", "")),
+                        String.valueOf(request.getOrDefault("participants", "")))));
+    }
+
+    private Map<String, Object> runRoundtableEcho(String prompt) {
+        Map<String, Object> agentOut = bailianAgentService.runEcho(prompt, false);
+        String text = String.valueOf(agentOut.getOrDefault("text", ""));
+        Map<String, Object> roundtableMessages = RoundtableMessagesParser.parse(text);
+        if (roundtableMessages == null) {
+            String preview = text.length() > 280 ? text.substring(0, 280) + "..." : text;
+            if (text.contains("role-mismatch") || text.contains("CA-Ledger-DATA")) {
+                throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                        "百炼 echo 应用角色不匹配，无法生成圆桌 JSON。请配置正确的 Echo 应用 ID。");
+            }
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "模型未返回可用的圆桌双语 JSON。响应预览：" + preview);
+        }
+        agentOut.put("roundtableMessages", roundtableMessages);
+        return agentOut;
     }
 
     /**
@@ -233,7 +246,7 @@ public class ArenaController {
         String keyIdeas = String.valueOf(request.getOrDefault("keyIdeas", ""));
         String history = String.valueOf(request.getOrDefault("history", ""));
 
-        return Result.success(bailianAgentService.runEcho(ArenaEchoPrompts.dilemmaTurn(
+        return Result.success(runDilemmaTurnEcho(ArenaEchoPrompts.dilemmaTurn(
                 moralDilemmaTitle, moralDilemmaEnglishTitle, dilemmaQuestion, promptLead, userStance,
                 philosopherName, philosopherSchool, keyIdeas, history)));
     }
@@ -243,14 +256,44 @@ public class ArenaController {
      */
     @PostMapping("/agent/dilemma/summary")
     public Result<Map<String, Object>> dilemmaSummary(@RequestBody Map<String, Object> request) {
-        String moralDilemmaTitle = String.valueOf(request.getOrDefault("moralDilemmaEnglishTitle", ""));
+        String moralDilemmaTitle = String.valueOf(request.getOrDefault("moralDilemmaTitle", ""));
         String dilemmaQuestion = String.valueOf(request.getOrDefault("question", ""));
         String userStance = String.valueOf(request.getOrDefault("userStance", ""));
         String philosopherName = String.valueOf(request.getOrDefault("philosopherName", ""));
         String philosopherSchool = String.valueOf(request.getOrDefault("philosopherSchool", ""));
         String history = String.valueOf(request.getOrDefault("history", ""));
 
-        return Result.success(bailianAgentService.runEcho(ArenaEchoPrompts.dilemmaSummary(
+        return Result.success(runDilemmaSummaryEcho(ArenaEchoPrompts.dilemmaSummary(
                 moralDilemmaTitle, dilemmaQuestion, userStance, philosopherName, philosopherSchool, history)));
+    }
+
+    private Map<String, Object> runDilemmaTurnEcho(String prompt) {
+        Map<String, Object> agentOut = bailianAgentService.runEcho(prompt, false);
+        String text = String.valueOf(agentOut.getOrDefault("text", ""));
+        Map<String, Object> dilemmaTurn = DilemmaAiParser.parseTurn(text);
+        if (dilemmaTurn == null) {
+            String preview = text.length() > 280 ? text.substring(0, 280) + "..." : text;
+            if (text.contains("role-mismatch") || text.contains("CA-Ledger-DATA")) {
+                throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                        "百炼 echo 应用角色不匹配，无法生成道德困境 JSON。请配置正确的 Echo 应用 ID。");
+            }
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "模型未返回可用的道德困境双语 JSON。响应预览：" + preview);
+        }
+        agentOut.put("dilemmaTurn", dilemmaTurn);
+        return agentOut;
+    }
+
+    private Map<String, Object> runDilemmaSummaryEcho(String prompt) {
+        Map<String, Object> agentOut = bailianAgentService.runEcho(prompt, false);
+        String text = String.valueOf(agentOut.getOrDefault("text", ""));
+        Map<String, Object> dilemmaSummary = DilemmaAiParser.parseSummary(text);
+        if (dilemmaSummary == null) {
+            String preview = text.length() > 280 ? text.substring(0, 280) + "..." : text;
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "模型未返回可用的道德困境总结双语 JSON。响应预览：" + preview);
+        }
+        agentOut.put("dilemmaSummary", dilemmaSummary);
+        return agentOut;
     }
 }
