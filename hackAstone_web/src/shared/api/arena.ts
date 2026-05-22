@@ -156,7 +156,18 @@ export function generateTopicStream(
   );
 }
 
+/** 圆桌开场（非流式，更稳定，避免内容安全误拦） */
 export function generateRoundtableOpenings(
+  topic: string,
+  participants: Array<{ id: string; nameCN: string; school: string }>
+) {
+  return apiPost<AgentRunResponse>("/arena/agent/roundtable/openings", {
+    topic,
+    participants,
+  });
+}
+
+export function generateRoundtableOpeningsStream(
   topic: string,
   participants: Array<{ id: string; nameCN: string; school: string }>,
   handlers: AgentStreamHandlers<AgentRunResponse> = {}
@@ -168,7 +179,88 @@ export function generateRoundtableOpenings(
   );
 }
 
+/** 圆桌回应（非流式） */
 export function generateRoundtableReply(
+  topic: string,
+  userInput: string,
+  participants: Array<{ id: string; nameCN: string; school: string }>
+) {
+  return apiPost<AgentRunResponse>("/arena/agent/roundtable/reply", {
+    topic,
+    userInput,
+    participants,
+  });
+}
+
+export type RoundtablePhilosopherStreamBody = {
+  topic: string;
+  philosopherId: string;
+  philosopherName: string;
+  school: string;
+  keyIdeas?: string;
+  summary?: string;
+  history: string;
+  locale: string;
+  userInput?: string;
+};
+
+export type PhilosophyPhilosopherStreamBody = {
+  debateQuestion: string;
+  philosopherId: string;
+  philosopherName: string;
+  school: string;
+  keyIdeas?: string;
+  summary?: string;
+  userStance: string;
+  history: string;
+  locale: string;
+};
+
+export function streamPhilosophyPhilosopherToUser(
+  body: PhilosophyPhilosopherStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/philosophy/philosopher/to-user/stream",
+    body,
+    handlers
+  );
+}
+
+export function streamPhilosophyPhilosopherToJudge(
+  body: PhilosophyPhilosopherStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/philosophy/philosopher/to-judge/stream",
+    body,
+    handlers
+  );
+}
+
+export function streamRoundtablePhilosopherOpening(
+  body: RoundtablePhilosopherStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/roundtable/philosopher/opening/stream",
+    body,
+    handlers
+  );
+}
+
+export function streamRoundtablePhilosopherReply(
+  body: RoundtablePhilosopherStreamBody & { userInput: string },
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/roundtable/philosopher/reply/stream",
+    body,
+    handlers
+  );
+}
+
+export function generateRoundtableReplyStream(
   topic: string,
   userInput: string,
   participants: Array<{ id: string; nameCN: string; school: string }>,

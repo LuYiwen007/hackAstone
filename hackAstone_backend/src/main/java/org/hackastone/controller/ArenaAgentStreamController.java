@@ -9,6 +9,7 @@ import org.hackastone.biz.DebateTopicParser;
 import org.hackastone.biz.DilemmaAiParser;
 import org.hackastone.biz.DisciplineBattleParser;
 import org.hackastone.biz.RoundtableMessagesParser;
+import org.hackastone.biz.RoundtableRequestSupport;
 import org.hackastone.config.BailianAgentConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -103,19 +104,85 @@ public class ArenaAgentStreamController {
 
     @PostMapping(value = "/roundtable/openings/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter roundtableOpeningsStream(@RequestBody Map<String, Object> request) {
-        String prompt = ArenaEchoPrompts.roundtableOpenings(
-                String.valueOf(request.getOrDefault("topic", "")),
-                String.valueOf(request.getOrDefault("participants", "")));
-        return streamRoundtable(prompt);
+        String topic = String.valueOf(request.getOrDefault("topic", ""));
+        String participantsJson = RoundtableRequestSupport.participantsJson(request);
+        return streamRoundtableWithRetry(
+                () -> ArenaEchoPrompts.roundtableOpenings(topic, participantsJson),
+                () -> ArenaEchoPrompts.roundtableOpenings(topic, participantsJson, true));
+    }
+
+    @PostMapping(value = "/philosophy/philosopher/to-user/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter philosophyPhilosopherToUserStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.philosophyPhilosopherToUser(
+                str(request, "debateQuestion"),
+                str(request, "philosopherId"),
+                str(request, "philosopherName"),
+                str(request, "school"),
+                str(request, "keyIdeas"),
+                str(request, "summary"),
+                str(request, "userStance"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    @PostMapping(value = "/philosophy/philosopher/to-judge/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter philosophyPhilosopherToJudgeStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.philosophyPhilosopherToJudge(
+                str(request, "debateQuestion"),
+                str(request, "philosopherId"),
+                str(request, "philosopherName"),
+                str(request, "school"),
+                str(request, "keyIdeas"),
+                str(request, "summary"),
+                str(request, "userStance"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    @PostMapping(value = "/roundtable/philosopher/opening/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter roundtablePhilosopherOpeningStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.roundtablePhilosopherOpening(
+                str(request, "topic"),
+                str(request, "philosopherId"),
+                str(request, "philosopherName"),
+                str(request, "school"),
+                str(request, "keyIdeas"),
+                str(request, "summary"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    @PostMapping(value = "/roundtable/philosopher/reply/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter roundtablePhilosopherReplyStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.roundtablePhilosopherReply(
+                str(request, "topic"),
+                str(request, "userInput"),
+                str(request, "philosopherId"),
+                str(request, "philosopherName"),
+                str(request, "school"),
+                str(request, "keyIdeas"),
+                str(request, "summary"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    private static String str(Map<String, Object> request, String key) {
+        Object v = request.get(key);
+        return v == null ? "" : String.valueOf(v);
     }
 
     @PostMapping(value = "/roundtable/reply/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter roundtableReplyStream(@RequestBody Map<String, Object> request) {
-        String prompt = ArenaEchoPrompts.roundtableReply(
-                String.valueOf(request.getOrDefault("topic", "")),
-                String.valueOf(request.getOrDefault("userInput", "")),
-                String.valueOf(request.getOrDefault("participants", "")));
-        return streamRoundtable(prompt);
+        String topic = String.valueOf(request.getOrDefault("topic", ""));
+        String userInput = String.valueOf(request.getOrDefault("userInput", ""));
+        String participantsJson = RoundtableRequestSupport.participantsJson(request);
+        return streamRoundtableWithRetry(
+                () -> ArenaEchoPrompts.roundtableReply(topic, userInput, participantsJson),
+                () -> ArenaEchoPrompts.roundtableReply(topic, userInput, participantsJson, true));
     }
 
     @PostMapping(value = "/dilemma/turn/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -155,13 +222,58 @@ public class ArenaAgentStreamController {
         }, false);
     }
 
-    private SseEmitter streamRoundtable(String prompt) {
-        return streamEchoLike("echo", prompt, Collections.emptyList(), (fullText, out) -> {
+    private SseEmitter streamRoundtableWithRetry(
+            java.util.function.Supplier<String> primary,
+            java.util.function.Supplier<String> compactFallback) {
+        return streamEchoLike("echo", primary.get(), Collections.emptyList(), (fullText, out) -> {
             Map<String, Object> roundtableMessages = RoundtableMessagesParser.parse(fullText);
             if (roundtableMessages != null) {
                 out.put("roundtableMessages", roundtableMessages);
             }
-        }, false);
+        }, false, compactFallback);
+    }
+
+    private SseEmitter streamEchoLike(
+            String agent,
+            String query,
+            List<String> imageList,
+            DoneEnricher enricher,
+            boolean useCacheFlag,
+            java.util.function.Supplier<String> compactFallbackPrompt
+    ) {
+        long timeout = bailianAgentConfig.getTimeoutMs() + 30_000L;
+        SseEmitter emitter = new SseEmitter(timeout);
+        STREAM_EXECUTOR.execute(() -> {
+            try {
+                String fullText = streamWithOptionalRetry(agent, query, imageList, emitter, compactFallbackPrompt);
+                Map<String, Object> done = baseDone(agent, fullText, useCacheFlag);
+                if (enricher != null) {
+                    enricher.enrich(fullText, done);
+                }
+                sendJson(emitter, done);
+                emitter.complete();
+            } catch (Exception e) {
+                completeWithError(emitter, e);
+            }
+        });
+        return emitter;
+    }
+
+    private String streamWithOptionalRetry(
+            String agent,
+            String query,
+            List<String> imageList,
+            SseEmitter emitter,
+            java.util.function.Supplier<String> compactFallbackPrompt
+    ) {
+        try {
+            return bailianAgentService.streamAgent(agent, query, imageList, deltaHandler(emitter));
+        } catch (HackAstoneBizException e) {
+            if (compactFallbackPrompt != null && RoundtableRequestSupport.isContentFilterMessage(e.getMessage())) {
+                return bailianAgentService.streamAgent(agent, compactFallbackPrompt.get(), imageList, deltaHandler(emitter));
+            }
+            throw e;
+        }
     }
 
     @FunctionalInterface
@@ -176,22 +288,7 @@ public class ArenaAgentStreamController {
             DoneEnricher enricher,
             boolean useCacheFlag
     ) {
-        long timeout = bailianAgentConfig.getTimeoutMs() + 30_000L;
-        SseEmitter emitter = new SseEmitter(timeout);
-        STREAM_EXECUTOR.execute(() -> {
-            try {
-                String fullText = bailianAgentService.streamAgent(agent, query, imageList, deltaHandler(emitter));
-                Map<String, Object> done = baseDone(agent, fullText, useCacheFlag);
-                if (enricher != null) {
-                    enricher.enrich(fullText, done);
-                }
-                sendJson(emitter, done);
-                emitter.complete();
-            } catch (Exception e) {
-                completeWithError(emitter, e);
-            }
-        });
-        return emitter;
+        return streamEchoLike(agent, query, imageList, enricher, useCacheFlag, null);
     }
 
     private BailianStreamHandler deltaHandler(SseEmitter emitter) {

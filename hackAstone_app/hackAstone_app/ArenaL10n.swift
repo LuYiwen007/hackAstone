@@ -494,8 +494,20 @@ struct ArenaL10n {
 
     var roundtableNavTitle: String { roundtableDebate }
     var backToHome: String { en ? "Home" : "返回主页" }
-    var roundtableHeadline: String { en ? "Multi-philosopher roundtable" : "多思想家圆桌辩论" }
-    var pickThinkers: String { en ? "Pick thinkers" : "选择思想家" }
+    var roundtableHeadline: String { en ? "Multi-philosopher roundtable" : "多哲学家圆桌辩论" }
+    var pickThinkers: String { en ? "Pick philosophers" : "选择哲学家" }
+    var viewAllPhilosophers: String { en ? "All" : "全部" }
+    var roundtablePickerTitle: String { en ? "Choose philosophers" : "选择哲学家" }
+    var roundtablePickerHint: String {
+        en ? "Full catalog from Philosophy Debate — pick 2–4" : "与哲学辩论相同的全量目录，可选 2–4 位"
+    }
+    func roundtablePickerCount(total: Int, count: Int) -> String {
+        en ? "\(total) total · \(count) / 4 selected" : "共 \(total) 位 · 已选 \(count) / 4"
+    }
+    var roundtablePickerConfirm: String { en ? "Confirm selection" : "确认选择" }
+    var roundtableSearchPlaceholder: String {
+        en ? "Search by name or school…" : "搜索哲学家姓名或学派…"
+    }
     var pickThinkersHint: String { en ? "(2–4, any era)" : "（2-4位，可跨时空）" }
     func selectedCount(_ n: Int) -> String { en ? "Selected \(n) / 4" : "已选择 \(n) / 4" }
     var picked: String { en ? "✓ Selected" : "✓ 已选择" }
@@ -506,10 +518,13 @@ struct ArenaL10n {
     }
     var startRoundtable: String { en ? "Start roundtable" : "开始圆桌辩论" }
     var roundtableSetupError: String {
-        en ? "Pick at least 2 thinkers and a topic." : "请至少选择2位思想家并设定辩题"
+        en ? "Pick at least 2 philosophers and a topic." : "请至少选择2位哲学家并设定辩题"
     }
     var participants: String { en ? "Participants:" : "参与者：" }
-    var thinkersThinking: String { en ? "Thinkers are thinking…" : "思想家们正在思考..." }
+    var thinkersThinking: String { en ? "Philosophers are reflecting…" : "哲学家们正在思考..." }
+    func roundtablePhilosopherThinking(name: String) -> String {
+        en ? "\(name) is thinking…" : "「\(name)」正在思考中"
+    }
     var roundtableInputPlaceholder: String { en ? "Interject or add a new angle…" : "插话或提出新的观点..." }
     var roundtableOpeningFailed: String {
         en ? "Could not generate opening statements from the server." : "无法从服务器生成开场发言。"

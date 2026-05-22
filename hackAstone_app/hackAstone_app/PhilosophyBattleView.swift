@@ -298,10 +298,8 @@ struct PhilosophyBattleView: View {
                         ForEach(messages) { m in
                             messageBubble(m: m, philosopher: philosopher)
                         }
-                        if isThinking, let role = thinkingRole {
-                            Text(role == .judge
-                                ? L.judgeThinking
-                                : L.philosopherThinking(name: philosopher.displayName(isEnglish: L.prefersEnglish)))
+                        if isThinking, thinkingRole == .judge {
+                            Text(L.judgeThinking)
                                 .font(.caption)
                                 .foregroundStyle(ArenaTheme.textMuted)
                         }
@@ -380,9 +378,21 @@ struct PhilosophyBattleView: View {
             case .judge: return Color.yellow.opacity(0.08)
             }
         }()
+        let isStreamingPhilosopher = isThinking && thinkingRole == .philosopher
+            && m.role == .philosopher && m.id.hasPrefix("to-")
         return VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.caption2).foregroundStyle(ArenaTheme.textMuted)
-            Text(m.content).font(.subheadline).foregroundStyle(ArenaTheme.textPrimary).fixedSize(horizontal: false, vertical: true)
+            if isStreamingPhilosopher && m.content.isEmpty {
+                Text(L.philosopherThinking(name: philosopher.displayName(isEnglish: L.prefersEnglish)))
+                    .font(.subheadline)
+                    .italic()
+                    .foregroundStyle(ArenaTheme.textMuted)
+            } else {
+                Text(m.content)
+                    .font(.subheadline)
+                    .foregroundStyle(ArenaTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -526,20 +536,64 @@ struct PhilosophyBattleView: View {
             """
         }
 
-        do {
-            await MainActor.run { thinkingRole = .philosopher }
-            let philResp = try await ArenaAPI.runEcho(query: echoQuery(
-                task: L.philosophyPhilosopherToUserTask,
-                schema: "{\"philosopherReplyToUser\":\"\"}",
-                criteria: L.prefersEnglish ? "Return only philosopherReplyToUser, non-empty" : "仅返回 philosopherReplyToUser，非空",
-                history: historyBlock(next)
-            ))
-            guard let philosopherReplyToUser = parsePhilosopherToUser(JsonPayload.parse(philResp.text, as: PhilosopherToUserDTO.self)) else {
-                throw NSError(domain: "pb", code: 3, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
+        let localeCode = L.prefersEnglish ? "en" : "zh"
+        let keyIdeas = philosopher.keyIdeas.joined(separator: "。")
+        let summary = philosopher.summary ?? ""
+        let userStance = choiceLabel(choice)
+
+        func streamPhilosopher(mode: String, prior: [PBMessage]) async throws -> PBMessage {
+            let msgId = "\(mode)-\(UUID().uuidString)"
+            var row = PBMessage(id: msgId, role: .philosopher, content: "")
+            await MainActor.run {
+                thinkingRole = .philosopher
+                messages = prior + [row]
             }
-            var working = next
-            working.append(PBMessage(id: UUID().uuidString, role: .philosopher, content: philosopherReplyToUser))
-            await MainActor.run { messages = working }
+            let hist = historyBlock(prior)
+            let onDelta: ArenaAPI.StreamDeltaHandler = { _, acc in
+                Task { @MainActor in
+                    let preview = streamDisplay(acc)
+                    row = PBMessage(id: msgId, role: .philosopher, content: preview)
+                    messages = prior + [row]
+                }
+            }
+            let resp: AgentRunResponse
+            if mode == "to-user" {
+                resp = try await ArenaAPI.streamPhilosophyPhilosopherToUser(
+                    debateQuestion: top.question,
+                    philosopherId: philosopher.id,
+                    philosopherName: philosopher.displayName(isEnglish: L.prefersEnglish),
+                    school: philosopher.school,
+                    keyIdeas: keyIdeas,
+                    summary: summary,
+                    userStance: userStance,
+                    history: hist,
+                    locale: localeCode,
+                    onDelta: onDelta
+                )
+            } else {
+                resp = try await ArenaAPI.streamPhilosophyPhilosopherToJudge(
+                    debateQuestion: top.question,
+                    philosopherId: philosopher.id,
+                    philosopherName: philosopher.displayName(isEnglish: L.prefersEnglish),
+                    school: philosopher.school,
+                    keyIdeas: keyIdeas,
+                    summary: summary,
+                    userStance: userStance,
+                    history: hist,
+                    locale: localeCode,
+                    onDelta: onDelta
+                )
+            }
+            let final = streamDisplay(resp.text)
+            guard !final.isEmpty else { throw NSError(domain: "pb", code: 3) }
+            let done = PBMessage(id: msgId, role: .philosopher, content: final)
+            await MainActor.run { messages = prior + [done] }
+            return done
+        }
+
+        do {
+            let philToUser = try await streamPhilosopher(mode: "to-user", prior: next)
+            var working = next + [philToUser]
 
             await MainActor.run { thinkingRole = .judge }
             let judgeResp = try await ArenaAPI.runEcho(query: echoQuery(
@@ -555,20 +609,12 @@ struct PhilosophyBattleView: View {
             }
             if judge.judgeSpeaks, !judge.judgeMessage.isEmpty {
                 working.append(PBMessage(id: UUID().uuidString, role: .judge, content: judge.judgeMessage))
-                await MainActor.run { messages = working }
             }
+            await MainActor.run { messages = working }
+
             if judge.judgeSpeaks, judge.addressTo == "philosopher" {
-                await MainActor.run { thinkingRole = .philosopher }
-                let philJudgeResp = try await ArenaAPI.runEcho(query: echoQuery(
-                    task: L.philosophyPhilosopherToJudgeTask,
-                    schema: "{\"philosopherReplyToJudge\":\"\"}",
-                    criteria: L.prefersEnglish ? "Return only philosopherReplyToJudge, non-empty" : "仅返回 philosopherReplyToJudge，非空",
-                    history: historyBlock(working)
-                ))
-                guard let replyToJudge = parsePhilosopherToJudge(JsonPayload.parse(philJudgeResp.text, as: PhilosopherToJudgeDTO.self)) else {
-                    throw NSError(domain: "pb", code: 3, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
-                }
-                working.append(PBMessage(id: UUID().uuidString, role: .philosopher, content: replyToJudge))
+                let philToJudge = try await streamPhilosopher(mode: "to-judge", prior: working)
+                working.append(philToJudge)
                 await MainActor.run { messages = working }
             }
             await MainActor.run { canReveal = judge.continueDebate == false }

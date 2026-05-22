@@ -113,6 +113,27 @@ export function mergeBilingualToStoredMessages(
   });
 }
 
+/** 流式累积文本 → 气泡展示（兼容纯文本或 {"content":"..."} JSON） */
+export function roundtableStreamDisplayText(accumulated: string): string {
+  if (!accumulated) return "";
+  const parsed = parseJsonPayload<{ content?: string }>(accumulated);
+  if (parsed?.content?.trim()) return parsed.content.trim();
+  let s = accumulated.trim();
+  const metaCut = s.indexOf('}{"output"');
+  if (metaCut > 0) s = s.slice(0, metaCut);
+  const m = s.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (m?.[1]) {
+    return m[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  }
+  if (s.startsWith("{")) return s;
+  return s;
+}
+
+export function finalizeRoundtableSpeech(raw: string): string {
+  const display = roundtableStreamDisplayText(raw);
+  return display || raw.trim();
+}
+
 export function roundtableMessageContent(
   msg: RoundtableStoredMessage,
   locale: ArenaLocale

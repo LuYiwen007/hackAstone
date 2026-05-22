@@ -7,9 +7,20 @@ import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleCo
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { DebateSummary } from "../components/DebateSummary";
-import { generateTopic, runEchoQuery, saveBattleRecord } from "../../shared/api/arena";
+import {
+  generateTopic,
+  runEchoQuery,
+  saveBattleRecord,
+  streamPhilosophyPhilosopherToJudge,
+  streamPhilosophyPhilosopherToUser,
+} from "../../shared/api/arena";
 import { isLoggedIn } from "../../shared/api/client";
+import { philosopherForLocale } from "../data/philosopherLocale";
 import { parseJsonPayload } from "../../shared/jsonPayload";
+import {
+  finalizeRoundtableSpeech,
+  roundtableStreamDisplayText,
+} from "../data/roundtableLocale";
 
 type Stage = "topic" | "choose" | "debate" | "reveal";
 type Choice = "agree" | "disagree" | "uncertain" | null;
@@ -23,21 +34,12 @@ type DebateMessage = {
 
 type ThinkingRole = "philosopher" | "judge";
 
-type PhilosopherToUserResult = {
-  philosopherReplyToUser?: string;
-  philosopherReply?: string;
-};
-
 type JudgeStepResult = {
   judgeSpeaks?: boolean;
   judgeMessage?: string;
   judgeQuestion?: string;
   addressTo?: "user" | "philosopher";
   continueDebate?: boolean;
-};
-
-type PhilosopherToJudgeResult = {
-  philosopherReplyToJudge?: string;
 };
 
 function buildEchoQuery(
@@ -79,12 +81,6 @@ function buildEchoQuery(
   ].join("\n");
 }
 
-function parsePhilosopherToUser(raw: PhilosopherToUserResult | null): string | null {
-  if (!raw) return null;
-  const reply = (raw.philosopherReplyToUser ?? raw.philosopherReply ?? "").trim();
-  return reply || null;
-}
-
 function parseJudgeStep(raw: JudgeStepResult | null): {
   judgeSpeaks: boolean;
   judgeMessage: string;
@@ -104,12 +100,6 @@ function parseJudgeStep(raw: JudgeStepResult | null): {
     addressTo: judgeSpeaks ? addressTo : null,
     continueDebate: raw.continueDebate !== false,
   };
-}
-
-function parsePhilosopherToJudge(raw: PhilosopherToJudgeResult | null): string | null {
-  if (!raw) return null;
-  const reply = (raw.philosopherReplyToJudge ?? "").trim();
-  return reply || null;
 }
 
 type SummaryResult = {
@@ -143,12 +133,6 @@ export function PhilosophyBattleLive() {
     name: displayName || philosopher?.nameCN || "",
   });
   const judgeThinkingLabel = t("battle.judgeThinking");
-  const debateThinkingLabel =
-    thinkingRole === "judge"
-      ? judgeThinkingLabel
-      : thinkingRole === "philosopher"
-        ? philosopherThinkingLabel
-        : "";
 
   useEffect(() => {
     if (stage !== "debate") return;
@@ -248,61 +232,95 @@ export function PhilosophyBattleLive() {
     ]);
   };
 
+  const philosopherStreamBody = (prior: DebateMessage[]) => {
+    if (!philosopher || !choice) {
+      return {
+        debateQuestion: "",
+        philosopherId: "",
+        philosopherName: "",
+        school: "",
+        userStance: "",
+        history: "",
+        locale,
+      };
+    }
+    const loc = philosopherForLocale(philosopher, locale);
+    return {
+      debateQuestion: topic?.question ?? "",
+      philosopherId: philosopher.id,
+      philosopherName: displayName,
+      school: loc.school,
+      keyIdeas: philosopher.keyIdeas?.join("。") ?? "",
+      summary: loc.summary ?? philosopher.summary ?? "",
+      userStance: choiceLabel(choice),
+      history: formatHistory(prior),
+      locale,
+    };
+  };
+
+  const streamPhilosopherMessage = async (
+    mode: "to-user" | "to-judge",
+    prior: DebateMessage[]
+  ): Promise<DebateMessage> => {
+    if (!philosopher) throw new Error(t("error.turnFailed"));
+    const msgId = `${mode}-${Date.now()}`;
+    const placeholder: DebateMessage = {
+      id: msgId,
+      role: "philosopher",
+      content: "",
+    };
+    setThinkingRole("philosopher");
+    setMessages([...prior, placeholder]);
+
+    const body = philosopherStreamBody(prior);
+    const handlers = {
+      onDelta: (_d: string, acc: string) => {
+        const preview = roundtableStreamDisplayText(acc);
+        setMessages((curr) =>
+          curr.map((m) => (m.id === msgId ? { ...m, content: preview } : m))
+        );
+      },
+    };
+
+    const resp =
+      mode === "to-user"
+        ? await streamPhilosophyPhilosopherToUser(body, handlers)
+        : await streamPhilosophyPhilosopherToJudge(body, handlers);
+
+    const finalText = finalizeRoundtableSpeech(resp.text);
+    if (!finalText.trim()) throw new Error(t("error.turnJson"));
+
+    const finished: DebateMessage = { ...placeholder, content: finalText };
+    setMessages((curr) => curr.map((m) => (m.id === msgId ? finished : m)));
+    return finished;
+  };
+
   const handleUserTurn = async () => {
     const content = userInput.trim();
-    if (!content || !choice || !topic || isThinking) return;
+    if (!content || !choice || !topic || !philosopher || isThinking) return;
 
     const userMsgId = `user-${Date.now()}`;
     setUserInput("");
     setIsThinking(true);
 
-    const nextMessages = [
+    const nextMessages: DebateMessage[] = [
       ...messages,
-      { id: userMsgId, role: "user" as const, content },
+      { id: userMsgId, role: "user", content },
     ];
     setMessages(nextMessages);
 
-    const debateContext = [
+    const constraints = t("battle.prompt.constraints");
+    const historyFor = (msgs: DebateMessage[]) => [
       t("battle.prompt.topic", { question: topic.question }),
       t("battle.prompt.philosopher", { name: displayName, school: philosopher.school }),
       t("battle.prompt.stance", { choice: choiceLabel(choice) }),
-    ];
-    const constraints = t("battle.prompt.constraints");
-
-    const appendMessage = (msg: DebateMessage) => {
-      setMessages((prev) => [...prev, msg]);
-    };
-
-    const historyFor = (msgs: DebateMessage[]) => [
-      ...debateContext,
       t("battle.prompt.history"),
       formatHistory(msgs),
     ];
 
     try {
-      setThinkingRole("philosopher");
-      const philToUserQuery = buildEchoQuery(
-        t("battle.prompt.philosopherToUserTask"),
-        t("battle.prompt.philosopherToUserCriteria"),
-        t("battle.prompt.philosopherToUserSchema"),
-        constraints,
-        historyFor(nextMessages)
-      );
-      const philResp = await runEchoQuery(philToUserQuery);
-      const philosopherReplyToUser = parsePhilosopherToUser(
-        parseJsonPayload<PhilosopherToUserResult>(philResp.text)
-      );
-      if (!philosopherReplyToUser) throw new Error(t("error.turnJson"));
-
-      const afterPhilosopher: DebateMessage[] = [
-        ...nextMessages,
-        {
-          id: `philosopher-user-${Date.now()}`,
-          role: "philosopher",
-          content: philosopherReplyToUser,
-        },
-      ];
-      appendMessage(afterPhilosopher[afterPhilosopher.length - 1]);
+      const philToUser = await streamPhilosopherMessage("to-user", nextMessages);
+      const afterPhilosopher: DebateMessage[] = [...nextMessages, philToUser];
 
       setThinkingRole("judge");
       const judgeQuery = buildEchoQuery(
@@ -324,28 +342,14 @@ export function PhilosophyBattleLive() {
           content: judge.judgeMessage,
         };
         working = [...working, judgeMsg];
-        appendMessage(judgeMsg);
+        setMessages(working);
+      } else {
+        setMessages(afterPhilosopher);
       }
 
       if (judge.judgeSpeaks && judge.addressTo === "philosopher") {
-        setThinkingRole("philosopher");
-        const philToJudgeQuery = buildEchoQuery(
-          t("battle.prompt.philosopherToJudgeTask"),
-          t("battle.prompt.philosopherToJudgeCriteria"),
-          t("battle.prompt.philosopherToJudgeSchema"),
-          constraints,
-          historyFor(working)
-        );
-        const philJudgeResp = await runEchoQuery(philToJudgeQuery);
-        const philosopherReplyToJudge = parsePhilosopherToJudge(
-          parseJsonPayload<PhilosopherToJudgeResult>(philJudgeResp.text)
-        );
-        if (!philosopherReplyToJudge) throw new Error(t("error.turnJson"));
-        appendMessage({
-          id: `philosopher-judge-${Date.now()}`,
-          role: "philosopher",
-          content: philosopherReplyToJudge,
-        });
+        const philToJudge = await streamPhilosopherMessage("to-judge", working);
+        setMessages([...working, philToJudge]);
       }
 
       setCanReveal(judge.continueDebate === false);
@@ -522,16 +526,47 @@ export function PhilosophyBattleLive() {
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{t("battle.roundHint")}</span>
                 </div>
-                {messages.map((m) => (
-                  <div key={m.id} className={`p-4 rounded-lg border ${m.role === "user" ? "bg-purple-950/30 border-purple-800" : m.role === "philosopher" ? "bg-zinc-950 border-zinc-700" : "bg-yellow-950/20 border-yellow-700/40"}`}>
-                    <div className="text-xs mb-2 text-zinc-500">
-                      {m.role === "user" ? t("battle.you") : m.role === "philosopher" ? displayName : t("battle.judge")}
+                {messages.map((m) => {
+                  const isStreamingPhilosopher =
+                    isThinking &&
+                    thinkingRole === "philosopher" &&
+                    m.role === "philosopher" &&
+                    m.id.startsWith("to-");
+                  const showThinkingInBubble =
+                    isStreamingPhilosopher && !m.content.trim();
+                  return (
+                    <div
+                      key={m.id}
+                      className={`p-4 rounded-lg border ${
+                        m.role === "user"
+                          ? "bg-purple-950/30 border-purple-800"
+                          : m.role === "philosopher"
+                            ? "bg-zinc-950 border-zinc-700"
+                            : "bg-yellow-950/20 border-yellow-700/40"
+                      }`}
+                    >
+                      <div className="text-xs mb-2 text-zinc-500">
+                        {m.role === "user"
+                          ? t("battle.you")
+                          : m.role === "philosopher"
+                            ? displayName
+                            : t("battle.judge")}
+                      </div>
+                      {showThinkingInBubble ? (
+                        <p className="text-zinc-500 italic">{philosopherThinkingLabel}</p>
+                      ) : (
+                        <p className="whitespace-pre-wrap text-zinc-300 leading-relaxed">
+                          {m.content}
+                          {isStreamingPhilosopher && m.content.trim() ? (
+                            <span className="inline-block w-0.5 h-4 ml-0.5 bg-purple-400 animate-pulse align-middle" />
+                          ) : null}
+                        </p>
+                      )}
                     </div>
-                    <p className="whitespace-pre-wrap">{m.content}</p>
-                  </div>
-                ))}
-                {isThinking && debateThinkingLabel && (
-                  <div className="text-zinc-500 italic">{debateThinkingLabel}</div>
+                  );
+                })}
+                {isThinking && thinkingRole === "judge" && (
+                  <div className="text-zinc-500 italic">{judgeThinkingLabel}</div>
                 )}
               </div>
 
