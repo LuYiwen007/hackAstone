@@ -153,7 +153,7 @@ struct DebateSummarySection: View {
         }
         let prompt = buildInsightPrompt()
         do {
-            let resp = try await ArenaAPI.runEcho(query: prompt)
+            let resp = try await ArenaAPI.runEcho(query: prompt, onDelta: nil)
             guard let parsed = JsonPayload.parse(resp.text, as: AiDebateInsight.self),
                   !parsed.corePoints.isEmpty,
                   !parsed.deepQuestions.isEmpty else {

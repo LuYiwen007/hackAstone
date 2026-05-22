@@ -77,6 +77,7 @@ export function DebateSummary({
   const [showNotes, setShowNotes] = useState(false);
   const [insight, setInsight] = useState<AiDebateInsight | null>(null);
   const [insightLoading, setInsightLoading] = useState(true);
+  const [insightStreamPreview, setInsightStreamPreview] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const sourceKey = buildDebateNoteKey(philosopher.id, question);
   const loggedIn = isLoggedIn();
@@ -106,7 +107,10 @@ export function DebateSummary({
     let cancelled = false;
     setInsightLoading(true);
     setInsight(null);
-    runEchoQuery(buildInsightPrompt(philosopher, question, userChoice, userReason))
+    setInsightStreamPreview("");
+    runEchoQuery(buildInsightPrompt(philosopher, question, userChoice, userReason), {
+      onDelta: (_d, acc) => setInsightStreamPreview(acc),
+    })
       .then((resp) => {
         const parsed = parseJsonPayload<AiDebateInsight>(resp.text);
         if (
@@ -125,7 +129,10 @@ export function DebateSummary({
         }
       })
       .finally(() => {
-        if (!cancelled) setInsightLoading(false);
+        if (!cancelled) {
+          setInsightLoading(false);
+          setInsightStreamPreview("");
+        }
       });
     return () => {
       cancelled = true;
@@ -208,7 +215,12 @@ ${notes || "（暂无笔记）"}
         </h4>
 
         {insightLoading && (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-6 text-zinc-400">正在通过后端生成智能总结…</div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-6 text-zinc-400 space-y-3">
+            <div>正在通过后端生成智能总结…</div>
+            {insightStreamPreview ? (
+              <pre className="max-h-48 overflow-auto text-sm whitespace-pre-wrap text-zinc-500">{insightStreamPreview}</pre>
+            ) : null}
+          </div>
         )}
 
         {!insightLoading && !insight && (

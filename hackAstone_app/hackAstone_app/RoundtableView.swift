@@ -33,6 +33,7 @@ struct RoundtableView: View {
     @State private var messages: [RTMessage] = []
     @State private var userInput = ""
     @State private var isThinking = false
+    @State private var streamPreview = ""
     @State private var errorAlert: String?
 
     private let presetTopicIds: [String] = ["ai-free-will", "utopia", "truth", "education"]
@@ -205,15 +206,22 @@ struct RoundtableView: View {
                         messageRow(msg)
                     }
                     if isThinking {
-                        HStack(spacing: 10) {
-                            Circle().fill(ArenaTheme.border).frame(width: 40, height: 40)
-                            Text(L.thinkersThinking)
-                                .font(.caption)
-                                .foregroundStyle(ArenaTheme.textMuted)
-                                .padding(12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(ArenaTheme.surface)
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 10) {
+                                Circle().fill(ArenaTheme.border).frame(width: 40, height: 40)
+                                Text(L.thinkersThinking)
+                                    .font(.caption)
+                                    .foregroundStyle(ArenaTheme.textMuted)
+                            }
+                            if !streamPreview.isEmpty {
+                                Text(streamPreview)
+                                    .font(.caption)
+                                    .foregroundStyle(ArenaTheme.textMuted)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(12)
+                                    .background(ArenaTheme.surface)
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
+                            }
                         }
                     }
                 }
@@ -290,10 +298,15 @@ struct RoundtableView: View {
     private func startDebate() {
         stage = .debate
         isThinking = true
+        streamPreview = ""
         let participants = selected.map { ["id": $0.id, "nameCN": $0.nameCN, "school": $0.school] as [String: Any] }
         Task {
             do {
-                let resp = try await ArenaAPI.generateRoundtableOpenings(topic: debateTopic, participants: participants)
+                let resp = try await ArenaAPI.generateRoundtableOpenings(
+                    topic: debateTopic,
+                    participants: participants,
+                    onDelta: { _, acc in Task { @MainActor in streamPreview = acc } }
+                )
                 let arr: [RoundtableMessageSlice]? = resp.roundtableMessages?.pick(english: L.prefersEnglish)
                     ?? JsonPayload.parse(resp.text, as: RTMessagesPayload.self)?.messages?.map {
                         RoundtableMessageSlice(speaker: $0.speaker, content: $0.content)
@@ -314,7 +327,10 @@ struct RoundtableView: View {
                     errorAlert = L.roundtableOpeningFailed
                 }
             }
-            await MainActor.run { isThinking = false }
+            await MainActor.run {
+                isThinking = false
+                streamPreview = ""
+            }
         }
     }
 
@@ -325,10 +341,16 @@ struct RoundtableView: View {
         userInput = ""
         messages.append(RTMessage(id: userRowId, speaker: "user", content: text))
         isThinking = true
+        streamPreview = ""
         let participants = selected.map { ["id": $0.id, "nameCN": $0.nameCN, "school": $0.school] as [String: Any] }
         Task {
             do {
-                let resp = try await ArenaAPI.generateRoundtableReply(topic: debateTopic, userInput: text, participants: participants)
+                let resp = try await ArenaAPI.generateRoundtableReply(
+                    topic: debateTopic,
+                    userInput: text,
+                    participants: participants,
+                    onDelta: { _, acc in Task { @MainActor in streamPreview = acc } }
+                )
                 let arr: [RoundtableMessageSlice]? = resp.roundtableMessages?.pick(english: L.prefersEnglish)
                     ?? JsonPayload.parse(resp.text, as: RTMessagesPayload.self)?.messages?.map {
                         RoundtableMessageSlice(speaker: $0.speaker, content: $0.content)
@@ -350,7 +372,10 @@ struct RoundtableView: View {
                     errorAlert = L.roundtableReplyFailed
                 }
             }
-            await MainActor.run { isThinking = false }
+            await MainActor.run {
+                isThinking = false
+                streamPreview = ""
+            }
         }
     }
 }

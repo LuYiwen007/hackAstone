@@ -212,7 +212,8 @@ struct DisciplinesContentView: View {
         do {
             let resp = try await ArenaAPI.generateDisciplineBattle(
                 categoryEn: selectedCategory.apiEn,
-                categoryZh: selectedCategory.apiZh
+                categoryZh: selectedCategory.apiZh,
+                onDelta: nil
             )
             guard let bilingual = resp.disciplineBattle else {
                 throw ArenaAPIError.serverMessage(L.topicBadJson)

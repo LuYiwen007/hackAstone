@@ -30,7 +30,7 @@ export function isLoggedIn(): boolean {
   return !!getAuth();
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   const auth = getAuth();
   if (auth?.token) {
     return { Authorization: `Bearer ${auth.token}` };

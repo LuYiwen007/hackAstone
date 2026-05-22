@@ -22,7 +22,20 @@ public final class ArenaEchoPrompts {
             + "\"fullExplanation\":\"string\""
             + "}";
 
-    /** 辩论单轮（哲学辩论 / 道德困境 turn） */
+    /**
+     * 哲学辩论单轮：用户与哲学家直接辩论（philosopherReplyToUser 每轮必填）；
+     * Judge 可选介入引导双方，addressTo 仅表示裁判本轮主要追问谁，不取消哲学家对用户的发言。
+     */
+    public static final String PHILOSOPHY_DEBATE_TURN_JSON_SCHEMA = "{"
+            + "\"philosopherReplyToUser\":\"string\","
+            + "\"judgeSpeaks\":true,"
+            + "\"judgeMessage\":\"string\","
+            + "\"addressTo\":\"user|philosopher\","
+            + "\"philosopherReplyToJudge\":\"string\","
+            + "\"continueDebate\":true"
+            + "}";
+
+    /** @deprecated 道德困境等旧路径；哲学辩论请用 PHILOSOPHY_DEBATE_TURN_JSON_SCHEMA */
     public static final String DEBATE_TURN_JSON_SCHEMA = "{"
             + "\"philosopherReply\":\"string\","
             + "\"judgeQuestion\":\"string\","
@@ -107,10 +120,17 @@ public final class ArenaEchoPrompts {
     public static String debateTurn(String debateQuestion, String philosopherName, String school,
                                     String userStance, String history) {
         return header(
-                "继续一轮哲学辩论：先以哲学家身份回应用户，再以 Judge 身份追问，并判断是否应结束辩论。",
-                "必须包含：philosopherReply, judgeQuestion, continueDebate（布尔）",
-                "中文；体现哲学家思想风格；continueDebate=false 表示可进入总结",
-                DEBATE_TURN_JSON_SCHEMA
+                "用户与哲学家进行直接辩论。本轮用户已发言，你必须："
+                        + "① 在 philosopherReplyToUser 中让哲学家第一人称回应用户（每轮必填，这是主辩论线）。"
+                        + "② 你作为 Judge 阅读双方交锋，决定是否介入（judgeSpeaks）；若介入，用 judgeMessage 引导双方，"
+                        + "addressTo 表示本轮追问重点（user= mainly 向用户追问，philosopher= mainly 向哲学家追问）。"
+                        + "禁止因 addressTo=user 而让哲学家沉默；用户与哲学家的对辩每轮都要继续。"
+                        + "judgeSpeaks=false：judgeMessage=\"\"，philosopherReplyToJudge=\"\"。"
+                        + "judgeSpeaks=true 且 addressTo=user：追问/引导用户，philosopherReplyToJudge=\"\"。"
+                        + "judgeSpeaks=true 且 addressTo=philosopher：philosopherReplyToJudge 必填，回应 judgeMessage 中对哲学家的追问。",
+                "philosopherReplyToUser 每轮非空；judgeSpeaks 布尔；continueDebate 布尔",
+                "中文；哲学家第一人称；continueDebate=false 可进入总结",
+                PHILOSOPHY_DEBATE_TURN_JSON_SCHEMA
         ) + "辩题：" + debateQuestion + "\n"
                 + "哲学家：" + philosopherName + "（" + school + "）\n"
                 + "用户立场：" + userStance + "\n"

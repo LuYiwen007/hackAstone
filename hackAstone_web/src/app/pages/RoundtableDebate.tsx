@@ -43,6 +43,7 @@ export function RoundtableDebate() {
   const [messages, setMessages] = useState<RoundtableStoredMessage[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [streamPreview, setStreamPreview] = useState("");
 
   const presetTopics = useMemo(
     () =>
@@ -103,8 +104,11 @@ export function RoundtableDebate() {
     setStage("debate");
     
     setIsThinking(true);
+    setStreamPreview("");
     const participants = selectedPhilosophers.map(toParticipant);
-    generateRoundtableOpenings(debateTopic, participants)
+    generateRoundtableOpenings(debateTopic, participants, {
+      onDelta: (_d, acc) => setStreamPreview(acc),
+    })
       .then((resp) => {
         const openingMessages = ingestRoundtableAiMessages(resp, "opening");
         if (openingMessages && openingMessages.length > 0) {
@@ -119,7 +123,10 @@ export function RoundtableDebate() {
         setStage("setup");
         setMessages([]);
       })
-      .finally(() => setIsThinking(false));
+      .finally(() => {
+        setIsThinking(false);
+        setStreamPreview("");
+      });
   };
 
   const handleUserSend = () => {
@@ -137,8 +144,11 @@ export function RoundtableDebate() {
     setUserInput("");
 
     setIsThinking(true);
+    setStreamPreview("");
     const participants = selectedPhilosophers.map(toParticipant);
-    generateRoundtableReply(debateTopic, userText, participants)
+    generateRoundtableReply(debateTopic, userText, participants, {
+      onDelta: (_d, acc) => setStreamPreview(acc),
+    })
       .then((resp) => {
         const responses = ingestRoundtableAiMessages(resp, "response");
         if (responses && responses.length > 0) {
@@ -153,7 +163,10 @@ export function RoundtableDebate() {
         setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
         setUserInput(userText);
       })
-      .finally(() => setIsThinking(false));
+      .finally(() => {
+        setIsThinking(false);
+        setStreamPreview("");
+      });
   };
 
   const getPhilosopher = (philosopherId: string) => {
@@ -408,10 +421,15 @@ export function RoundtableDebate() {
                     <div className="flex-shrink-0">
                       <div className="w-10 h-10 bg-zinc-700 rounded-full animate-pulse"></div>
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 space-y-2">
                       <div className="p-4 bg-zinc-800 border border-zinc-700 rounded-lg">
                         <p className="text-zinc-500 italic">{t("roundtable.thinking")}</p>
                       </div>
+                      {streamPreview ? (
+                        <pre className="max-h-48 overflow-auto rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-sm whitespace-pre-wrap text-zinc-400">
+                          {streamPreview}
+                        </pre>
+                      ) : null}
                     </div>
                   </div>
                 )}

@@ -38,6 +38,7 @@ export function Dilemma() {
   const [canReveal, setCanReveal] = useState(false);
   const [summaryLocales, setSummaryLocales] = useState<DilemmaSummaryBilingual | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [streamPreview, setStreamPreview] = useState("");
 
   const fullExplanation = summaryForLocale(summaryLocales, locale);
 
@@ -139,6 +140,7 @@ export function Dilemma() {
     const userMsgId = `user-${Date.now()}`;
     setUserInput("");
     setIsThinking(true);
+    setStreamPreview("");
 
     const nextMessages = [
       ...messages,
@@ -151,17 +153,20 @@ export function Dilemma() {
     const pLoc = philosopherForLocale(selectedPhilosopher, locale);
     const ideasSep = locale === "zh" ? "、" : ", ";
     try {
-      const response = await generateDilemmaTurn({
-        moralDilemmaTitle: currentDilemma.title,
-        moralDilemmaEnglishTitle: currentDilemma.englishTitle,
-        question: currentDilemma.question,
-        promptLead: currentDilemma.promptLead,
-        userStance: selectedOption.stancePrompt,
-        philosopherName: philosopherDisplayName(selectedPhilosopher, locale),
-        philosopherSchool: pLoc.school,
-        keyIdeas: pLoc.keyIdeas.join(ideasSep),
-        history: historyText,
-      });
+      const response = await generateDilemmaTurn(
+        {
+          moralDilemmaTitle: currentDilemma.title,
+          moralDilemmaEnglishTitle: currentDilemma.englishTitle,
+          question: currentDilemma.question,
+          promptLead: currentDilemma.promptLead,
+          userStance: selectedOption.stancePrompt,
+          philosopherName: philosopherDisplayName(selectedPhilosopher, locale),
+          philosopherSchool: pLoc.school,
+          keyIdeas: pLoc.keyIdeas.join(ideasSep),
+          history: historyText,
+        },
+        { onDelta: (_d, acc) => setStreamPreview(acc) }
+      );
       const turn =
         parseDilemmaTurnBilingual(response.dilemmaTurn) ??
         parseDilemmaTurnBilingual(response.text);
@@ -179,6 +184,7 @@ export function Dilemma() {
       setUserInput(content);
     } finally {
       setIsThinking(false);
+      setStreamPreview("");
     }
   };
 
@@ -190,18 +196,22 @@ export function Dilemma() {
     setStage("reveal");
     setIsGeneratingSummary(true);
     setSummaryLocales(null);
+    setStreamPreview("");
 
     const history = buildHistoryText(messages);
 
     try {
-      const response = await generateDilemmaSummary({
-        moralDilemmaTitle: currentDilemma.title,
-        question: currentDilemma.question,
-        userStance: selectedOption.stancePrompt,
-        philosopherName: philosopherDisplayName(selectedPhilosopher, locale),
-        philosopherSchool: philosopherForLocale(selectedPhilosopher, locale).school,
-        history,
-      });
+      const response = await generateDilemmaSummary(
+        {
+          moralDilemmaTitle: currentDilemma.title,
+          question: currentDilemma.question,
+          userStance: selectedOption.stancePrompt,
+          philosopherName: philosopherDisplayName(selectedPhilosopher, locale),
+          philosopherSchool: philosopherForLocale(selectedPhilosopher, locale).school,
+          history,
+        },
+        { onDelta: (_d, acc) => setStreamPreview(acc) }
+      );
       const summary =
         parseDilemmaSummaryBilingual(response.dilemmaSummary) ??
         parseDilemmaSummaryBilingual(response.text);
@@ -232,6 +242,7 @@ export function Dilemma() {
       toast.error(msg);
     } finally {
       setIsGeneratingSummary(false);
+      setStreamPreview("");
     }
   };
 
@@ -452,7 +463,16 @@ export function Dilemma() {
                   </p>
                 </div>
               ))}
-              {isThinking && <div className="text-sm italic text-zinc-500">{t("dilemma.thinking")}</div>}
+              {isThinking && (
+                <div className="space-y-2">
+                  <div className="text-sm italic text-zinc-500">{t("dilemma.thinking")}</div>
+                  {streamPreview ? (
+                    <pre className="max-h-48 overflow-auto rounded-lg border border-zinc-800 bg-zinc-900/80 p-3 text-sm whitespace-pre-wrap text-zinc-400">
+                      {streamPreview}
+                    </pre>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -505,10 +525,17 @@ export function Dilemma() {
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
               <p className="whitespace-pre-line leading-8 text-zinc-300">
-                {isGeneratingSummary
-                  ? t("dilemma.summary.generating")
-                  : fullExplanation ||
-                    t("dilemma.summary.failed")}
+                {isGeneratingSummary ? (
+                  streamPreview ? (
+                    <pre className="max-h-64 overflow-auto whitespace-pre-wrap text-zinc-400">{streamPreview}</pre>
+                  ) : (
+                    t("dilemma.summary.generating")
+                  )
+                ) : fullExplanation ? (
+                  fullExplanation
+                ) : (
+                  t("dilemma.summary.failed")
+                )}
               </p>
             </div>
 

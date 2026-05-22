@@ -22,6 +22,7 @@ export function Disciplines() {
     "disciplines.category.all"
   );
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiStreamPreview, setAiStreamPreview] = useState("");
 
   const filteredBattles = useMemo(
     () => allBattles.filter((b) => battleMatchesCategory(selectedCategory, b)),
@@ -34,8 +35,11 @@ export function Disciplines() {
   const handleAiGenerate = async () => {
     const labels = DISCIPLINE_CATEGORY_LABELS[selectedCategory];
     setAiLoading(true);
+    setAiStreamPreview("");
     try {
-      const resp = await generateDisciplineBattle(labels.en, labels.zh);
+      const resp = await generateDisciplineBattle(labels.en, labels.zh, {
+        onDelta: (_d, acc) => setAiStreamPreview(acc),
+      });
       const parsed =
         parseDisciplineBattleBilingual(resp.battle) ?? parseDisciplineBattleBilingual(resp.text);
       if (!parsed) {
@@ -62,6 +66,7 @@ export function Disciplines() {
       toast.error(msg);
     } finally {
       setAiLoading(false);
+      setAiStreamPreview("");
     }
   };
 
@@ -118,6 +123,11 @@ export function Disciplines() {
             {aiLoading ? t("disciplines.aiGenerating") : t("disciplines.aiGenerate")}
           </button>
         </div>
+        {aiLoading && aiStreamPreview ? (
+          <pre className="mb-6 max-h-40 overflow-auto rounded-lg border border-zinc-800 bg-zinc-900/80 p-3 text-sm whitespace-pre-wrap text-zinc-400">
+            {aiStreamPreview}
+          </pre>
+        ) : null}
 
         {featured && featuredDisplay && (
           <div className="mb-8">

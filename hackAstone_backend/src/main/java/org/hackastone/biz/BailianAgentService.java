@@ -43,15 +43,12 @@ public class BailianAgentService {
             return out;
         }
 
-        Map<String, Object> payload = new HashMap<>();
-        Map<String, Object> input = new HashMap<>();
-        input.put("prompt", query);
-        if (imageList != null && !imageList.isEmpty()) {
-            input.put("image_list", imageList);
+        Map<String, Object> payload = buildPayload(query, imageList);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parameters = (Map<String, Object>) payload.get("parameters");
+        if (parameters != null) {
+            parameters.remove("incremental_output");
         }
-        payload.put("input", input);
-        payload.put("parameters", new HashMap<>());
-        payload.put("debug", new HashMap<>());
 
         log.info("百炼 runAgent 请求 agent={} appIdSuffix={} promptLen={}",
                 agentName, appIdSuffix(appId), query == null ? 0 : query.length());
@@ -93,8 +90,43 @@ public class BailianAgentService {
         return runAgent("echo", query, Collections.emptyList(), useCache);
     }
 
+    /**
+     * 通义千问应用流式调用（官方：Header {@code X-DashScope-SSE: enable}，parameters.incremental_output=true）。
+     *
+     * @return 完整拼接后的 text
+     */
+    public String streamAgent(String agentName, String query, List<String> imageList, BailianStreamHandler handler) {
+        String appId = resolveAppId(agentName);
+        Map<String, Object> payload = buildPayload(query, imageList);
+        log.info("百炼 streamAgent 请求 agent={} appIdSuffix={} promptLen={}",
+                agentName, appIdSuffix(appId), query == null ? 0 : query.length());
+        String fullText = streamPostJson(appId, payload, agentName, handler);
+        assertAgentRoleCompatible(agentName, fullText);
+        log.info("百炼 streamAgent 完成 agent={} textLen={} 预览={}", agentName, fullText.length(), preview(fullText, 200));
+        return fullText;
+    }
+
+    public String streamEcho(String query, BailianStreamHandler handler) {
+        return streamAgent("echo", query, Collections.emptyList(), handler);
+    }
+
     public Map<String, Object> runAgent(String agentName, String query, List<String> imageList) {
         return runAgent(agentName, query, imageList, true);
+    }
+
+    private static Map<String, Object> buildPayload(String query, List<String> imageList) {
+        Map<String, Object> payload = new HashMap<>();
+        Map<String, Object> input = new HashMap<>();
+        input.put("prompt", query);
+        if (imageList != null && !imageList.isEmpty()) {
+            input.put("image_list", imageList);
+        }
+        payload.put("input", input);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("incremental_output", true);
+        payload.put("parameters", parameters);
+        payload.put("debug", new HashMap<>());
+        return payload;
     }
 
     private String resolveAppId(String agentName) {
@@ -150,6 +182,94 @@ public class BailianAgentService {
                     "百炼 echo 应用角色不匹配：当前 bailian.echo-app-id 对应的是 Ledger（数据治理）应用，"
                             + "无法执行哲学辩题（CA-Echo-LLM）。请在 hackAstone 子空间内创建/选用 Echo 类应用，"
                             + "并将其 APP_ID 填入 bailian.echo-app-id。");
+        }
+    }
+
+    private String streamPostJson(String appId, Map<String, Object> payload, String agentName, BailianStreamHandler handler) {
+        String apiKey = config.getApiKey();
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            throw new HackAstoneBizException(ResultEnum.PARAM_ERROR.getCode(),
+                    "缺少百炼 API Key：请在 application.yml 配置 bailian.api-key，或设置环境变量 DASHSCOPE_API_KEY / BAILIAN_API_KEY");
+        }
+        String endpoint = config.getEndpoint().replaceAll("/$", "") + "/" + appId + "/completion";
+        log.info("百炼 流式请求 agent={} POST {}", agentName, endpoint);
+        HttpURLConnection conn = null;
+        StringBuilder accumulated = new StringBuilder();
+        try {
+            URL url = new URL(endpoint);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(config.getTimeoutMs());
+            conn.setReadTimeout(config.getTimeoutMs());
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey.trim());
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "text/event-stream");
+            conn.setRequestProperty("X-DashScope-SSE", "enable");
+            String workspaceId = config.getWorkspaceId();
+            if (workspaceId != null && !workspaceId.trim().isEmpty()) {
+                conn.setRequestProperty("X-DashScope-WorkSpace", workspaceId.trim());
+            }
+
+            byte[] data = OBJECT_MAPPER.writeValueAsBytes(payload);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(data);
+            }
+
+            int code = conn.getResponseCode();
+            InputStream stream = code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream();
+            if (code < 200 || code >= 300) {
+                String body = readAll(stream);
+                throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                        "百炼流式调用失败(" + code + "): " + body);
+            }
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("data:")) {
+                        continue;
+                    }
+                    String json = line.substring(5).trim();
+                    if (json.isEmpty() || "[DONE]".equals(json)) {
+                        continue;
+                    }
+                    Map<String, Object> chunk = OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
+                    Object errCode = chunk.get("code");
+                    if (errCode != null && !"".equals(String.valueOf(errCode).trim())) {
+                        Object msg = chunk.get("message");
+                        throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                                "百炼流式错误: " + (msg != null ? msg : chunk));
+                    }
+                    String delta = extractStreamTextDelta(chunk);
+                    if (delta.isEmpty()) {
+                        continue;
+                    }
+                    accumulated.append(delta);
+                    if (handler != null) {
+                        handler.onDelta(delta, accumulated.toString());
+                    }
+                }
+            }
+            return trimTrailingDashScopeMetadata(accumulated.toString());
+        } catch (HackAstoneBizException e) {
+            throw e;
+        } catch (SocketTimeoutException e) {
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "连接百炼超时（当前 timeout-ms=" + config.getTimeoutMs()
+                            + "）。请增大 bailian.timeout-ms，或检查本机到 dashscope.aliyuncs.com 的网络。");
+        } catch (ConnectException e) {
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "无法连上百炼服务器（连接被拒绝）。请检查网络、代理、防火墙；若应用部署在海外，可尝试将 bailian.endpoint 改为国际版：https://dashscope-intl.aliyuncs.com/api/v1/apps");
+        } catch (UnknownHostException e) {
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "无法解析百炼域名（DNS 失败）。请检查网络或 DNS；海外环境可尝试国际版 endpoint，见 bailian.endpoint 配置说明。");
+        } catch (Exception e) {
+            throw new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(), "百炼流式调用异常: " + e.getMessage());
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
 
@@ -217,6 +337,61 @@ public class BailianAgentService {
                 conn.disconnect();
             }
         }
+    }
+
+    /**
+     * 流式 SSE 分片：仅提取 output.text 增量，忽略 finish_reason / usage 等尾包（勿序列化整段 chunk）。
+     */
+    @SuppressWarnings("unchecked")
+    private String extractStreamTextDelta(Map<String, Object> chunk) {
+        Object outputObj = chunk.get("output");
+        if (!(outputObj instanceof Map)) {
+            return "";
+        }
+        Map<String, Object> output = (Map<String, Object>) outputObj;
+        Object text = output.get("text");
+        if (text != null) {
+            String s = String.valueOf(text);
+            if (!isDashScopeStreamControlPayload(s)) {
+                return s;
+            }
+        }
+        Object contents = output.get("contents");
+        if (contents instanceof List && !((List<?>) contents).isEmpty()) {
+            Object first = ((List<?>) contents).get(0);
+            if (first instanceof Map && ((Map<?, ?>) first).get("text") != null) {
+                return String.valueOf(((Map<?, ?>) first).get("text"));
+            }
+        }
+        return "";
+    }
+
+    /** 百炼流式尾包：text 字段可能是 finish_reason / usage 等控制 JSON，非模型正文 */
+    private static boolean isDashScopeStreamControlPayload(String s) {
+        if (s == null || s.isBlank()) {
+            return false;
+        }
+        String t = s.trim();
+        if (!t.startsWith("{")) {
+            return false;
+        }
+        return t.contains("\"finish_reason\"") || t.contains("\"request_id\"");
+    }
+
+    /** 去掉流式尾包误拼接的 {@code {"output":{...finish_reason...}}} 元数据 */
+    private static String trimTrailingDashScopeMetadata(String fullText) {
+        if (fullText == null || fullText.isEmpty()) {
+            return "";
+        }
+        int cut = fullText.indexOf("}{\"output\"");
+        if (cut > 0) {
+            return fullText.substring(0, cut + 1);
+        }
+        cut = fullText.indexOf("\n{\"output\"");
+        if (cut > 0) {
+            return fullText.substring(0, cut).trim();
+        }
+        return fullText;
     }
 
     @SuppressWarnings("unchecked")

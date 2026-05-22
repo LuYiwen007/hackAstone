@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useParams, Link } from "react-router";
 import { ArrowLeft, AlertCircle, MessageSquare } from "lucide-react";
@@ -21,11 +21,96 @@ type DebateMessage = {
   content: string;
 };
 
-type TurnResult = {
-  philosopherReply: string;
-  judgeQuestion: string;
-  continueDebate: boolean;
+type ThinkingRole = "philosopher" | "judge";
+
+type PhilosopherToUserResult = {
+  philosopherReplyToUser?: string;
+  philosopherReply?: string;
 };
+
+type JudgeStepResult = {
+  judgeSpeaks?: boolean;
+  judgeMessage?: string;
+  judgeQuestion?: string;
+  addressTo?: "user" | "philosopher";
+  continueDebate?: boolean;
+};
+
+type PhilosopherToJudgeResult = {
+  philosopherReplyToJudge?: string;
+};
+
+function buildEchoQuery(
+  task: string,
+  criteria: string,
+  schema: string,
+  constraints: string,
+  contextLines: string[]
+): string {
+  return [
+    "[ROLE]",
+    "CA-Echo-LLM",
+    "",
+    "[TASK]",
+    task,
+    "",
+    "[REPO_CONTEXT]",
+    "project=hackAstone",
+    "",
+    "[TARGET_FILES]",
+    "NONE",
+    "",
+    "[API_CONTRACT]",
+    "NONE",
+    "",
+    "[ACCEPTANCE_CRITERIA]",
+    criteria,
+    "",
+    "[CONSTRAINTS]",
+    constraints,
+    "",
+    "[RETURN_FORMAT]",
+    "json",
+    "",
+    "[OUTPUT_JSON_SCHEMA]",
+    schema,
+    "",
+    ...contextLines,
+  ].join("\n");
+}
+
+function parsePhilosopherToUser(raw: PhilosopherToUserResult | null): string | null {
+  if (!raw) return null;
+  const reply = (raw.philosopherReplyToUser ?? raw.philosopherReply ?? "").trim();
+  return reply || null;
+}
+
+function parseJudgeStep(raw: JudgeStepResult | null): {
+  judgeSpeaks: boolean;
+  judgeMessage: string;
+  addressTo: "user" | "philosopher" | null;
+  continueDebate: boolean;
+} | null {
+  if (!raw) return null;
+  const judgeSpeaks = raw.judgeSpeaks === true || !!(raw.judgeMessage ?? raw.judgeQuestion)?.trim();
+  const judgeMessage = (raw.judgeMessage ?? raw.judgeQuestion ?? "").trim();
+  let addressTo: "user" | "philosopher" | null =
+    raw.addressTo === "philosopher" || raw.addressTo === "user" ? raw.addressTo : null;
+  if (judgeSpeaks && !addressTo) addressTo = "user";
+  if (judgeSpeaks && !judgeMessage) return null;
+  return {
+    judgeSpeaks,
+    judgeMessage: judgeSpeaks ? judgeMessage : "",
+    addressTo: judgeSpeaks ? addressTo : null,
+    continueDebate: raw.continueDebate !== false,
+  };
+}
+
+function parsePhilosopherToJudge(raw: PhilosopherToJudgeResult | null): string | null {
+  if (!raw) return null;
+  const reply = (raw.philosopherReplyToJudge ?? "").trim();
+  return reply || null;
+}
 
 type SummaryResult = {
   fullExplanation: string;
@@ -47,9 +132,35 @@ export function PhilosophyBattleLive() {
   const [messages, setMessages] = useState<DebateMessage[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingRole, setThinkingRole] = useState<ThinkingRole | null>(null);
   const [canReveal, setCanReveal] = useState(false);
   const [fullExplanation, setFullExplanation] = useState<string>("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const tablePreparingLabel = t("battle.tablePreparing");
+  const philosopherThinkingLabel = t("battle.philosopherThinking", {
+    name: displayName || philosopher?.nameCN || "",
+  });
+  const judgeThinkingLabel = t("battle.judgeThinking");
+  const debateThinkingLabel =
+    thinkingRole === "judge"
+      ? judgeThinkingLabel
+      : thinkingRole === "philosopher"
+        ? philosopherThinkingLabel
+        : "";
+
+  useEffect(() => {
+    if (stage !== "debate") return;
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const scrollToBottom = () => {
+      el.scrollTop = el.scrollHeight;
+    };
+    scrollToBottom();
+    const id = requestAnimationFrame(scrollToBottom);
+    return () => cancelAnimationFrame(id);
+  }, [stage, messages, isThinking, thinkingRole]);
 
   useEffect(() => {
     if (!philosopher) return;
@@ -59,9 +170,18 @@ export function PhilosophyBattleLive() {
     generateTopic(displayName, philosopher.school, philosopher.keyIdeas)
       .then((resp) => {
         if (cancelled) return;
-        const parsed = parseJsonPayload<DebateTopicContent>(resp.text);
+        const parsed =
+          resp.debateTopic ?? parseJsonPayload<DebateTopicContent>(resp.text);
         if (parsed?.question && parsed?.philosopherView && parsed?.oppositeView) {
-          setTopic(parsed);
+          setTopic({
+            question: parsed.question,
+            philosopherView: parsed.philosopherView,
+            oppositeView: parsed.oppositeView,
+            judgeQuestions: parsed.judgeQuestions?.length
+              ? parsed.judgeQuestions
+              : ["请进一步阐述你的立场与理由。", "你的理由如何回应反方？", "你是否仍坚持原立场？"],
+            fullExplanation: parsed.fullExplanation || "",
+          });
           setFullExplanation(parsed.fullExplanation || "");
         } else {
           throw new Error(t("error.topicJson"));
@@ -142,53 +262,93 @@ export function PhilosophyBattleLive() {
     ];
     setMessages(nextMessages);
 
-    const historyText = formatHistory(nextMessages);
-
-    const turnQuery = [
-      "[ROLE]",
-      "CA-Echo-LLM",
-      "",
-      "[TASK]",
-      t("battle.prompt.turnTask"),
-      "",
-      "[REPO_CONTEXT]",
-      "project=hackAstone",
-      "",
-      "[TARGET_FILES]",
-      "NONE",
-      "",
-      "[API_CONTRACT]",
-      "NONE",
-      "",
-      "[ACCEPTANCE_CRITERIA]",
-      t("battle.prompt.turnCriteria"),
-      "",
-      "[CONSTRAINTS]",
-      t("battle.prompt.constraints"),
-      "",
-      "[RETURN_FORMAT]",
-      "json",
-      "",
+    const debateContext = [
       t("battle.prompt.topic", { question: topic.question }),
       t("battle.prompt.philosopher", { name: displayName, school: philosopher.school }),
       t("battle.prompt.stance", { choice: choiceLabel(choice) }),
+    ];
+    const constraints = t("battle.prompt.constraints");
+
+    const appendMessage = (msg: DebateMessage) => {
+      setMessages((prev) => [...prev, msg]);
+    };
+
+    const historyFor = (msgs: DebateMessage[]) => [
+      ...debateContext,
       t("battle.prompt.history"),
-      historyText,
-    ].join("\n");
+      formatHistory(msgs),
+    ];
 
     try {
-      const resp = await runEchoQuery(turnQuery);
-      const parsed = parseJsonPayload<TurnResult>(resp.text);
-      if (!parsed?.philosopherReply || !parsed?.judgeQuestion) {
-        throw new Error(t("error.turnJson"));
+      setThinkingRole("philosopher");
+      const philToUserQuery = buildEchoQuery(
+        t("battle.prompt.philosopherToUserTask"),
+        t("battle.prompt.philosopherToUserCriteria"),
+        t("battle.prompt.philosopherToUserSchema"),
+        constraints,
+        historyFor(nextMessages)
+      );
+      const philResp = await runEchoQuery(philToUserQuery);
+      const philosopherReplyToUser = parsePhilosopherToUser(
+        parseJsonPayload<PhilosopherToUserResult>(philResp.text)
+      );
+      if (!philosopherReplyToUser) throw new Error(t("error.turnJson"));
+
+      const afterPhilosopher: DebateMessage[] = [
+        ...nextMessages,
+        {
+          id: `philosopher-user-${Date.now()}`,
+          role: "philosopher",
+          content: philosopherReplyToUser,
+        },
+      ];
+      appendMessage(afterPhilosopher[afterPhilosopher.length - 1]);
+
+      setThinkingRole("judge");
+      const judgeQuery = buildEchoQuery(
+        t("battle.prompt.judgeStepTask"),
+        t("battle.prompt.judgeStepCriteria"),
+        t("battle.prompt.judgeStepSchema"),
+        constraints,
+        historyFor(afterPhilosopher)
+      );
+      const judgeResp = await runEchoQuery(judgeQuery);
+      const judge = parseJudgeStep(parseJsonPayload<JudgeStepResult>(judgeResp.text));
+      if (!judge) throw new Error(t("error.turnJson"));
+
+      let working = afterPhilosopher;
+      if (judge.judgeSpeaks && judge.judgeMessage) {
+        const judgeMsg: DebateMessage = {
+          id: `judge-${Date.now()}`,
+          role: "judge",
+          content: judge.judgeMessage,
+        };
+        working = [...working, judgeMsg];
+        appendMessage(judgeMsg);
       }
-      const turn = parsed;
-      setMessages((prev) => [
-        ...prev,
-        { id: `philosopher-${Date.now()}`, role: "philosopher", content: turn.philosopherReply },
-        { id: `judge-${Date.now()}`, role: "judge", content: turn.judgeQuestion },
-      ]);
-      setCanReveal(turn.continueDebate === false);
+
+      if (judge.judgeSpeaks && judge.addressTo === "philosopher") {
+        setThinkingRole("philosopher");
+        const philToJudgeQuery = buildEchoQuery(
+          t("battle.prompt.philosopherToJudgeTask"),
+          t("battle.prompt.philosopherToJudgeCriteria"),
+          t("battle.prompt.philosopherToJudgeSchema"),
+          constraints,
+          historyFor(working)
+        );
+        const philJudgeResp = await runEchoQuery(philToJudgeQuery);
+        const philosopherReplyToJudge = parsePhilosopherToJudge(
+          parseJsonPayload<PhilosopherToJudgeResult>(philJudgeResp.text)
+        );
+        if (!philosopherReplyToJudge) throw new Error(t("error.turnJson"));
+        appendMessage({
+          id: `philosopher-judge-${Date.now()}`,
+          role: "philosopher",
+          content: philosopherReplyToJudge,
+        });
+      }
+
+      setCanReveal(judge.continueDebate === false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("error.turnFailed");
       toast.error(msg);
@@ -196,6 +356,7 @@ export function PhilosophyBattleLive() {
       setUserInput(content);
     } finally {
       setIsThinking(false);
+      setThinkingRole(null);
     }
   };
 
@@ -204,6 +365,7 @@ export function PhilosophyBattleLive() {
     setStage("reveal");
     setIsGeneratingSummary(true);
     setFullExplanation("");
+    setThinkingRole("philosopher");
 
     const history = formatHistory(messages);
 
@@ -264,6 +426,7 @@ export function PhilosophyBattleLive() {
       toast.error(msg);
     } finally {
       setIsGeneratingSummary(false);
+      setThinkingRole(null);
     }
   };
 
@@ -291,7 +454,7 @@ export function PhilosophyBattleLive() {
         {stage === "topic" && (
           <div className="max-w-4xl mx-auto">
             {topicLoading && (
-              <div className="text-center py-20 text-zinc-400">{t("battle.generatingTopic")}</div>
+              <div className="py-12 text-center text-zinc-400">{tablePreparingLabel}</div>
             )}
             {!topicLoading && topicLoadError && (
               <div className="text-center py-16 space-y-4">
@@ -348,42 +511,52 @@ export function PhilosophyBattleLive() {
 
         {stage === "debate" && topic && (
           <div className="max-w-4xl mx-auto">
-            <div className="mb-6 text-zinc-400 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              <span>{t("battle.roundHint")}</span>
-            </div>
-            <div className="space-y-4 mb-6">
-              {messages.map((m) => (
-                <div key={m.id} className={`p-4 rounded-lg border ${m.role === "user" ? "bg-purple-950/30 border-purple-800" : m.role === "philosopher" ? "bg-zinc-900 border-zinc-700" : "bg-yellow-950/20 border-yellow-700/40"}`}>
-                  <div className="text-xs mb-2 text-zinc-500">
-                    {m.role === "user" ? t("battle.you") : m.role === "philosopher" ? displayName : t("battle.judge")}
-                  </div>
-                  <p className="whitespace-pre-wrap">{m.content}</p>
+            <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden max-h-[min(72vh,760px)]">
+              <div className="shrink-0 px-4 py-3 border-b border-zinc-800 bg-zinc-950/95">
+                <div className="text-xs text-purple-400/90 mb-1">{t("battle.currentTopic")}</div>
+                <p className="text-base font-semibold text-zinc-100 leading-snug">{topic.question}</p>
+              </div>
+
+              <div ref={chatScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+                <div className="text-zinc-400 flex items-center gap-2 text-sm">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{t("battle.roundHint")}</span>
                 </div>
-              ))}
-              {isThinking && <div className="text-zinc-500 italic">{t("battle.agentThinking")}</div>}
-            </div>
+                {messages.map((m) => (
+                  <div key={m.id} className={`p-4 rounded-lg border ${m.role === "user" ? "bg-purple-950/30 border-purple-800" : m.role === "philosopher" ? "bg-zinc-950 border-zinc-700" : "bg-yellow-950/20 border-yellow-700/40"}`}>
+                    <div className="text-xs mb-2 text-zinc-500">
+                      {m.role === "user" ? t("battle.you") : m.role === "philosopher" ? displayName : t("battle.judge")}
+                    </div>
+                    <p className="whitespace-pre-wrap">{m.content}</p>
+                  </div>
+                ))}
+                {isThinking && debateThinkingLabel && (
+                  <div className="text-zinc-500 italic">{debateThinkingLabel}</div>
+                )}
+              </div>
 
-            <div className="flex gap-3">
-              <input
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && void handleUserTurn()}
-                placeholder={t("battle.inputPlaceholder")}
-                className="flex-1 p-3 bg-zinc-950 border border-zinc-700 rounded-lg"
-              />
-              <button onClick={() => void handleUserTurn()} disabled={!userInput.trim() || isThinking} className="px-6 py-3 bg-purple-600 rounded-lg disabled:opacity-50">
-                <MessageSquare className="w-5 h-5" />
-              </button>
+              <div className="shrink-0 p-4 border-t border-zinc-800 bg-zinc-950/80 space-y-3">
+                <div className="flex gap-3">
+                  <input
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && void handleUserTurn()}
+                    placeholder={t("battle.inputPlaceholder")}
+                    className="flex-1 p-3 bg-zinc-950 border border-zinc-700 rounded-lg"
+                  />
+                  <button onClick={() => void handleUserTurn()} disabled={!userInput.trim() || isThinking} className="px-6 py-3 bg-purple-600 rounded-lg disabled:opacity-50">
+                    <MessageSquare className="w-5 h-5" />
+                  </button>
+                </div>
+                <button
+                  onClick={() => void handleReveal()}
+                  disabled={!canReveal && messages.length < 4}
+                  className="w-full py-3 rounded-lg bg-yellow-600 hover:bg-yellow-700 disabled:bg-zinc-700"
+                >
+                  {t("battle.enterSummary")}
+                </button>
+              </div>
             </div>
-
-            <button
-              onClick={() => void handleReveal()}
-              disabled={!canReveal && messages.length < 4}
-              className="w-full mt-6 py-3 rounded-lg bg-yellow-600 hover:bg-yellow-700 disabled:bg-zinc-700"
-            >
-              {t("battle.enterSummary")}
-            </button>
           </div>
         )}
 
@@ -391,8 +564,8 @@ export function PhilosophyBattleLive() {
           <div className="max-w-4xl mx-auto bg-zinc-900 border border-zinc-800 rounded-xl p-8">
             <h3 className="text-2xl font-bold mb-4">{t("battle.fullAnalysis")}</h3>
             <p className="text-zinc-300 whitespace-pre-line">
-              {isGeneratingSummary
-                ? t("battle.summaryGenerating")
+                {isGeneratingSummary
+                ? philosopherThinkingLabel
                 : fullExplanation || t("battle.summaryFailed")}
             </p>
             <DebateSummary

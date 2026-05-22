@@ -100,6 +100,7 @@ export function ModernApplication({ philosopherName, philosopherId, coreIdeas }:
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [analysis, setAnalysis] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [streamPreview, setStreamPreview] = useState("");
 
   const handleScenarioClick = (scenarioId: string) => {
     const scenario = modernScenarios.find((s) => s.id === scenarioId);
@@ -107,6 +108,7 @@ export function ModernApplication({ philosopherName, philosopherId, coreIdeas }:
     setSelectedScenario(scenarioId);
     setIsAnalyzing(true);
     setAnalysis("");
+    setStreamPreview("");
     const prompt = buildModernScenarioPrompt(
       philosopherName,
       philosopherId,
@@ -114,7 +116,7 @@ export function ModernApplication({ philosopherName, philosopherId, coreIdeas }:
       scenario.title,
       scenario.description
     );
-    runEchoQuery(prompt)
+    runEchoQuery(prompt, { onDelta: (_d, acc) => setStreamPreview(acc) })
       .then((resp) => {
         const text = resp.text?.trim();
         if (!text) throw new Error("模型返回为空");
@@ -125,7 +127,10 @@ export function ModernApplication({ philosopherName, philosopherId, coreIdeas }:
         toast.error(msg);
         setSelectedScenario(null);
       })
-      .finally(() => setIsAnalyzing(false));
+      .finally(() => {
+        setIsAnalyzing(false);
+        setStreamPreview("");
+      });
   };
 
   const handleCustomSubmit = () => {
@@ -133,8 +138,9 @@ export function ModernApplication({ philosopherName, philosopherId, coreIdeas }:
     if (!trimmed) return;
     setIsAnalyzing(true);
     setAnalysis("");
+    setStreamPreview("");
     const prompt = buildCustomScenarioPrompt(philosopherName, philosopherId, coreIdeas, trimmed);
-    runEchoQuery(prompt)
+    runEchoQuery(prompt, { onDelta: (_d, acc) => setStreamPreview(acc) })
       .then((resp) => {
         const text = resp.text?.trim();
         if (!text) throw new Error("模型返回为空");
@@ -145,7 +151,10 @@ export function ModernApplication({ philosopherName, philosopherId, coreIdeas }:
         const msg = err instanceof Error ? err.message : "分析生成失败";
         toast.error(msg);
       })
-      .finally(() => setIsAnalyzing(false));
+      .finally(() => {
+        setIsAnalyzing(false);
+        setStreamPreview("");
+      });
   };
 
   return (
@@ -236,11 +245,14 @@ export function ModernApplication({ philosopherName, philosopherId, coreIdeas }:
       )}
 
       {isAnalyzing && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center space-y-4">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-4"></div>
           <p className="text-zinc-400">
             {philosopherName}正在思考中...
           </p>
+          {streamPreview ? (
+            <pre className="max-h-48 overflow-auto text-left text-sm whitespace-pre-wrap text-zinc-500">{streamPreview}</pre>
+          ) : null}
         </div>
       )}
 
