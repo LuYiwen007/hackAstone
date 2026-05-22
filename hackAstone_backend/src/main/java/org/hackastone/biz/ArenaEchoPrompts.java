@@ -7,6 +7,9 @@ import java.util.Locale;
  * 与各 Agent 协议对齐：[ROLE] CA-Echo-LLM + [TASK] + [RETURN_FORMAT] json + 业务字段说明。
  * <p>
  * 注意：百炼「应用」内置系统提示必须与 [ROLE] 一致；echo-app-id 须指向 Echo 应用，不能填 Ledger/Forge 等。
+ * <p>
+ * 百炼 Echo 应用「系统提示词」须与仓库 {@code arena/echo-system-prompt.txt} 保持同步（哲学辩论为分步：
+ * 哲学家 text → Judge json → 哲学家 text，不再默认合并单轮 JSON）。
  */
 public final class ArenaEchoPrompts {
 
@@ -96,6 +99,18 @@ public final class ArenaEchoPrompts {
             + "\"en\":" + DISCIPLINE_BATTLE_LOCALE_SCHEMA + ","
             + "\"zh\":" + DISCIPLINE_BATTLE_LOCALE_SCHEMA
             + "}";
+
+    private static final String DISCIPLINE_SUMMARY_LOCALE_SCHEMA = "{\"summary\":\"string\"}";
+
+    /** 学科辩论结束总结：双语 summary */
+    public static final String DISCIPLINE_SUMMARY_BILINGUAL_JSON_SCHEMA = "{"
+            + "\"en\":" + DISCIPLINE_SUMMARY_LOCALE_SCHEMA + ","
+            + "\"zh\":" + DISCIPLINE_SUMMARY_LOCALE_SCHEMA
+            + "}";
+
+    private static final String DISCIPLINE_EDUCATION_CONTEXT =
+            "场景：hackAstone 认知竞技场学科辩论（Builder 建构者 vs Breaker 破坏者），文明理性，"
+                    + "避免违法、暴力、色情、仇恨及敏感政治煽动表述。";
 
     private static String header(String task, String acceptance, String constraints, String returnSchema) {
         return "[ROLE]\n" + ROLE + "\n\n"
@@ -246,6 +261,35 @@ public final class ArenaEchoPrompts {
                 debateQuestion, userStance, keyIdeas, summary, history, null,
                 philosopherId, philosopherName, school);
         return headerPlainSpeech(task, "Distinct in-character reply to Judge; non-empty", constraints, tail);
+    }
+
+    /** 哲学辩论：Judge 是否介入（流式纯文本；不介入输出 [NO_JUDGE]，介入则正文 + META 尾行） */
+    public static String philosophyJudgeStep(
+            String debateQuestion,
+            String philosopherName,
+            String school,
+            String userStance,
+            String history,
+            String locale) {
+        boolean en = locale != null && locale.toLowerCase(Locale.ROOT).startsWith("en");
+        String lang = en ? "English" : "Chinese";
+        String task = en
+                ? "Read the debate history (including the latest user and philosopher messages). You are Judge. "
+                        + "Decide whether to intervene to guide both sides. Do NOT speak as the philosopher."
+                : "阅读对话历史（含用户与哲学家刚才的发言）。你作为 Judge 决定是否介入引导双方。不替哲学家发言。";
+        String constraints = ROUNDTABLE_EDUCATION_CONTEXT + "；" + lang + " only；裁判第三人称；"
+                + (en ? "55-120 words when intervening" : "介入时约 55-120 字")
+                + "；不介入时仅输出 " + PhilosophyJudgeStepParser.NO_JUDGE + "；"
+                + "介入时输出引导/追问正文，最后一行单独输出 META:{\"addressTo\":\"user|philosopher\",\"continueDebate\":true}；"
+                + "addressTo 表示本轮主要追问谁（非让另一方沉默）；勿 JSON 围栏；勿哲学家口吻。";
+        StringBuilder tail = new StringBuilder();
+        tail.append("辩题：").append(debateQuestion).append("\n");
+        tail.append("哲学家：").append(philosopherName).append("（").append(school).append("）\n");
+        tail.append("用户立场：").append(userStance).append("\n");
+        if (history != null && !history.isBlank()) {
+            tail.append("对话历史：\n").append(history).append("\n");
+        }
+        return headerJudgePlainSpeech(task, "Valid [NO_JUDGE] or non-empty message with META line", constraints, tail.toString());
     }
 
     private static String philosophySpeechContext(
@@ -424,6 +468,19 @@ public final class ArenaEchoPrompts {
                 + tail;
     }
 
+    private static String headerJudgePlainSpeech(String task, String acceptance, String constraints, String tail) {
+        return "[ROLE]\n" + ROLE + "\n\n"
+                + "[TASK]\n" + task + "\n\n"
+                + "[REPO_CONTEXT]\nproject=hackAstone\n\n"
+                + "[TARGET_FILES]\nNONE\n\n"
+                + "[API_CONTRACT]\nNONE\n\n"
+                + "[ACCEPTANCE_CRITERIA]\n" + acceptance + "\n\n"
+                + "[CONSTRAINTS]\n" + constraints + "\n\n"
+                + "[RETURN_FORMAT]\ntext\n\n"
+                + "仅返回裁判纯文本（或 " + PhilosophyJudgeStepParser.NO_JUDGE + "），不要 JSON 围栏，不要 markdown，不要 speaker 标签。\n\n"
+                + tail;
+    }
+
     public static String roundtableReply(String topic, String userInput, String participantsJson, boolean compact) {
         String task = compact
                 ? "用户圆桌发言后，为每位哲学家各生成一条简短回应，输出 en/zh messages。"
@@ -474,6 +531,123 @@ public final class ArenaEchoPrompts {
                 + "\"zh\":{\"question\":\"...\",\"category\":\"商业\",\"builderView\":\"...\",\"breakerView\":\"...\","
                 + "\"judgeQuestions\":[\"？\",\"？\",\"？\"],\"reveal\":\"...\"}}\n"
                 + "Keep each view 80-150 words; reveal 120-200 words; output ONLY the JSON object.";
+    }
+
+    /**
+     * 学科辩论：用户已选 Builder 或 Breaker，模型扮演对方立场回话（流式纯文本）。
+     */
+    public static String disciplineDebateOpponentReply(
+            String question,
+            String builderView,
+            String breakerView,
+            String userChoice,
+            String userMessage,
+            String history,
+            String locale) {
+        String choice = DisciplineDebateParser.normalizeUserChoice(userChoice);
+        boolean en = locale != null && locale.toLowerCase(Locale.ROOT).startsWith("en");
+        String lang = en ? "English" : "Chinese";
+        String opponent = "builder".equals(choice) ? "Breaker" : "Builder";
+        String opponentZh = "builder".equals(choice) ? "破坏者" : "建构者";
+        String userSide = "builder".equals(choice) ? "Builder" : "Breaker";
+        String task = en
+                ? "You ARE the " + opponent + " in a discipline debate. The user supports "
+                        + userSide + " and just spoke—reply ONLY as " + opponent + ", rebutting or questioning them."
+                : "你扮演学科辩论中的「" + opponentZh + "」。用户支持「"
+                        + ("builder".equals(choice) ? "建构者" : "破坏者")
+                        + "」并已发言——仅以" + opponentZh + "身份回应，可反驳或追问。";
+        String constraints = DISCIPLINE_EDUCATION_CONTEXT + "；" + lang + " only；第一人称或「我们」；"
+                + (en ? "55-110 words" : "约 55-110 字")
+                + "；紧扣辩题与用户本轮发言；勿 JSON；勿同时扮演双方；勿 Judge 口吻。";
+        String tail = disciplineDebateContext(question, builderView, breakerView, choice, userMessage, history);
+        return headerDisciplinePlainSpeech(task, "Non-empty in-character opponent speech", constraints, tail);
+    }
+
+    /**
+     * 学科辩论：用户立场「不确定」，模型一轮内依次扮演 Builder 与 Breaker（流式纯文本，带分段标记）。
+     */
+    public static String disciplineDebateDualReply(
+            String question,
+            String builderView,
+            String breakerView,
+            String userMessage,
+            String history,
+            String locale) {
+        boolean en = locale != null && locale.toLowerCase(Locale.ROOT).startsWith("en");
+        String lang = en ? "English" : "Chinese";
+        String markerBuilder = en ? "[Builder]" : "【建构者】";
+        String markerBreaker = en ? "[Breaker]" : "【破坏者】";
+        String task = en
+                ? "The user is undecided. In ONE turn, speak as Builder then as Breaker in dialogue—two distinct voices."
+                : "用户立场不确定。在一轮回复中，先以建构者发言，再以破坏者回应，形成正反对话。";
+        String constraints = DISCIPLINE_EDUCATION_CONTEXT + "；" + lang + " only；"
+                + "MUST use exactly two section headers on their own lines: " + markerBuilder + " then " + markerBreaker + "；"
+                + "each section " + (en ? "45-90 words" : "约 45-90 字")
+                + "；双方须回应用户具体观点；勿 JSON；勿第三角色。";
+        String tail = disciplineDebateContext(question, builderView, breakerView, "uncertain", userMessage, history);
+        return headerDisciplinePlainSpeech(task, "Two labeled sections; both non-empty", constraints, tail);
+    }
+
+    /** 学科辩论总结（对话结束后） */
+    public static String disciplineDebateSummary(
+            String question,
+            String builderView,
+            String breakerView,
+            String userChoice,
+            String history) {
+        String choice = DisciplineDebateParser.normalizeUserChoice(userChoice);
+        String choiceLabel;
+        if ("builder".equals(choice)) {
+            choiceLabel = "用户支持建构者（Builder），模型主要扮演破坏者（Breaker）对辩";
+        } else if ("breaker".equals(choice)) {
+            choiceLabel = "用户支持破坏者（Breaker），模型主要扮演建构者（Builder）对辩";
+        } else {
+            choiceLabel = "用户立场不确定，模型曾交替扮演建构者与破坏者";
+        }
+        return header(
+                "根据学科辩论完整对话历史，生成超越简单二元的总结，同时输出英文(en)与中文(zh)的 summary。",
+                "en.summary 与 zh.summary 均非空；结构一致、论点对应",
+                "en 自然英文，zh 自然中文；指出双方合理处与用户可反思处；各约 150-220 字；勿重复对话原文",
+                DISCIPLINE_SUMMARY_BILINGUAL_JSON_SCHEMA
+        ) + "辩题：" + question + "\n"
+                + "建构者立场摘要：" + builderView + "\n"
+                + "破坏者立场摘要：" + breakerView + "\n"
+                + "用户立场：" + choiceLabel + "\n"
+                + "对话历史：\n" + history;
+    }
+
+    private static String disciplineDebateContext(
+            String question,
+            String builderView,
+            String breakerView,
+            String userChoice,
+            String userMessage,
+            String history) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("辩题：").append(question).append("\n");
+        sb.append("[BUILDER_STANCE]\n").append(builderView).append("\n");
+        sb.append("[BREAKER_STANCE]\n").append(breakerView).append("\n");
+        sb.append("用户立场：").append(userChoice).append("\n");
+        if (userMessage != null && !userMessage.isBlank()) {
+            sb.append("用户本轮发言：").append(userMessage.trim()).append("\n");
+        }
+        if (history != null && !history.isBlank()) {
+            sb.append("对话历史：\n").append(history.trim()).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private static String headerDisciplinePlainSpeech(String task, String acceptance, String constraints, String tail) {
+        return "[ROLE]\n" + ROLE + "\n\n"
+                + "[TASK]\n" + task + "\n\n"
+                + "[REPO_CONTEXT]\nproject=hackAstone\n\n"
+                + "[TARGET_FILES]\nNONE\n\n"
+                + "[API_CONTRACT]\nNONE\n\n"
+                + "[ACCEPTANCE_CRITERIA]\n" + acceptance + "\n\n"
+                + "[CONSTRAINTS]\n" + constraints + "\n\n"
+                + "[RETURN_FORMAT]\ntext\n\n"
+                + "仅返回发言正文（纯文本），不要 JSON，不要 markdown 代码块。\n\n"
+                + tail;
     }
 
     public static String dilemmaSummary(String title, String question, String userStance,

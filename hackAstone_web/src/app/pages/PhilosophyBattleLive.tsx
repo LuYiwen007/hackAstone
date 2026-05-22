@@ -11,12 +11,18 @@ import {
   generateTopic,
   runEchoQuery,
   saveBattleRecord,
+  streamPhilosophyJudgeStep,
   streamPhilosophyPhilosopherToJudge,
   streamPhilosophyPhilosopherToUser,
 } from "../../shared/api/arena";
 import { isLoggedIn } from "../../shared/api/client";
 import { philosopherForLocale } from "../data/philosopherLocale";
 import { parseJsonPayload } from "../../shared/jsonPayload";
+import {
+  finalizeJudgeSpeech,
+  judgeStreamDisplayText,
+  parsePhilosophyJudgeStep,
+} from "../data/philosophyJudgeLocale";
 import {
   finalizeRoundtableSpeech,
   roundtableStreamDisplayText,
@@ -33,74 +39,6 @@ type DebateMessage = {
 };
 
 type ThinkingRole = "philosopher" | "judge";
-
-type JudgeStepResult = {
-  judgeSpeaks?: boolean;
-  judgeMessage?: string;
-  judgeQuestion?: string;
-  addressTo?: "user" | "philosopher";
-  continueDebate?: boolean;
-};
-
-function buildEchoQuery(
-  task: string,
-  criteria: string,
-  schema: string,
-  constraints: string,
-  contextLines: string[]
-): string {
-  return [
-    "[ROLE]",
-    "CA-Echo-LLM",
-    "",
-    "[TASK]",
-    task,
-    "",
-    "[REPO_CONTEXT]",
-    "project=hackAstone",
-    "",
-    "[TARGET_FILES]",
-    "NONE",
-    "",
-    "[API_CONTRACT]",
-    "NONE",
-    "",
-    "[ACCEPTANCE_CRITERIA]",
-    criteria,
-    "",
-    "[CONSTRAINTS]",
-    constraints,
-    "",
-    "[RETURN_FORMAT]",
-    "json",
-    "",
-    "[OUTPUT_JSON_SCHEMA]",
-    schema,
-    "",
-    ...contextLines,
-  ].join("\n");
-}
-
-function parseJudgeStep(raw: JudgeStepResult | null): {
-  judgeSpeaks: boolean;
-  judgeMessage: string;
-  addressTo: "user" | "philosopher" | null;
-  continueDebate: boolean;
-} | null {
-  if (!raw) return null;
-  const judgeSpeaks = raw.judgeSpeaks === true || !!(raw.judgeMessage ?? raw.judgeQuestion)?.trim();
-  const judgeMessage = (raw.judgeMessage ?? raw.judgeQuestion ?? "").trim();
-  let addressTo: "user" | "philosopher" | null =
-    raw.addressTo === "philosopher" || raw.addressTo === "user" ? raw.addressTo : null;
-  if (judgeSpeaks && !addressTo) addressTo = "user";
-  if (judgeSpeaks && !judgeMessage) return null;
-  return {
-    judgeSpeaks,
-    judgeMessage: judgeSpeaks ? judgeMessage : "",
-    addressTo: judgeSpeaks ? addressTo : null,
-    continueDebate: raw.continueDebate !== false,
-  };
-}
 
 type SummaryResult = {
   fullExplanation: string;
@@ -295,6 +233,62 @@ export function PhilosophyBattleLive() {
     return finished;
   };
 
+  const streamJudgeMessage = async (
+    prior: DebateMessage[]
+  ): Promise<{
+    judge: {
+      judgeSpeaks: boolean;
+      judgeMessage: string;
+      addressTo: "user" | "philosopher" | null;
+      continueDebate: boolean;
+    };
+    judgeMsg: DebateMessage | null;
+  }> => {
+    if (!philosopher || !choice || !topic) throw new Error(t("error.turnFailed"));
+
+    const msgId = `judge-${Date.now()}`;
+    const placeholder: DebateMessage = {
+      id: msgId,
+      role: "judge",
+      content: "",
+    };
+    setThinkingRole("judge");
+    setMessages([...prior, placeholder]);
+
+    const loc = philosopherForLocale(philosopher, locale);
+    const body = {
+      debateQuestion: topic.question,
+      philosopherName: displayName,
+      school: loc.school,
+      userStance: choiceLabel(choice),
+      history: formatHistory(prior),
+      locale,
+    };
+
+    const resp = await streamPhilosophyJudgeStep(body, {
+      onDelta: (_d, acc) => {
+        const preview = judgeStreamDisplayText(acc);
+        setMessages((curr) =>
+          curr.map((m) => (m.id === msgId ? { ...m, content: preview } : m))
+        );
+      },
+    });
+
+    const judge = parsePhilosophyJudgeStep(resp.philosophyJudge ?? null, resp.text);
+    if (!judge) throw new Error(t("error.turnJson"));
+
+    if (judge.judgeSpeaks && judge.judgeMessage) {
+      const finished: DebateMessage = {
+        ...placeholder,
+        content: finalizeJudgeSpeech(resp.text) || judge.judgeMessage,
+      };
+      setMessages([...prior, finished]);
+      return { judge, judgeMsg: finished };
+    }
+    setMessages(prior);
+    return { judge, judgeMsg: null };
+  };
+
   const handleUserTurn = async () => {
     const content = userInput.trim();
     if (!content || !choice || !topic || !philosopher || isThinking) return;
@@ -309,43 +303,13 @@ export function PhilosophyBattleLive() {
     ];
     setMessages(nextMessages);
 
-    const constraints = t("battle.prompt.constraints");
-    const historyFor = (msgs: DebateMessage[]) => [
-      t("battle.prompt.topic", { question: topic.question }),
-      t("battle.prompt.philosopher", { name: displayName, school: philosopher.school }),
-      t("battle.prompt.stance", { choice: choiceLabel(choice) }),
-      t("battle.prompt.history"),
-      formatHistory(msgs),
-    ];
-
     try {
       const philToUser = await streamPhilosopherMessage("to-user", nextMessages);
       const afterPhilosopher: DebateMessage[] = [...nextMessages, philToUser];
 
-      setThinkingRole("judge");
-      const judgeQuery = buildEchoQuery(
-        t("battle.prompt.judgeStepTask"),
-        t("battle.prompt.judgeStepCriteria"),
-        t("battle.prompt.judgeStepSchema"),
-        constraints,
-        historyFor(afterPhilosopher)
-      );
-      const judgeResp = await runEchoQuery(judgeQuery);
-      const judge = parseJudgeStep(parseJsonPayload<JudgeStepResult>(judgeResp.text));
-      if (!judge) throw new Error(t("error.turnJson"));
+      const { judge, judgeMsg } = await streamJudgeMessage(afterPhilosopher);
 
-      let working = afterPhilosopher;
-      if (judge.judgeSpeaks && judge.judgeMessage) {
-        const judgeMsg: DebateMessage = {
-          id: `judge-${Date.now()}`,
-          role: "judge",
-          content: judge.judgeMessage,
-        };
-        working = [...working, judgeMsg];
-        setMessages(working);
-      } else {
-        setMessages(afterPhilosopher);
-      }
+      let working = judgeMsg ? [...afterPhilosopher, judgeMsg] : afterPhilosopher;
 
       if (judge.judgeSpeaks && judge.addressTo === "philosopher") {
         const philToJudge = await streamPhilosopherMessage("to-judge", working);

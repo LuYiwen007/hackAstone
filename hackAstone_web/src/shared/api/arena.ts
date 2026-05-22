@@ -76,6 +76,21 @@ export type DilemmaSummaryBilingual = {
   zh: { fullExplanation: string };
 };
 
+export type DisciplineSummaryBilingual = {
+  en: { summary: string };
+  zh: { summary: string };
+};
+
+export type DisciplineDebateStreamBody = {
+  question: string;
+  builderView: string;
+  breakerView: string;
+  userChoice: "builder" | "breaker" | "uncertain";
+  userMessage: string;
+  history: string;
+  locale: string;
+};
+
 export type DebateTopicPayload = {
   question: string;
   philosopherView: string;
@@ -94,6 +109,14 @@ export type AgentRunResponse = {
   roundtableMessages?: RoundtableMessagesBilingual;
   dilemmaTurn?: DilemmaTurnBilingual;
   dilemmaSummary?: DilemmaSummaryBilingual;
+  disciplineDual?: { builder: string; breaker: string };
+  disciplineSummary?: DisciplineSummaryBilingual;
+  philosophyJudge?: {
+    judgeSpeaks: boolean;
+    judgeMessage: string;
+    addressTo?: string;
+    continueDebate: boolean;
+  };
 };
 
 export function runAgent(
@@ -121,6 +144,39 @@ export function generateDisciplineBattle(
   return apiPostStream<AgentRunResponse>(
     "/arena/agent/discipline/battle/stream",
     { categoryEn, categoryZh },
+    handlers
+  );
+}
+
+export function streamDisciplineDebateOpponent(
+  body: DisciplineDebateStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/discipline/debate/opponent/stream",
+    body,
+    handlers
+  );
+}
+
+export function streamDisciplineDebateDual(
+  body: DisciplineDebateStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/discipline/debate/dual/stream",
+    body,
+    handlers
+  );
+}
+
+export function streamDisciplineDebateSummary(
+  body: Omit<DisciplineDebateStreamBody, "userMessage" | "locale">,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/discipline/debate/summary/stream",
+    body,
     handlers
   );
 }
@@ -233,6 +289,26 @@ export function streamPhilosophyPhilosopherToJudge(
 ) {
   return apiPostStream<AgentRunResponse>(
     "/arena/agent/philosophy/philosopher/to-judge/stream",
+    body,
+    handlers
+  );
+}
+
+export type PhilosophyJudgeStreamBody = {
+  debateQuestion: string;
+  philosopherName: string;
+  school: string;
+  userStance: string;
+  history: string;
+  locale: string;
+};
+
+export function streamPhilosophyJudgeStep(
+  body: PhilosophyJudgeStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/philosophy/judge/step/stream",
     body,
     handlers
   );

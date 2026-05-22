@@ -40,6 +40,9 @@ struct AgentRunResponse {
     let dilemmaSummary: DilemmaSummaryBilingualParsed?
     let roundtableMessages: RoundtableMessagesBilingualParsed?
     let disciplineBattle: DisciplineBattleBilingualParsed?
+    let disciplineDual: DisciplineDualReplyParsed?
+    let disciplineSummary: DisciplineSummaryBilingualParsed?
+    let philosophyJudge: PhilosophyJudgeStepParsed?
 
     static func fromDictionary(_ o: [String: Any]) -> AgentRunResponse {
         let text = o["text"] as? String ?? ""
@@ -51,9 +54,88 @@ struct AgentRunResponse {
             dilemmaTurn: ArenaBilingualParsing.parseDilemmaTurn(from: text, structured: o["dilemmaTurn"]),
             dilemmaSummary: ArenaBilingualParsing.parseDilemmaSummary(from: text, structured: o["dilemmaSummary"]),
             roundtableMessages: ArenaBilingualParsing.parseRoundtableMessages(from: text, structured: o["roundtableMessages"]),
-            disciplineBattle: ArenaBilingualParsing.parseDisciplineBattle(from: text, structured: o["battle"])
+            disciplineBattle: ArenaBilingualParsing.parseDisciplineBattle(from: text, structured: o["battle"]),
+            disciplineDual: ArenaBilingualParsing.parseDisciplineDual(from: text, structured: o["disciplineDual"]),
+            disciplineSummary: ArenaBilingualParsing.parseDisciplineSummary(from: text, structured: o["disciplineSummary"]),
+            philosophyJudge: PhilosophyJudgeStepParsed.from(structured: o["philosophyJudge"], fallbackText: text)
         )
     }
+}
+
+struct PhilosophyJudgeStepParsed {
+    let judgeSpeaks: Bool
+    let judgeMessage: String
+    let addressTo: String?
+    let continueDebate: Bool
+
+    static func from(structured: Any?, fallbackText: String) -> PhilosophyJudgeStepParsed? {
+        if let dict = structured as? [String: Any] {
+            return fromDictionary(dict)
+        }
+        return fromPlainText(fallbackText)
+    }
+
+    private static func fromDictionary(_ o: [String: Any]) -> PhilosophyJudgeStepParsed? {
+        let speaks = o["judgeSpeaks"] as? Bool ?? false
+        let msg = (o["judgeMessage"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let addressTo = (o["addressTo"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cont = o["continueDebate"] as? Bool ?? true
+        if speaks && msg.isEmpty { return nil }
+        if !speaks {
+            return PhilosophyJudgeStepParsed(judgeSpeaks: false, judgeMessage: "", addressTo: nil, continueDebate: cont)
+        }
+        let at = addressTo == "philosopher" ? "philosopher" : "user"
+        return PhilosophyJudgeStepParsed(judgeSpeaks: true, judgeMessage: msg, addressTo: at, continueDebate: cont)
+    }
+
+    private static func fromPlainText(_ full: String) -> PhilosophyJudgeStepParsed? {
+        let trimmed = full.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == "[NO_JUDGE]" {
+            return PhilosophyJudgeStepParsed(judgeSpeaks: false, judgeMessage: "", addressTo: nil, continueDebate: true)
+        }
+        if let dto = JsonPayload.parse(trimmed, as: JudgeStepStreamDTO.self) {
+            let msg = (dto.judgeMessage ?? dto.judgeQuestion ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let speaks = dto.judgeSpeaks == true || !msg.isEmpty
+            if speaks && msg.isEmpty { return nil }
+            if !speaks {
+                return PhilosophyJudgeStepParsed(judgeSpeaks: false, judgeMessage: "", addressTo: nil, continueDebate: dto.continueDebate ?? true)
+            }
+            var at = (dto.addressTo ?? "").lowercased()
+            if at != "user" && at != "philosopher" { at = "user" }
+            return PhilosophyJudgeStepParsed(judgeSpeaks: true, judgeMessage: msg, addressTo: at, continueDebate: dto.continueDebate ?? true)
+        }
+        var messagePart = trimmed
+        var addressTo = "user"
+        var continueDebate = true
+        if let range = trimmed.range(of: "\nMETA:", options: .backwards) {
+            messagePart = String(trimmed[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let metaJson = String(trimmed[range.upperBound...]).replacingOccurrences(of: "META:", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if let data = metaJson.data(using: .utf8),
+               let meta = try? JSONDecoder().decode(JudgeMetaDTO.self, from: data) {
+                if let at = meta.addressTo?.lowercased(), at == "user" || at == "philosopher" {
+                    addressTo = at
+                }
+                if meta.continueDebate == false { continueDebate = false }
+            }
+        }
+        if messagePart.isEmpty || messagePart == "[NO_JUDGE]" {
+            return PhilosophyJudgeStepParsed(judgeSpeaks: false, judgeMessage: "", addressTo: nil, continueDebate: continueDebate)
+        }
+        return PhilosophyJudgeStepParsed(judgeSpeaks: true, judgeMessage: messagePart, addressTo: addressTo, continueDebate: continueDebate)
+    }
+}
+
+private struct JudgeStepStreamDTO: Decodable {
+    let judgeSpeaks: Bool?
+    let judgeMessage: String?
+    let judgeQuestion: String?
+    let addressTo: String?
+    let continueDebate: Bool?
+}
+
+private struct JudgeMetaDTO: Decodable {
+    let addressTo: String?
+    let continueDebate: Bool?
 }
 
 enum ArenaAPI {
@@ -328,6 +410,79 @@ enum ArenaAPI {
         return AgentRunResponse.fromDictionary(inner)
     }
 
+    static func streamDisciplineDebateOpponent(
+        question: String,
+        builderView: String,
+        breakerView: String,
+        userChoice: String,
+        userMessage: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/discipline/debate/opponent/stream",
+            jsonBody: [
+                "question": question,
+                "builderView": builderView,
+                "breakerView": breakerView,
+                "userChoice": userChoice,
+                "userMessage": userMessage,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func streamDisciplineDebateDual(
+        question: String,
+        builderView: String,
+        breakerView: String,
+        userMessage: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/discipline/debate/dual/stream",
+            jsonBody: [
+                "question": question,
+                "builderView": builderView,
+                "breakerView": breakerView,
+                "userChoice": "uncertain",
+                "userMessage": userMessage,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func streamDisciplineDebateSummary(
+        question: String,
+        builderView: String,
+        breakerView: String,
+        userChoice: String,
+        history: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/discipline/debate/summary/stream",
+            jsonBody: [
+                "question": question,
+                "builderView": builderView,
+                "breakerView": breakerView,
+                "userChoice": userChoice,
+                "history": history,
+            ],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
     static func runAgent(agent: String, query: String, imageList: [String] = [], onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
         let inner = try await requestAgentStream(
             path: "/arena/agent/run/stream",
@@ -374,6 +529,30 @@ enum ArenaAPI {
                 "school": school,
                 "keyIdeas": keyIdeas,
                 "summary": summary,
+                "userStance": userStance,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func streamPhilosophyJudgeStep(
+        debateQuestion: String,
+        philosopherName: String,
+        school: String,
+        userStance: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/philosophy/judge/step/stream",
+            jsonBody: [
+                "debateQuestion": debateQuestion,
+                "philosopherName": philosopherName,
+                "school": school,
                 "userStance": userStance,
                 "history": history,
                 "locale": locale,

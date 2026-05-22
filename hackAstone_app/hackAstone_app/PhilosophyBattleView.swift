@@ -512,30 +512,6 @@ struct PhilosophyBattleView: View {
             """
         }
 
-        func echoQuery(task: String, schema: String, criteria: String, history: String) -> String {
-            """
-            [ROLE]
-            CA-Echo-LLM
-
-            [TASK]
-            \(task)
-
-            [RETURN_FORMAT]
-            json
-
-            [OUTPUT_JSON_SCHEMA]
-            \(schema)
-
-            [CONSTRAINTS]
-            \(L.philosophyTurnConstraints)
-
-            [ACCEPTANCE_CRITERIA]
-            \(criteria)
-
-            \(history)
-            """
-        }
-
         let localeCode = L.prefersEnglish ? "en" : "zh"
         let keyIdeas = philosopher.keyIdeas.joined(separator: "。")
         let summary = philosopher.summary ?? ""
@@ -591,26 +567,58 @@ struct PhilosophyBattleView: View {
             return done
         }
 
+        func streamJudge(prior: [PBMessage]) async throws -> (judge: JudgeStepResult, judgeMsg: PBMessage?) {
+            let msgId = "judge-\(UUID().uuidString)"
+            var row = PBMessage(id: msgId, role: .judge, content: "")
+            await MainActor.run {
+                thinkingRole = .judge
+                messages = prior + [row]
+            }
+            let hist = historyBlock(prior)
+            let onDelta: ArenaAPI.StreamDeltaHandler = { _, acc in
+                Task { @MainActor in
+                    let preview = judgeStreamDisplay(acc)
+                    row = PBMessage(id: msgId, role: .judge, content: preview)
+                    messages = prior + [row]
+                }
+            }
+            let resp = try await ArenaAPI.streamPhilosophyJudgeStep(
+                debateQuestion: top.question,
+                philosopherName: philosopher.displayName(isEnglish: L.prefersEnglish),
+                school: philosopher.school,
+                userStance: userStance,
+                history: hist,
+                locale: localeCode,
+                onDelta: onDelta
+            )
+            guard let parsed = resp.philosophyJudge else {
+                throw NSError(domain: "pb", code: 3, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
+            }
+            let judge = JudgeStepResult(
+                judgeSpeaks: parsed.judgeSpeaks,
+                judgeMessage: parsed.judgeMessage,
+                addressTo: parsed.addressTo,
+                continueDebate: parsed.continueDebate
+            )
+            if judge.judgeSpeaks, !judge.judgeMessage.isEmpty {
+                let final = judgeStreamDisplay(resp.text).isEmpty ? judge.judgeMessage : judgeStreamDisplay(resp.text)
+                let done = PBMessage(id: msgId, role: .judge, content: final)
+                await MainActor.run { messages = prior + [done] }
+                return (judge, done)
+            }
+            await MainActor.run { messages = prior }
+            return (judge, nil)
+        }
+
         do {
             let philToUser = try await streamPhilosopher(mode: "to-user", prior: next)
             var working = next + [philToUser]
 
-            await MainActor.run { thinkingRole = .judge }
-            let judgeResp = try await ArenaAPI.runEcho(query: echoQuery(
-                task: L.philosophyJudgeStepTask,
-                schema: "{\"judgeSpeaks\":true,\"judgeMessage\":\"\",\"addressTo\":\"user|philosopher\",\"continueDebate\":true}",
-                criteria: L.prefersEnglish
-                    ? "Return judgeSpeaks, judgeMessage, addressTo, continueDebate"
-                    : "返回 judgeSpeaks、judgeMessage、addressTo、continueDebate",
-                history: historyBlock(working)
-            ))
-            guard let judge = parseJudgeStep(JsonPayload.parse(judgeResp.text, as: JudgeStepDTO.self)) else {
-                throw NSError(domain: "pb", code: 3, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
+            let judgeResult = try await streamJudge(prior: working)
+            let judge = judgeResult.judge
+            if let judgeMsg = judgeResult.judgeMsg {
+                working.append(judgeMsg)
             }
-            if judge.judgeSpeaks, !judge.judgeMessage.isEmpty {
-                working.append(PBMessage(id: UUID().uuidString, role: .judge, content: judge.judgeMessage))
-            }
-            await MainActor.run { messages = working }
 
             if judge.judgeSpeaks, judge.addressTo == "philosopher" {
                 let philToJudge = try await streamPhilosopher(mode: "to-judge", prior: working)
@@ -716,4 +724,35 @@ struct PhilosophyBattleView: View {
         }
         isGeneratingSummary = false
     }
+}
+
+private func streamDisplay(_ acc: String) -> String {
+    let trimmed = acc.trimmingCharacters(in: .whitespacesAndNewlines)
+    if let parsed = JsonPayload.parse(trimmed, as: RTContentPayload.self), let c = parsed.content, !c.isEmpty {
+        return c
+    }
+    if let range = trimmed.range(of: #""content"\s*:\s*""#, options: .regularExpression) {
+        var tail = String(trimmed[range.upperBound...])
+        if let end = tail.range(of: "\"") {
+            tail = String(tail[..<end.lowerBound])
+        }
+        return tail.replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\\"", with: "\"")
+    }
+    return trimmed
+}
+
+private struct RTContentPayload: Decodable {
+    let content: String?
+}
+
+private func judgeStreamDisplay(_ acc: String) -> String {
+    var s = acc
+    if let range = s.range(of: "\nMETA:", options: .backwards) {
+        s = String(s[..<range.lowerBound])
+    } else if s.hasPrefix("META:") {
+        s = ""
+    }
+    s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+    if s == "[NO_JUDGE]" || s.hasPrefix("[NO_JUDGE]") { return "" }
+    return s
 }

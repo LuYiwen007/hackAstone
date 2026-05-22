@@ -5,7 +5,18 @@ private enum BattleChoice: String {
 }
 
 private enum BattleStage {
-    case choose, reason, judge, reveal
+    case choose, debate, summary
+}
+
+private enum DisciplineSpeaker: String {
+    case user, builder, breaker
+}
+
+private struct DisciplineChatMessage: Identifiable {
+    let id: String
+    let speaker: DisciplineSpeaker
+    var content: String
+    let timestamp: Date
 }
 
 struct BattleView: View {
@@ -18,13 +29,24 @@ struct BattleView: View {
 
     @State private var stage: BattleStage = .choose
     @State private var choice: BattleChoice?
-    @State private var reason = ""
-    @State private var judgeIndex = 0
-    @State private var showShortReasonAlert = false
+    @State private var messages: [DisciplineChatMessage] = []
+    @State private var userInput = ""
+    @State private var isThinking = false
+    @State private var summaryText: String?
+    @State private var isGeneratingSummary = false
+    @State private var errorMessage: String?
 
     private var battle: Battle? {
         catalog.battleForDisplay(id: battleId, english: L.prefersEnglish)
             ?? catalog.allBattles(english: L.prefersEnglish).first { $0.id == battleId }
+    }
+
+    private var dialogueRounds: Int {
+        messages.filter { $0.speaker == .user }.count
+    }
+
+    private var canEndDebate: Bool {
+        dialogueRounds >= 1 && !isThinking
     }
 
     var body: some View {
@@ -45,32 +67,19 @@ struct BattleView: View {
                 missingBattle
             }
         }
-        .alert(L.reasonTooShortTitle, isPresented: $showShortReasonAlert) {
-            Button(L.reasonTooShortOK, role: .cancel) {}
-        } message: {
-            Text(L.reasonTooShortMessage)
-        }
         .onChange(of: stage) { _, newStage in
-            if newStage == .reveal, let battle, AuthStore.bearerToken != nil {
+            if newStage == .summary, let battle, let choice, AuthStore.bearerToken != nil {
+                let summary = summaryText ?? battle.reveal
                 Task {
                     try? await ArenaAPI.saveBattleRecord(
                         battleType: "battle",
                         topic: battle.question,
-                        userChoice: choiceLabel,
-                        judgeSummary: battle.reveal,
+                        userChoice: choice.rawValue,
+                        judgeSummary: summary,
                         changedStance: false
                     )
                 }
             }
-        }
-    }
-
-    private var choiceLabel: String {
-        switch choice {
-        case .builder: return "Builder"
-        case .breaker: return "Breaker"
-        case .uncertain: return L.uncertainChoiceTitle
-        case nil: return "--"
         }
     }
 
@@ -155,17 +164,15 @@ struct BattleView: View {
     private func stageContent(battle: Battle) -> some View {
         switch stage {
         case .choose:
-            choosePanel(battle: battle)
-        case .reason:
-            reasonPanel(battle: battle)
-        case .judge:
-            judgePanel(battle: battle)
-        case .reveal:
-            revealPanel(battle: battle)
+            choosePanel
+        case .debate:
+            debatePanel(battle: battle)
+        case .summary:
+            summaryPanel(battle: battle)
         }
     }
 
-    private func choosePanel(battle: Battle) -> some View {
+    private var choosePanel: some View {
         VStack(spacing: 14) {
             Text(L.yourStance)
                 .font(.title3.weight(.bold))
@@ -174,13 +181,19 @@ struct BattleView: View {
             choiceButton(title: L.supportBreakerTitle(breaker: "Breaker"), subtitle: L.supportBreakerSubtitle(breaker: "Breaker"), picked: choice == .breaker) { choice = .breaker }
             choiceButton(title: L.uncertainChoiceTitle, subtitle: L.uncertainChoiceSubtitle, picked: choice == .uncertain) { choice = .uncertain }
             if choice != nil {
-                Button(L.continueToReason) { stage = .reason }
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.orange)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                Button(L.startDialogue) {
+                    stage = .debate
+                    messages = []
+                    userInput = ""
+                    summaryText = nil
+                    errorMessage = nil
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.orange)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
         .padding(20)
@@ -202,86 +215,89 @@ struct BattleView: View {
         .buttonStyle(.plain)
     }
 
-    private func reasonPanel(battle: Battle) -> some View {
+    private func debatePanel(battle: Battle) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L.explainReasonTitle).font(.title3.weight(.bold))
-                    Text(L.explainReasonSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(ArenaTheme.textMuted)
-                }
-            } icon: {
-                Image(systemName: "bubble.left.and.bubble.right.fill").foregroundStyle(ArenaTheme.orangeAccent)
-            }
-            TextEditor(text: $reason)
-                .arenaInputTextStyle()
-                .frame(minHeight: 160)
-                .padding(8)
-                .scrollContentBackground(.hidden)
-                .background(ArenaTheme.background)
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
-            HStack {
-                Text(L.characterCount(reason.count)).font(.caption).foregroundStyle(ArenaTheme.textMuted)
-                Spacer()
-                Button(L.back) { stage = .choose }
-                    .buttonStyle(.bordered)
-                Button(L.submitReason) { submitReason() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-            }
-        }
-        .padding(20)
-        .background(ArenaTheme.surface)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(ArenaTheme.border))
-    }
-
-    private func judgePanel(battle: Battle) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(Color.orange).frame(width: 48, height: 48)
-                    Text("J").font(.title2.weight(.bold)).foregroundStyle(.white)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Judge").font(.title3.weight(.bold))
-                    Text(L.calmJudge).font(.caption).foregroundStyle(ArenaTheme.textMuted)
-                }
-            }
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(ArenaTheme.orangeAccent)
-                Text(battle.judgeQuestions[judgeIndex])
-                    .font(.title3)
-                    .foregroundStyle(ArenaTheme.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(16)
-            .background(ArenaTheme.background)
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
-            Text(L.judgeFollowUp(index: judgeIndex, total: battle.judgeQuestions.count))
+            Text(L.dialogueHint)
                 .font(.caption)
                 .foregroundStyle(ArenaTheme.textMuted)
                 .frame(maxWidth: .infinity)
-            Button(judgeIndex < battle.judgeQuestions.count - 1 ? L.continueThinking : L.viewFullAnalysis) {
-                if judgeIndex < battle.judgeQuestions.count - 1 {
-                    judgeIndex += 1
-                } else {
-                    stage = .reveal
+
+            VStack(alignment: .leading, spacing: 12) {
+                if messages.isEmpty {
+                    Text(L.dialogueEmpty)
+                        .font(.caption)
+                        .foregroundStyle(ArenaTheme.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 24)
+                }
+                ForEach(messages) { msg in
+                    chatBubble(msg)
                 }
             }
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(Color.orange)
-            .foregroundStyle(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(14)
+            .frame(minHeight: 240)
+            .background(ArenaTheme.surface)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
+
+            HStack(spacing: 10) {
+                TextField(L.dialoguePlaceholder, text: $userInput, axis: .vertical)
+                    .arenaInputTextStyle()
+                    .lineLimit(3...6)
+                    .disabled(isThinking)
+                Button(L.send) { Task { await sendUserTurn(battle: battle) } }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isThinking)
+            }
+
+            if let errorMessage {
+                Text(errorMessage).font(.caption).foregroundStyle(.red)
+            }
+
+            HStack(spacing: 12) {
+                Button(L.back) {
+                    stage = .choose
+                    messages = []
+                }
+                .buttonStyle(.bordered)
+                Button(L.endDebate) { Task { await endDebate(battle: battle) } }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .disabled(!canEndDebate || isGeneratingSummary)
+            }
+            if !canEndDebate && dialogueRounds == 0 {
+                Text(L.endDebateHint).font(.caption2).foregroundStyle(ArenaTheme.textMuted)
+            }
         }
-        .padding(20)
-        .background(ArenaTheme.surface)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.orange.opacity(0.35), lineWidth: 2))
     }
 
-    private func revealPanel(battle: Battle) -> some View {
+    private func chatBubble(_ msg: DisciplineChatMessage) -> some View {
+        let isUser = msg.speaker == .user
+        let label: String = {
+            switch msg.speaker {
+            case .user: return L.you
+            case .builder: return "Builder"
+            case .breaker: return "Breaker"
+            }
+        }()
+        let color: Color = msg.speaker == .builder ? .blue : msg.speaker == .breaker ? .red : .orange
+        return HStack {
+            if isUser { Spacer(minLength: 40) }
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
+                Text(label).font(.caption2).foregroundStyle(ArenaTheme.textMuted)
+                Text(msg.content.isEmpty && isThinking ? "…" : msg.content)
+                    .font(.subheadline)
+                    .foregroundStyle(Color(red: 0.82, green: 0.84, blue: 0.86))
+                    .multilineTextAlignment(isUser ? .trailing : .leading)
+            }
+            .padding(12)
+            .background(isUser ? Color.orange.opacity(0.15) : color.opacity(0.12))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(isUser ? Color.orange.opacity(0.4) : color.opacity(0.35)))
+            if !isUser { Spacer(minLength: 40) }
+        }
+    }
+
+    private func summaryPanel(battle: Battle) -> some View {
         VStack(spacing: 20) {
             Text("💡").font(.system(size: 44))
             Text(L.fullPerspective)
@@ -289,7 +305,10 @@ struct BattleView: View {
             Text(L.fullPerspectiveSubtitle)
                 .font(.subheadline)
                 .foregroundStyle(ArenaTheme.textMuted)
-            Text(battle.reveal)
+            if isGeneratingSummary {
+                ProgressView(L.summaryGenerating)
+            }
+            Text(summaryText ?? battle.reveal)
                 .font(.body)
                 .foregroundStyle(Color(red: 0.82, green: 0.84, blue: 0.86))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -314,11 +333,121 @@ struct BattleView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    private func submitReason() {
-        if reason.trimmingCharacters(in: .whitespacesAndNewlines).count < 10 {
-            showShortReasonAlert = true
-            return
+    private func buildHistory() -> String {
+        messages.map { msg in
+            let who: String
+            switch msg.speaker {
+            case .user: who = L.prefersEnglish ? "User" : "用户"
+            case .builder: who = "Builder"
+            case .breaker: who = "Breaker"
+            }
+            return "\(who): \(msg.content)"
+        }.joined(separator: "\n")
+    }
+
+    private func sendUserTurn(battle: Battle) async {
+        guard let choice else { return }
+        let content = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty, !isThinking else { return }
+
+        let userMsg = DisciplineChatMessage(id: "user-\(Date().timeIntervalSince1970)", speaker: .user, content: content, timestamp: Date())
+        let prior = messages
+        messages.append(userMsg)
+        userInput = ""
+        isThinking = true
+        errorMessage = nil
+        let history = buildHistory()
+
+        do {
+            if choice == .uncertain {
+                let builderId = "builder-\(Date().timeIntervalSince1970)"
+                messages.append(DisciplineChatMessage(id: builderId, speaker: .builder, content: "", timestamp: Date()))
+
+                let resp = try await ArenaAPI.streamDisciplineDebateDual(
+                    question: battle.question,
+                    builderView: battle.builderView,
+                    breakerView: battle.breakerView,
+                    userMessage: content,
+                    history: history,
+                    locale: L.prefersEnglish ? "en" : "zh",
+                    onDelta: { _, acc in
+                        let preview = ArenaBilingualParsing.finalizeStreamSpeech(acc)
+                        let dual = ArenaBilingualParsing.parseDisciplineDual(from: acc, structured: nil)
+                        Task { @MainActor in
+                            if let i = messages.firstIndex(where: { $0.id == builderId }) {
+                                messages[i].content = dual?.builder ?? preview
+                            }
+                        }
+                    }
+                )
+                guard let dual = resp.disciplineDual ?? ArenaBilingualParsing.parseDisciplineDual(from: resp.text, structured: nil) else {
+                    throw ArenaAPIError.serverMessage(L.disciplineTurnFailed)
+                }
+                let ts = Date().timeIntervalSince1970
+                messages = prior + [
+                    userMsg,
+                    DisciplineChatMessage(id: builderId, speaker: .builder, content: dual.builder, timestamp: Date(timeIntervalSince1970: ts)),
+                    DisciplineChatMessage(id: "breaker-\(ts)", speaker: .breaker, content: dual.breaker, timestamp: Date(timeIntervalSince1970: ts + 0.001)),
+                ]
+            } else {
+                let role: DisciplineSpeaker = choice == .builder ? .breaker : .builder
+                let oppId = "\(role.rawValue)-\(Date().timeIntervalSince1970)"
+                messages.append(DisciplineChatMessage(id: oppId, speaker: role, content: "", timestamp: Date()))
+
+                let resp = try await ArenaAPI.streamDisciplineDebateOpponent(
+                    question: battle.question,
+                    builderView: battle.builderView,
+                    breakerView: battle.breakerView,
+                    userChoice: choice.rawValue,
+                    userMessage: content,
+                    history: history,
+                    locale: L.prefersEnglish ? "en" : "zh",
+                    onDelta: { _, acc in
+                        let preview = ArenaBilingualParsing.finalizeStreamSpeech(acc)
+                        Task { @MainActor in
+                            if let i = messages.firstIndex(where: { $0.id == oppId }) {
+                                messages[i].content = preview
+                            }
+                        }
+                    }
+                )
+                let finalText = ArenaBilingualParsing.finalizeStreamSpeech(resp.text)
+                guard !finalText.isEmpty else { throw ArenaAPIError.serverMessage(L.disciplineTurnFailed) }
+                messages = prior + [userMsg, DisciplineChatMessage(id: oppId, speaker: role, content: finalText, timestamp: Date())]
+            }
+        } catch {
+            messages = prior
+            userInput = content
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? L.disciplineTurnFailed
         }
-        stage = .judge
+        isThinking = false
+    }
+
+    private func endDebate(battle: Battle) async {
+        guard let choice, canEndDebate else { return }
+        stage = .summary
+        isGeneratingSummary = true
+        summaryText = nil
+        let history = buildHistory()
+        do {
+            let resp = try await ArenaAPI.streamDisciplineDebateSummary(
+                question: battle.question,
+                builderView: battle.builderView,
+                breakerView: battle.breakerView,
+                userChoice: choice.rawValue,
+                history: history
+            )
+            if let sum = resp.disciplineSummary {
+                summaryText = L.prefersEnglish ? sum.en : sum.zh
+            } else if let parsed = ArenaBilingualParsing.parseDisciplineSummary(from: resp.text, structured: nil) {
+                summaryText = L.prefersEnglish ? parsed.en : parsed.zh
+            } else {
+                throw ArenaAPIError.serverMessage(L.disciplineSummaryFailed)
+            }
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? L.disciplineSummaryFailed
+            stage = .debate
+        }
+        isGeneratingSummary = false
     }
 }

@@ -229,8 +229,24 @@ struct ArenaL10n {
         en ? "\(breaker)’s view is more convincing" : "破坏者的观点更有说服力"
     }
     var uncertainChoiceTitle: String { en ? "I’m not sure" : "我不确定" }
-    var uncertainChoiceSubtitle: String { en ? "But I’ll explain my doubts" : "但我会解释我的困惑" }
-    var continueToReason: String { en ? "Next: explain your reasoning" : "继续：说明理由" }
+    var uncertainChoiceSubtitle: String {
+        en ? "AI plays both Builder and Breaker in dialogue" : "由 AI 扮演正反双方与你对话"
+    }
+    var startDialogue: String { en ? "Start dialogue" : "开始对话" }
+    var dialogueHint: String {
+        en
+            ? "State your view in chat; AI plays the other side—or both if undecided."
+            : "在对话中阐述观点；AI 将扮演对方或正反双方。"
+    }
+    var dialogueEmpty: String { en ? "Send your first message to begin." : "发送第一条消息，开始辩论。" }
+    var dialoguePlaceholder: String { en ? "Your argument or question…" : "输入你的观点、反驳或疑问…" }
+    var endDebate: String { en ? "End debate & summary" : "结束辩论并查看总结" }
+    var endDebateHint: String {
+        en ? "Complete at least one round before ending." : "至少完成一轮对话后可结束。"
+    }
+    var summaryGenerating: String { en ? "Generating summary…" : "正在生成总结…" }
+    var disciplineTurnFailed: String { en ? "This turn failed." : "本轮对话失败，请重试。" }
+    var disciplineSummaryFailed: String { en ? "Summary failed." : "总结生成失败，请重试。" }
     var explainReasonTitle: String { en ? "Explain your reasoning" : "说明你的理由" }
     var explainReasonSubtitle: String {
         en
