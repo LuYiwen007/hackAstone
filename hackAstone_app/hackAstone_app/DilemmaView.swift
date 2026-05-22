@@ -37,6 +37,7 @@ struct DilemmaView: View {
     @State private var messages: [DMMessage] = []
     @State private var userInput = ""
     @State private var isThinking = false
+    @State private var streamPreview = ""
     @State private var canReveal = false
     @State private var fullExplanation = ""
     @State private var isGeneratingSummary = false
@@ -405,9 +406,16 @@ struct DilemmaView: View {
                 dmBubble(m, philosopher: philosopher)
             }
             if isThinking {
-                Text(L.dilemmaThinking)
-                    .font(.caption)
-                    .foregroundStyle(ArenaTheme.textMuted)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L.dilemmaThinking)
+                        .font(.caption)
+                        .foregroundStyle(ArenaTheme.textMuted)
+                    if !streamPreview.isEmpty {
+                        Text(streamPreview)
+                            .font(.caption)
+                            .foregroundStyle(ArenaTheme.textMuted)
+                    }
+                }
             }
 
             HStack(spacing: 10) {
@@ -566,6 +574,7 @@ struct DilemmaView: View {
         await MainActor.run {
             userInput = ""
             isThinking = true
+            streamPreview = ""
         }
         let userMsgId = "u-\(UUID().uuidString)"
         var next = await MainActor.run { messages }
@@ -593,7 +602,10 @@ struct DilemmaView: View {
                 philosopherName: philosopher.nameCN,
                 philosopherSchool: philosopher.school,
                 keyIdeas: philosopher.keyIdeas.joined(separator: "、"),
-                history: historyText
+                history: historyText,
+                onDelta: { _, acc in
+                    Task { @MainActor in streamPreview = acc }
+                }
             )
             let turn = resp.dilemmaTurn?.pick(english: en)
                 ?? JsonPayload.parse(resp.text, as: DilemmaTurnDTO.self).map {
@@ -611,6 +623,7 @@ struct DilemmaView: View {
                 messages.append(DMMessage(id: "jg-\(UUID().uuidString)", role: .judge, content: turn.judgeQuestion))
                 canReveal = turn.continueDebate == false
                 isThinking = false
+                streamPreview = ""
             }
         } catch {
             await MainActor.run {
@@ -618,6 +631,7 @@ struct DilemmaView: View {
                 userInput = content
                 errorAlert = (error as NSError).localizedDescription
                 isThinking = false
+                streamPreview = ""
             }
         }
     }
@@ -627,6 +641,7 @@ struct DilemmaView: View {
             stage = .reveal
             isGeneratingSummary = true
             fullExplanation = ""
+            streamPreview = ""
         }
 
         let history = await MainActor.run { messages }.map { m -> String in
@@ -647,7 +662,13 @@ struct DilemmaView: View {
                 userStance: option.stancePrompt(false),
                 philosopherName: philosopher.nameCN,
                 philosopherSchool: philosopher.school,
-                history: history
+                history: history,
+                onDelta: { _, acc in
+                    Task { @MainActor in
+                        streamPreview = acc
+                        fullExplanation = acc
+                    }
+                }
             )
             let summaryText = resp.dilemmaSummary?.pick(english: en)
                 ?? JsonPayload.parse(resp.text, as: DilemmaSummaryDTO.self)?.fullExplanation

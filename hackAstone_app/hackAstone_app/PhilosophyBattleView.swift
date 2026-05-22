@@ -14,16 +14,64 @@ private struct PBMessage: Identifiable {
     let content: String
 }
 
-private struct TurnDTO: Decodable {
+private enum PBThinkingRole {
+    case philosopher, judge
+}
+
+private struct PhilosopherToUserDTO: Decodable {
+    let philosopherReplyToUser: String?
     let philosopherReply: String?
+}
+
+private struct JudgeStepDTO: Decodable {
+    let judgeSpeaks: Bool?
+    let judgeMessage: String?
     let judgeQuestion: String?
+    let addressTo: String?
     let continueDebate: Bool?
 }
 
-private struct TurnResult {
-    let philosopherReply: String
-    let judgeQuestion: String
+private struct PhilosopherToJudgeDTO: Decodable {
+    let philosopherReplyToJudge: String?
+}
+
+private struct JudgeStepResult {
+    let judgeSpeaks: Bool
+    let judgeMessage: String
+    let addressTo: String?
     let continueDebate: Bool
+}
+
+private func parsePhilosopherToUser(_ dto: PhilosopherToUserDTO?) -> String? {
+    guard let dto else { return nil }
+    let reply = (dto.philosopherReplyToUser ?? dto.philosopherReply ?? "")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    return reply.isEmpty ? nil : reply
+}
+
+private func parseJudgeStep(_ dto: JudgeStepDTO?) -> JudgeStepResult? {
+    guard let dto else { return nil }
+    let judgeSpeaks = dto.judgeSpeaks == true
+        || !(dto.judgeMessage ?? dto.judgeQuestion ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    let judgeMessage = (dto.judgeMessage ?? dto.judgeQuestion ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    var addressTo = (dto.addressTo ?? "").lowercased()
+    if judgeSpeaks && addressTo != "user" && addressTo != "philosopher" {
+        addressTo = "user"
+    }
+    if judgeSpeaks && judgeMessage.isEmpty { return nil }
+    if !judgeSpeaks { addressTo = "" }
+    return JudgeStepResult(
+        judgeSpeaks: judgeSpeaks,
+        judgeMessage: judgeSpeaks ? judgeMessage : "",
+        addressTo: judgeSpeaks ? addressTo : nil,
+        continueDebate: dto.continueDebate ?? true
+    )
+}
+
+private func parsePhilosopherToJudge(_ dto: PhilosopherToJudgeDTO?) -> String? {
+    guard let dto else { return nil }
+    let reply = (dto.philosopherReplyToJudge ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    return reply.isEmpty ? nil : reply
 }
 
 private struct SummaryOnly: Decodable {
@@ -47,6 +95,7 @@ struct PhilosophyBattleView: View {
     @State private var messages: [PBMessage] = []
     @State private var userInput = ""
     @State private var isThinking = false
+    @State private var thinkingRole: PBThinkingRole?
     @State private var canReveal = false
     @State private var fullExplanation = ""
     @State private var isGeneratingSummary = false
@@ -129,7 +178,7 @@ struct PhilosophyBattleView: View {
                 VStack(spacing: 12) {
                     ProgressView()
                         .tint(ArenaTheme.purpleAccent)
-                    Text(L.topicGenerating)
+                    Text(L.tablePreparing)
                         .font(.caption)
                         .foregroundStyle(ArenaTheme.textMuted)
                 }
@@ -223,35 +272,88 @@ struct PhilosophyBattleView: View {
     }
 
     private func debateStageContent(philosopher: Philosopher) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Label(L.debateRoundHint, systemImage: "exclamationmark.circle")
-                .font(.caption)
-                .foregroundStyle(ArenaTheme.textMuted)
-            ForEach(messages) { m in
-                messageBubble(m: m, philosopher: philosopher)
-            }
-            if isThinking { Text(L.agentThinking).font(.caption).foregroundStyle(ArenaTheme.textMuted) }
-            HStack(spacing: 10) {
-                TextField(L.continueYourThought, text: $userInput)
-                    .arenaInputTextStyle()
-                    .textFieldStyle(.roundedBorder)
-                Button {
-                    Task { await handleUserTurn(philosopher: philosopher) }
-                } label: {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
+        VStack(alignment: .leading, spacing: 0) {
+            if let topic {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L.currentDebateTopic)
+                        .font(.caption2)
+                        .foregroundStyle(ArenaTheme.purpleAccent.opacity(0.9))
+                    Text(topic.question)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ArenaTheme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isThinking || choice == nil)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(ArenaTheme.background)
+                .overlay(Rectangle().frame(height: 1).foregroundStyle(ArenaTheme.border), alignment: .bottom)
             }
-            Button(L.goToSummary) {
-                Task { await handleReveal(philosopher: philosopher) }
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label(L.debateRoundHint, systemImage: "exclamationmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(ArenaTheme.textMuted)
+                        ForEach(messages) { m in
+                            messageBubble(m: m, philosopher: philosopher)
+                        }
+                        if isThinking, thinkingRole == .judge {
+                            Text(L.judgeThinking)
+                                .font(.caption)
+                                .foregroundStyle(ArenaTheme.textMuted)
+                        }
+                        Color.clear.frame(height: 1).id("chatBottom")
+                    }
+                    .padding(12)
+                }
+                .frame(maxHeight: 420)
+                .onChange(of: messages.count) { _, _ in
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo("chatBottom", anchor: .bottom)
+                    }
+                }
+                .onChange(of: isThinking) { _, _ in
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo("chatBottom", anchor: .bottom)
+                    }
+                }
+                .onChange(of: thinkingRole) { _, _ in
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo("chatBottom", anchor: .bottom)
+                    }
+                }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color.yellow.opacity(0.85))
-            .foregroundStyle(.black)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .disabled((!canReveal && messages.count < 4) || choice == nil)
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    TextField(L.continueYourThought, text: $userInput)
+                        .arenaInputTextStyle()
+                        .textFieldStyle(.roundedBorder)
+                    Button {
+                        Task { await handleUserTurn(philosopher: philosopher) }
+                    } label: {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                    }
+                    .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isThinking || choice == nil)
+                }
+                Button(L.goToSummary) {
+                    Task { await handleReveal(philosopher: philosopher) }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.yellow.opacity(0.85))
+                .foregroundStyle(.black)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .disabled((!canReveal && messages.count < 4) || choice == nil)
+            }
+            .padding(12)
+            .background(ArenaTheme.surface)
+            .overlay(Rectangle().frame(height: 1).foregroundStyle(ArenaTheme.border), alignment: .top)
         }
+        .background(ArenaTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
     }
 
     private func messageBubble(m: PBMessage, philosopher: Philosopher) -> some View {
@@ -276,9 +378,21 @@ struct PhilosophyBattleView: View {
             case .judge: return Color.yellow.opacity(0.08)
             }
         }()
+        let isStreamingPhilosopher = isThinking && thinkingRole == .philosopher
+            && m.role == .philosopher && m.id.hasPrefix("to-")
         return VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.caption2).foregroundStyle(ArenaTheme.textMuted)
-            Text(m.content).font(.subheadline).foregroundStyle(ArenaTheme.textPrimary).fixedSize(horizontal: false, vertical: true)
+            if isStreamingPhilosopher && m.content.isEmpty {
+                Text(L.philosopherThinking(name: philosopher.displayName(isEnglish: L.prefersEnglish)))
+                    .font(.subheadline)
+                    .italic()
+                    .foregroundStyle(ArenaTheme.textMuted)
+            } else {
+                Text(m.content)
+                    .font(.subheadline)
+                    .foregroundStyle(ArenaTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -374,56 +488,145 @@ struct PhilosophyBattleView: View {
         next.append(PBMessage(id: userRowId, role: .user, content: content))
         messages = next
 
-        let historyText = next.map { m -> String in
-            let who: String = {
-                switch m.role {
-                case .user: return L.user
-                case .judge: return L.judge
-                case .philosopher: return philosopher.displayName(isEnglish: L.prefersEnglish)
-                }
-            }()
-            return "\(who)：\(m.content)"
-        }.joined(separator: "\n")
-
-        let turnQuery = """
-        [ROLE]
-        CA-Echo-LLM
-
-        [TASK]
-        继续一轮哲学辩论：先给哲学家回应，再给裁判追问，并判断是否继续辩论。
-
-        [RETURN_FORMAT]
-        json
-
-        [CONSTRAINTS]
-        中文；仅返回 JSON；continueDebate 为布尔值
-
-        [ACCEPTANCE_CRITERIA]
-        返回 philosopherReply/judgeQuestion/continueDebate 三个字段
-
+        let contextHeader = """
         辩题：\(top.question)
         哲学家：\(philosopher.nameCN)（\(philosopher.school)）
         用户立场：\(choiceLabel(choice))
-        历史：
-        \(historyText)
         """
 
+        func historyBlock(_ msgs: [PBMessage]) -> String {
+            let lines = msgs.map { m -> String in
+                let who: String = {
+                    switch m.role {
+                    case .user: return L.user
+                    case .judge: return L.judge
+                    case .philosopher: return philosopher.displayName(isEnglish: L.prefersEnglish)
+                    }
+                }()
+                return "\(who)：\(m.content)"
+            }.joined(separator: "\n")
+            return """
+            \(contextHeader)
+            历史：
+            \(lines)
+            """
+        }
+
+        func echoQuery(task: String, schema: String, criteria: String, history: String) -> String {
+            """
+            [ROLE]
+            CA-Echo-LLM
+
+            [TASK]
+            \(task)
+
+            [RETURN_FORMAT]
+            json
+
+            [OUTPUT_JSON_SCHEMA]
+            \(schema)
+
+            [CONSTRAINTS]
+            \(L.philosophyTurnConstraints)
+
+            [ACCEPTANCE_CRITERIA]
+            \(criteria)
+
+            \(history)
+            """
+        }
+
+        let localeCode = L.prefersEnglish ? "en" : "zh"
+        let keyIdeas = philosopher.keyIdeas.joined(separator: "。")
+        let summary = philosopher.summary ?? ""
+        let userStance = choiceLabel(choice)
+
+        func streamPhilosopher(mode: String, prior: [PBMessage]) async throws -> PBMessage {
+            let msgId = "\(mode)-\(UUID().uuidString)"
+            var row = PBMessage(id: msgId, role: .philosopher, content: "")
+            await MainActor.run {
+                thinkingRole = .philosopher
+                messages = prior + [row]
+            }
+            let hist = historyBlock(prior)
+            let onDelta: ArenaAPI.StreamDeltaHandler = { _, acc in
+                Task { @MainActor in
+                    let preview = streamDisplay(acc)
+                    row = PBMessage(id: msgId, role: .philosopher, content: preview)
+                    messages = prior + [row]
+                }
+            }
+            let resp: AgentRunResponse
+            if mode == "to-user" {
+                resp = try await ArenaAPI.streamPhilosophyPhilosopherToUser(
+                    debateQuestion: top.question,
+                    philosopherId: philosopher.id,
+                    philosopherName: philosopher.displayName(isEnglish: L.prefersEnglish),
+                    school: philosopher.school,
+                    keyIdeas: keyIdeas,
+                    summary: summary,
+                    userStance: userStance,
+                    history: hist,
+                    locale: localeCode,
+                    onDelta: onDelta
+                )
+            } else {
+                resp = try await ArenaAPI.streamPhilosophyPhilosopherToJudge(
+                    debateQuestion: top.question,
+                    philosopherId: philosopher.id,
+                    philosopherName: philosopher.displayName(isEnglish: L.prefersEnglish),
+                    school: philosopher.school,
+                    keyIdeas: keyIdeas,
+                    summary: summary,
+                    userStance: userStance,
+                    history: hist,
+                    locale: localeCode,
+                    onDelta: onDelta
+                )
+            }
+            let final = streamDisplay(resp.text)
+            guard !final.isEmpty else { throw NSError(domain: "pb", code: 3) }
+            let done = PBMessage(id: msgId, role: .philosopher, content: final)
+            await MainActor.run { messages = prior + [done] }
+            return done
+        }
+
         do {
-            let resp = try await ArenaAPI.runEcho(query: turnQuery)
-            let dto = JsonPayload.parse(resp.text, as: TurnDTO.self)
-            guard let dto, let pr = dto.philosopherReply, let jq = dto.judgeQuestion else {
+            let philToUser = try await streamPhilosopher(mode: "to-user", prior: next)
+            var working = next + [philToUser]
+
+            await MainActor.run { thinkingRole = .judge }
+            let judgeResp = try await ArenaAPI.runEcho(query: echoQuery(
+                task: L.philosophyJudgeStepTask,
+                schema: "{\"judgeSpeaks\":true,\"judgeMessage\":\"\",\"addressTo\":\"user|philosopher\",\"continueDebate\":true}",
+                criteria: L.prefersEnglish
+                    ? "Return judgeSpeaks, judgeMessage, addressTo, continueDebate"
+                    : "返回 judgeSpeaks、judgeMessage、addressTo、continueDebate",
+                history: historyBlock(working)
+            ))
+            guard let judge = parseJudgeStep(JsonPayload.parse(judgeResp.text, as: JudgeStepDTO.self)) else {
                 throw NSError(domain: "pb", code: 3, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
             }
-            let turn = TurnResult(philosopherReply: pr, judgeQuestion: jq, continueDebate: dto.continueDebate ?? true)
-            messages.append(PBMessage(id: UUID().uuidString, role: .philosopher, content: turn.philosopherReply))
-            messages.append(PBMessage(id: UUID().uuidString, role: .judge, content: turn.judgeQuestion))
-            canReveal = turn.continueDebate == false
+            if judge.judgeSpeaks, !judge.judgeMessage.isEmpty {
+                working.append(PBMessage(id: UUID().uuidString, role: .judge, content: judge.judgeMessage))
+            }
+            await MainActor.run { messages = working }
+
+            if judge.judgeSpeaks, judge.addressTo == "philosopher" {
+                let philToJudge = try await streamPhilosopher(mode: "to-judge", prior: working)
+                working.append(philToJudge)
+                await MainActor.run { messages = working }
+            }
+            await MainActor.run { canReveal = judge.continueDebate == false }
         } catch {
             messages.removeAll { $0.id == userRowId }
             userInput = content
             errorAlert = (error as NSError).localizedDescription
         }
-        isThinking = false
+        await MainActor.run {
+            isThinking = false
+            thinkingRole = nil
+        }
     }
 
     private func choiceLabel(_ c: PhilosophyChoice) -> String {

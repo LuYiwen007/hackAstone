@@ -66,6 +66,17 @@ enum ArenaAPI {
         return URLSession(configuration: config)
     }()
 
+    /// 大模型流式 SSE（通义千问 incremental_output）
+    private static let streamSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 120
+        config.timeoutIntervalForResource = 180
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+
+    typealias StreamDeltaHandler = (_ delta: String, _ accumulated: String) -> Void
+
     private static func envelopeData(_ data: Data) throws -> Any {
         let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let obj else { throw ArenaAPIError.decode }
@@ -221,68 +232,258 @@ enum ArenaAPI {
         )
     }
 
-    // MARK: - Agents
+    // MARK: - Agents（流式 SSE）
 
-    static func runEcho(query: String) async throws -> AgentRunResponse {
-        try await runAgent(agent: "echo", query: query, imageList: [])
+    private static func requestAgentStream(
+        path: String,
+        jsonBody: [String: Any],
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> [String: Any] {
+        let base = ArenaConfiguration.apiBaseURLString
+        let p = path.hasPrefix("/") ? path : "/\(path)"
+        guard let url = URL(string: "\(base)\(p)") else { throw ArenaAPIError.badURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        if let token = AuthStore.bearerToken, !token.isEmpty {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
+
+        let bytes: URLSession.AsyncBytes
+        let resp: URLResponse
+        do {
+            (bytes, resp) = try await streamSession.bytes(for: req)
+        } catch {
+            throw ArenaAPIError.network(error)
+        }
+        guard let http = resp as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
+            throw ArenaAPIError.httpStatus((resp as? HTTPURLResponse)?.statusCode ?? -1)
+        }
+
+        var buffer = ""
+        var donePayload: [String: Any]?
+        for try await line in bytes.lines {
+            buffer += line + "\n"
+            while let range = buffer.range(of: "\n\n") {
+                let block = String(buffer[..<range.lowerBound])
+                buffer = String(buffer[range.upperBound...])
+                for row in block.split(separator: "\n", omittingEmptySubsequences: false) {
+                    let trimmed = row.trimmingCharacters(in: .whitespaces)
+                    guard trimmed.hasPrefix("data:") else { continue }
+                    let json = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                    if json.isEmpty || json == "[DONE]" { continue }
+                    guard let rowData = json.data(using: .utf8),
+                          let obj = try? JSONSerialization.jsonObject(with: rowData) as? [String: Any],
+                          let type = obj["type"] as? String
+                    else { continue }
+                    if type == "delta" {
+                        let delta = obj["text"] as? String ?? ""
+                        let acc = obj["accumulated"] as? String ?? delta
+                        if !delta.isEmpty { onDelta?(delta, acc) }
+                    } else if type == "error" {
+                        throw ArenaAPIError.serverMessage(obj["message"] as? String ?? "流式请求失败")
+                    } else if type == "done" {
+                        donePayload = obj
+                    }
+                }
+            }
+        }
+        guard let donePayload else { throw ArenaAPIError.serverMessage("流式响应未收到完成事件") }
+        return donePayload
     }
 
-    static func generateTopic(philosopherName: String, philosopherSchool: String, keyIdeas: [String]) async throws -> AgentRunResponse {
-        let data = try await request(
-            path: "/arena/agent/topic",
-            method: "POST",
+    static func runEcho(query: String, onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
+        try await runAgent(agent: "echo", query: query, imageList: [], onDelta: onDelta)
+    }
+
+    /// 辩题生成：无 onDelta 时走非流式 `/arena/agent/topic`（辩论桌准备页）
+    static func generateTopic(philosopherName: String, philosopherSchool: String, keyIdeas: [String], onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
+        let body: [String: Any] = [
+            "philosopherName": philosopherName,
+            "philosopherSchool": philosopherSchool,
+            "keyIdeas": keyIdeas.joined(separator: "。"),
+        ]
+        if onDelta == nil {
+            let data = try await request(path: "/arena/agent/topic", method: "POST", jsonBody: body)
+            let inner = try envelopeData(data) as? [String: Any]
+            guard let inner else { throw ArenaAPIError.decode }
+            return AgentRunResponse.fromDictionary(inner)
+        }
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/topic/stream",
+            jsonBody: body,
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func generateDisciplineBattle(categoryEn: String, categoryZh: String, onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/discipline/battle/stream",
+            jsonBody: ["categoryEn": categoryEn, "categoryZh": categoryZh],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func runAgent(agent: String, query: String, imageList: [String] = [], onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/run/stream",
+            jsonBody: ["agent": agent, "query": query, "imageList": imageList],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func generateRoundtableOpenings(topic: String, participants: [[String: Any]], onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
+        let body: [String: Any] = ["topic": topic, "participants": participants]
+        if onDelta == nil {
+            let data = try await request(path: "/arena/agent/roundtable/openings", method: "POST", jsonBody: body)
+            let inner = try envelopeData(data) as? [String: Any]
+            guard let inner else { throw ArenaAPIError.decode }
+            return AgentRunResponse.fromDictionary(inner)
+        }
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/roundtable/openings/stream",
+            jsonBody: body,
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func streamPhilosophyPhilosopherToUser(
+        debateQuestion: String,
+        philosopherId: String,
+        philosopherName: String,
+        school: String,
+        keyIdeas: String,
+        summary: String,
+        userStance: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/philosophy/philosopher/to-user/stream",
             jsonBody: [
+                "debateQuestion": debateQuestion,
+                "philosopherId": philosopherId,
                 "philosopherName": philosopherName,
-                "philosopherSchool": philosopherSchool,
-                "keyIdeas": keyIdeas.joined(separator: "。"),
-            ]
+                "school": school,
+                "keyIdeas": keyIdeas,
+                "summary": summary,
+                "userStance": userStance,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
         )
-        let inner = try envelopeData(data) as? [String: Any]
-        guard let inner else { throw ArenaAPIError.decode }
         return AgentRunResponse.fromDictionary(inner)
     }
 
-    static func generateDisciplineBattle(categoryEn: String, categoryZh: String) async throws -> AgentRunResponse {
-        let data = try await request(
-            path: "/arena/agent/discipline/battle",
-            method: "POST",
-            jsonBody: ["categoryEn": categoryEn, "categoryZh": categoryZh]
+    static func streamPhilosophyPhilosopherToJudge(
+        debateQuestion: String,
+        philosopherId: String,
+        philosopherName: String,
+        school: String,
+        keyIdeas: String,
+        summary: String,
+        userStance: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/philosophy/philosopher/to-judge/stream",
+            jsonBody: [
+                "debateQuestion": debateQuestion,
+                "philosopherId": philosopherId,
+                "philosopherName": philosopherName,
+                "school": school,
+                "keyIdeas": keyIdeas,
+                "summary": summary,
+                "userStance": userStance,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
         )
-        let inner = try envelopeData(data) as? [String: Any]
-        guard let inner else { throw ArenaAPIError.decode }
         return AgentRunResponse.fromDictionary(inner)
     }
 
-    static func runAgent(agent: String, query: String, imageList: [String] = []) async throws -> AgentRunResponse {
-        let data = try await request(
-            path: "/arena/agent/run",
-            method: "POST",
-            jsonBody: ["agent": agent, "query": query, "imageList": imageList]
+    static func streamRoundtablePhilosopherOpening(
+        topic: String,
+        philosopherId: String,
+        philosopherName: String,
+        school: String,
+        keyIdeas: String,
+        summary: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/roundtable/philosopher/opening/stream",
+            jsonBody: [
+                "topic": topic,
+                "philosopherId": philosopherId,
+                "philosopherName": philosopherName,
+                "school": school,
+                "keyIdeas": keyIdeas,
+                "summary": summary,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
         )
-        let inner = try envelopeData(data) as? [String: Any]
-        guard let inner else { throw ArenaAPIError.decode }
         return AgentRunResponse.fromDictionary(inner)
     }
 
-    static func generateRoundtableOpenings(topic: String, participants: [[String: Any]]) async throws -> AgentRunResponse {
-        let data = try await request(
-            path: "/arena/agent/roundtable/openings",
-            method: "POST",
-            jsonBody: ["topic": topic, "participants": participants]
+    static func streamRoundtablePhilosopherReply(
+        topic: String,
+        userInput: String,
+        philosopherId: String,
+        philosopherName: String,
+        school: String,
+        keyIdeas: String,
+        summary: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/roundtable/philosopher/reply/stream",
+            jsonBody: [
+                "topic": topic,
+                "userInput": userInput,
+                "philosopherId": philosopherId,
+                "philosopherName": philosopherName,
+                "school": school,
+                "keyIdeas": keyIdeas,
+                "summary": summary,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
         )
-        let inner = try envelopeData(data) as? [String: Any]
-        guard let inner else { throw ArenaAPIError.decode }
         return AgentRunResponse.fromDictionary(inner)
     }
 
-    static func generateRoundtableReply(topic: String, userInput: String, participants: [[String: Any]]) async throws -> AgentRunResponse {
-        let data = try await request(
-            path: "/arena/agent/roundtable/reply",
-            method: "POST",
-            jsonBody: ["topic": topic, "userInput": userInput, "participants": participants]
+    static func generateRoundtableReply(topic: String, userInput: String, participants: [[String: Any]], onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
+        let body: [String: Any] = ["topic": topic, "userInput": userInput, "participants": participants]
+        if onDelta == nil {
+            let data = try await request(path: "/arena/agent/roundtable/reply", method: "POST", jsonBody: body)
+            let inner = try envelopeData(data) as? [String: Any]
+            guard let inner else { throw ArenaAPIError.decode }
+            return AgentRunResponse.fromDictionary(inner)
+        }
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/roundtable/reply/stream",
+            jsonBody: body,
+            onDelta: onDelta
         )
-        let inner = try envelopeData(data) as? [String: Any]
-        guard let inner else { throw ArenaAPIError.decode }
         return AgentRunResponse.fromDictionary(inner)
     }
 
@@ -295,11 +496,11 @@ enum ArenaAPI {
         philosopherName: String,
         philosopherSchool: String,
         keyIdeas: String,
-        history: String
+        history: String,
+        onDelta: StreamDeltaHandler? = nil
     ) async throws -> AgentRunResponse {
-        let data = try await request(
-            path: "/arena/agent/dilemma/turn",
-            method: "POST",
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/dilemma/turn/stream",
             jsonBody: [
                 "moralDilemmaTitle": moralDilemmaTitle,
                 "moralDilemmaEnglishTitle": moralDilemmaEnglishTitle,
@@ -310,10 +511,9 @@ enum ArenaAPI {
                 "philosopherSchool": philosopherSchool,
                 "keyIdeas": keyIdeas,
                 "history": history,
-            ]
+            ],
+            onDelta: onDelta
         )
-        let inner = try envelopeData(data) as? [String: Any]
-        guard let inner else { throw ArenaAPIError.decode }
         return AgentRunResponse.fromDictionary(inner)
     }
 
@@ -323,11 +523,11 @@ enum ArenaAPI {
         userStance: String,
         philosopherName: String,
         philosopherSchool: String,
-        history: String
+        history: String,
+        onDelta: StreamDeltaHandler? = nil
     ) async throws -> AgentRunResponse {
-        let data = try await request(
-            path: "/arena/agent/dilemma/summary",
-            method: "POST",
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/dilemma/summary/stream",
             jsonBody: [
                 "moralDilemmaTitle": moralDilemmaTitle,
                 "question": question,
@@ -335,10 +535,9 @@ enum ArenaAPI {
                 "philosopherName": philosopherName,
                 "philosopherSchool": philosopherSchool,
                 "history": history,
-            ]
+            ],
+            onDelta: onDelta
         )
-        let inner = try envelopeData(data) as? [String: Any]
-        guard let inner else { throw ArenaAPIError.decode }
         return AgentRunResponse.fromDictionary(inner)
     }
 

@@ -125,6 +125,7 @@ export function ConceptCards({
     total: 0,
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [streamPreview, setStreamPreview] = useState("");
 
   const handleGenerateFlashcards = () => {
     if (concepts?.length) {
@@ -135,7 +136,10 @@ export function ConceptCards({
       return;
     }
     setIsGenerating(true);
-    runEchoQuery(flashcardsPrompt(debateTopic, philosopherName))
+    setStreamPreview("");
+    runEchoQuery(flashcardsPrompt(debateTopic, philosopherName), {
+      onDelta: (_d, acc) => setStreamPreview(acc),
+    })
       .then((resp) => {
         const parsed = parseJsonPayload<CardsPayload>(resp.text);
         const list = normalizeCards(parsed?.cards ?? []);
@@ -148,12 +152,18 @@ export function ConceptCards({
       .catch((err: unknown) => {
         toast.error(err instanceof Error ? err.message : "闪卡生成失败");
       })
-      .finally(() => setIsGenerating(false));
+      .finally(() => {
+        setIsGenerating(false);
+        setStreamPreview("");
+      });
   };
 
   const handleGenerateQuiz = () => {
     setIsGenerating(true);
-    runEchoQuery(quizPrompt(debateTopic, philosopherName))
+    setStreamPreview("");
+    runEchoQuery(quizPrompt(debateTopic, philosopherName), {
+      onDelta: (_d, acc) => setStreamPreview(acc),
+    })
       .then((resp) => {
         const parsed = parseJsonPayload<QuizPayload>(resp.text);
         const list = normalizeQuiz(parsed?.questions ?? []);
@@ -168,7 +178,10 @@ export function ConceptCards({
       .catch((err: unknown) => {
         toast.error(err instanceof Error ? err.message : "测验生成失败");
       })
-      .finally(() => setIsGenerating(false));
+      .finally(() => {
+        setIsGenerating(false);
+        setStreamPreview("");
+      });
   };
 
   const handleFlipCard = () => {
@@ -305,11 +318,14 @@ export function ConceptCards({
       )}
 
       {isGenerating && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center space-y-4">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-4"></div>
           <p className="text-zinc-400">
             正在通过后端生成学习内容…
           </p>
+          {streamPreview ? (
+            <pre className="max-h-48 overflow-auto text-left text-sm whitespace-pre-wrap text-zinc-500">{streamPreview}</pre>
+          ) : null}
         </div>
       )}
 

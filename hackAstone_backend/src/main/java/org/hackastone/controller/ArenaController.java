@@ -8,6 +8,7 @@ import org.hackastone.biz.BailianAgentService;
 import org.hackastone.biz.DisciplineBattleParser;
 import org.hackastone.biz.DilemmaAiParser;
 import org.hackastone.biz.RoundtableMessagesParser;
+import org.hackastone.biz.RoundtableRequestSupport;
 import org.hackastone.base.util.exception.HackAstoneBizException;
 import org.hackastone.base.util.constants.ResultEnum;
 import org.hackastone.biz.BattleRecordService;
@@ -247,10 +248,11 @@ public class ArenaController {
      */
     @PostMapping("/agent/roundtable/openings")
     public Result<Map<String, Object>> roundtableOpenings(@RequestBody Map<String, Object> request) {
-        return Result.success(runRoundtableEcho(
-                ArenaEchoPrompts.roundtableOpenings(
-                        String.valueOf(request.getOrDefault("topic", "")),
-                        String.valueOf(request.getOrDefault("participants", "")))));
+        String topic = String.valueOf(request.getOrDefault("topic", ""));
+        String participantsJson = RoundtableRequestSupport.participantsJson(request);
+        return Result.success(runRoundtableEchoWithRetry(
+                () -> ArenaEchoPrompts.roundtableOpenings(topic, participantsJson),
+                () -> ArenaEchoPrompts.roundtableOpenings(topic, participantsJson, true)));
     }
 
     /**
@@ -258,11 +260,37 @@ public class ArenaController {
      */
     @PostMapping("/agent/roundtable/reply")
     public Result<Map<String, Object>> roundtableReply(@RequestBody Map<String, Object> request) {
-        return Result.success(runRoundtableEcho(
-                ArenaEchoPrompts.roundtableReply(
-                        String.valueOf(request.getOrDefault("topic", "")),
-                        String.valueOf(request.getOrDefault("userInput", "")),
-                        String.valueOf(request.getOrDefault("participants", "")))));
+        String topic = String.valueOf(request.getOrDefault("topic", ""));
+        String userInput = String.valueOf(request.getOrDefault("userInput", ""));
+        String participantsJson = RoundtableRequestSupport.participantsJson(request);
+        return Result.success(runRoundtableEchoWithRetry(
+                () -> ArenaEchoPrompts.roundtableReply(topic, userInput, participantsJson),
+                () -> ArenaEchoPrompts.roundtableReply(topic, userInput, participantsJson, true)));
+    }
+
+    private Map<String, Object> runRoundtableEchoWithRetry(
+            java.util.function.Supplier<String> primary,
+            java.util.function.Supplier<String> compactFallback) {
+        try {
+            return runRoundtableEcho(primary.get());
+        } catch (HackAstoneBizException e) {
+            if (RoundtableRequestSupport.isContentFilterMessage(e.getMessage())) {
+                try {
+                    return runRoundtableEcho(compactFallback.get());
+                } catch (HackAstoneBizException retry) {
+                    throw contentFilterUserException(retry);
+                }
+            }
+            throw e;
+        }
+    }
+
+    private HackAstoneBizException contentFilterUserException(HackAstoneBizException cause) {
+        if (RoundtableRequestSupport.isContentFilterMessage(cause.getMessage())) {
+            return new HackAstoneBizException(ResultEnum.AI_SERVICE_ERROR.getCode(),
+                    "圆桌生成被内容安全策略拦截，请尝试更换辩题或减少参与哲学家后重试。");
+        }
+        return cause;
     }
 
     private Map<String, Object> runRoundtableEcho(String prompt) {

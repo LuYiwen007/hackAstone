@@ -20,6 +20,7 @@ export function PhilosophyBattle() {
   const [reason, setReason] = useState("");
   const [judgeIndex, setJudgeIndex] = useState(0);
   const [aiTopic, setAiTopic] = useState<DebateTopicContent | null>(null);
+  const [topicStreamPreview, setTopicStreamPreview] = useState("");
 
   if (!philosopher) {
     return (
@@ -39,7 +40,10 @@ export function PhilosophyBattle() {
 
   useEffect(() => {
     let cancelled = false;
-    generateTopic(philosopher.nameCN, philosopher.school, philosopher.keyIdeas)
+    setTopicStreamPreview("");
+    generateTopic(philosopher.nameCN, philosopher.school, philosopher.keyIdeas, {
+      onDelta: (_d, acc) => setTopicStreamPreview(acc),
+    })
       .then((resp) => {
         const parsed = parseJsonPayload<DebateTopicContent>(resp.text);
         if (!cancelled && parsed?.question && parsed?.judgeQuestions?.length) {
@@ -48,6 +52,9 @@ export function PhilosophyBattle() {
       })
       .catch(() => {
         // 静默回退到本地数据，避免白屏或阻塞首屏
+      })
+      .finally(() => {
+        if (!cancelled) setTopicStreamPreview("");
       });
     return () => {
       cancelled = true;

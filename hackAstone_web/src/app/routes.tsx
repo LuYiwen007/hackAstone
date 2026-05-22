@@ -5,6 +5,7 @@ import { Battle } from "./pages/Battle";
 import { MindProfile } from "./pages/MindProfile";
 import { PhilosophyBattleLive } from "./pages/PhilosophyBattleLive";
 import { RoundtableDebate } from "./pages/RoundtableDebate";
+import { RoundtablePhilosopherPicker } from "./pages/RoundtablePhilosopherPicker";
 import { Dilemma } from "./pages/Dilemma";
 import { LoginPage } from "./pages/LoginPage";
 
@@ -32,6 +33,10 @@ export const router = createBrowserRouter([
   {
     path: "/roundtable",
     Component: RoundtableDebate,
+  },
+  {
+    path: "/roundtable/philosophers",
+    Component: RoundtablePhilosopherPicker,
   },
   {
     path: "/dilemma",

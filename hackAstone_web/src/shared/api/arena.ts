@@ -4,6 +4,7 @@ import type { Philosopher } from "../../app/data/philosophers";
 import type { DebateTopicContent } from "../../app/data/debateTopicTypes";
 import type { ArenaLocale } from "../i18n/format";
 import { apiGet, apiPost } from "./client";
+import { apiPostStream, type AgentStreamHandlers } from "./stream";
 
 export type { DisciplineBattleBilingual };
 
@@ -75,11 +76,20 @@ export type DilemmaSummaryBilingual = {
   zh: { fullExplanation: string };
 };
 
-type AgentRunResponse = {
+export type DebateTopicPayload = {
+  question: string;
+  philosopherView: string;
+  oppositeView: string;
+  judgeQuestions: string[];
+  fullExplanation: string;
+};
+
+export type AgentRunResponse = {
   agent: string;
-  appId: string;
+  appId?: string;
   text: string;
-  cached: boolean;
+  cached?: boolean;
+  debateTopic?: DebateTopicPayload;
   battle?: DisciplineBattleBilingual;
   roundtableMessages?: RoundtableMessagesBilingual;
   dilemmaTurn?: DilemmaTurnBilingual;
@@ -89,23 +99,33 @@ type AgentRunResponse = {
 export function runAgent(
   agent: "atlas" | "nova" | "forge" | "ledger" | "echo" | "sentinel",
   query: string,
-  imageList: string[] = []
+  imageList: string[] = [],
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
 ) {
-  return apiPost<AgentRunResponse>("/arena/agent/run", { agent, query, imageList });
+  return apiPostStream<AgentRunResponse>("/arena/agent/run/stream", { agent, query, imageList }, handlers);
 }
 
-export function runEchoQuery(query: string) {
-  return runAgent("echo", query, []);
+export function runEchoQuery(
+  query: string,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return runAgent("echo", query, [], handlers);
 }
 
-/** 学科辩论 AI 出题：一次返回中英文两套对局文案 */
-export function generateDisciplineBattle(categoryEn: string, categoryZh: string) {
-  return apiPost<AgentRunResponse>("/arena/agent/discipline/battle", {
-    categoryEn,
-    categoryZh,
-  });
+/** 学科辩论 AI 出题：流式返回，结束时含 battle 双语 JSON */
+export function generateDisciplineBattle(
+  categoryEn: string,
+  categoryZh: string,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/discipline/battle/stream",
+    { categoryEn, categoryZh },
+    handlers
+  );
 }
 
+/** 辩题生成（非流式，用于进入辩论前的准备页） */
 export function generateTopic(
   philosopherName: string,
   philosopherSchool: string,
@@ -118,45 +138,170 @@ export function generateTopic(
   });
 }
 
+/** 辩题流式（可选，一般不用） */
+export function generateTopicStream(
+  philosopherName: string,
+  philosopherSchool: string,
+  keyIdeas: string[],
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/topic/stream",
+    {
+      philosopherName,
+      philosopherSchool,
+      keyIdeas: keyIdeas.join("。"),
+    },
+    handlers
+  );
+}
+
+/** 圆桌开场（非流式，更稳定，避免内容安全误拦） */
 export function generateRoundtableOpenings(
   topic: string,
   participants: Array<{ id: string; nameCN: string; school: string }>
 ) {
-  return apiPost<AgentRunResponse>("/arena/agent/roundtable/openings", { topic, participants });
+  return apiPost<AgentRunResponse>("/arena/agent/roundtable/openings", {
+    topic,
+    participants,
+  });
 }
 
+export function generateRoundtableOpeningsStream(
+  topic: string,
+  participants: Array<{ id: string; nameCN: string; school: string }>,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/roundtable/openings/stream",
+    { topic, participants },
+    handlers
+  );
+}
+
+/** 圆桌回应（非流式） */
 export function generateRoundtableReply(
   topic: string,
   userInput: string,
   participants: Array<{ id: string; nameCN: string; school: string }>
 ) {
-  return apiPost<AgentRunResponse>("/arena/agent/roundtable/reply", { topic, userInput, participants });
+  return apiPost<AgentRunResponse>("/arena/agent/roundtable/reply", {
+    topic,
+    userInput,
+    participants,
+  });
 }
 
-/** 道德困境单轮：后端组装 prompt 后调用百炼 Echo */
-export function generateDilemmaTurn(body: {
-  moralDilemmaTitle: string;
-  moralDilemmaEnglishTitle: string;
-  question: string;
-  promptLead: string;
-  userStance: string;
+export type RoundtablePhilosopherStreamBody = {
+  topic: string;
+  philosopherId: string;
   philosopherName: string;
-  philosopherSchool: string;
-  keyIdeas: string;
+  school: string;
+  keyIdeas?: string;
+  summary?: string;
   history: string;
-}) {
-  return apiPost<AgentRunResponse>("/arena/agent/dilemma/turn", body);
+  locale: string;
+  userInput?: string;
+};
+
+export type PhilosophyPhilosopherStreamBody = {
+  debateQuestion: string;
+  philosopherId: string;
+  philosopherName: string;
+  school: string;
+  keyIdeas?: string;
+  summary?: string;
+  userStance: string;
+  history: string;
+  locale: string;
+};
+
+export function streamPhilosophyPhilosopherToUser(
+  body: PhilosophyPhilosopherStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/philosophy/philosopher/to-user/stream",
+    body,
+    handlers
+  );
 }
 
-export function generateDilemmaSummary(body: {
-  moralDilemmaTitle: string;
-  question: string;
-  userStance: string;
-  philosopherName: string;
-  philosopherSchool: string;
-  history: string;
-}) {
-  return apiPost<AgentRunResponse>("/arena/agent/dilemma/summary", body);
+export function streamPhilosophyPhilosopherToJudge(
+  body: PhilosophyPhilosopherStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/philosophy/philosopher/to-judge/stream",
+    body,
+    handlers
+  );
+}
+
+export function streamRoundtablePhilosopherOpening(
+  body: RoundtablePhilosopherStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/roundtable/philosopher/opening/stream",
+    body,
+    handlers
+  );
+}
+
+export function streamRoundtablePhilosopherReply(
+  body: RoundtablePhilosopherStreamBody & { userInput: string },
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/roundtable/philosopher/reply/stream",
+    body,
+    handlers
+  );
+}
+
+export function generateRoundtableReplyStream(
+  topic: string,
+  userInput: string,
+  participants: Array<{ id: string; nameCN: string; school: string }>,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/roundtable/reply/stream",
+    { topic, userInput, participants },
+    handlers
+  );
+}
+
+export function generateDilemmaTurn(
+  body: {
+    moralDilemmaTitle: string;
+    moralDilemmaEnglishTitle: string;
+    question: string;
+    promptLead: string;
+    userStance: string;
+    philosopherName: string;
+    philosopherSchool: string;
+    keyIdeas: string;
+    history: string;
+  },
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>("/arena/agent/dilemma/turn/stream", body, handlers);
+}
+
+export function generateDilemmaSummary(
+  body: {
+    moralDilemmaTitle: string;
+    question: string;
+    userStance: string;
+    philosopherName: string;
+    philosopherSchool: string;
+    history: string;
+  },
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>("/arena/agent/dilemma/summary/stream", body, handlers);
 }
 
 export function saveBattleRecord(body: {

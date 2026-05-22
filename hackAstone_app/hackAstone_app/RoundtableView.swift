@@ -34,6 +34,8 @@ struct RoundtableView: View {
     @State private var userInput = ""
     @State private var isThinking = false
     @State private var errorAlert: String?
+    @State private var showAllPhilosophers = false
+    @State private var activeSpeakerId: String?
 
     private let presetTopicIds: [String] = ["ai-free-will", "utopia", "truth", "education"]
 
@@ -55,6 +57,9 @@ struct RoundtableView: View {
             Button(L.alertConfirm, role: .cancel) { errorAlert = nil }
         } message: {
             Text(errorAlert ?? "")
+        }
+        .navigationDestination(isPresented: $showAllPhilosophers) {
+            RoundtablePhilosopherPickerView(selected: $selected)
         }
     }
 
@@ -80,6 +85,17 @@ struct RoundtableView: View {
                     Text("1.").font(.title2.weight(.bold)).foregroundStyle(ArenaTheme.orangeAccent)
                     Text(L.pickThinkers).font(.title2.weight(.bold))
                     Text(L.pickThinkersHint).font(.subheadline).foregroundStyle(ArenaTheme.textMuted)
+                    Spacer(minLength: 8)
+                    Button {
+                        showAllPhilosophers = true
+                    } label: {
+                        Text(L.viewAllPhilosophers)
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.orange.opacity(0.5)))
+                    }
+                    .foregroundStyle(ArenaTheme.orangeAccent)
                 }
                 .foregroundStyle(ArenaTheme.textPrimary)
                 if !selected.isEmpty {
@@ -205,15 +221,13 @@ struct RoundtableView: View {
                         messageRow(msg)
                     }
                     if isThinking {
-                        HStack(spacing: 10) {
-                            Circle().fill(ArenaTheme.border).frame(width: 40, height: 40)
-                            Text(L.thinkersThinking)
-                                .font(.caption)
-                                .foregroundStyle(ArenaTheme.textMuted)
-                                .padding(12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(ArenaTheme.surface)
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 10) {
+                                Circle().fill(ArenaTheme.border).frame(width: 40, height: 40)
+                                Text(L.thinkersThinking)
+                                    .font(.caption)
+                                    .foregroundStyle(ArenaTheme.textMuted)
+                            }
                         }
                     }
                 }
@@ -261,14 +275,22 @@ struct RoundtableView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                Text(msg.content)
-                    .font(.subheadline)
-                    .foregroundStyle(Color(red: 0.82, green: 0.84, blue: 0.86))
-                    .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
-                    .multilineTextAlignment(isUser ? .trailing : .leading)
-                    .padding(12)
-                    .background(isUser ? Color.orange.opacity(0.18) : ArenaTheme.background)
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(isUser ? Color.orange.opacity(0.45) : ArenaTheme.border))
+                Group {
+                    if !isUser, msg.content.isEmpty, activeSpeakerId == msg.speaker, isThinking, let p {
+                        Text(L.roundtablePhilosopherThinking(name: p.displayName(isEnglish: L.prefersEnglish)))
+                            .italic()
+                            .foregroundStyle(ArenaTheme.textMuted)
+                    } else {
+                        Text(msg.content)
+                            .foregroundStyle(Color(red: 0.82, green: 0.84, blue: 0.86))
+                    }
+                }
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+                .multilineTextAlignment(isUser ? .trailing : .leading)
+                .padding(12)
+                .background(isUser ? Color.orange.opacity(0.18) : ArenaTheme.background)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(isUser ? Color.orange.opacity(0.45) : ArenaTheme.border))
             }
             if isUser {
                 ZStack {
@@ -287,25 +309,100 @@ struct RoundtableView: View {
         selected.append(p)
     }
 
+    private func historyText(_ msgs: [RTMessage]) -> String {
+        msgs.map { m -> String in
+            let who: String = {
+                if m.speaker == "user" { return L.user }
+                if let p = catalog.philosophers.first(where: { $0.id == m.speaker }) {
+                    return p.displayName(isEnglish: L.prefersEnglish)
+                }
+                return m.speaker
+            }()
+            return "\(who)：\(m.content)"
+        }.joined(separator: "\n")
+    }
+
+    private func streamDisplay(_ acc: String) -> String {
+        let trimmed = acc.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let parsed = JsonPayload.parse(trimmed, as: RTContentPayload.self), let c = parsed.content, !c.isEmpty {
+            return c
+        }
+        if let range = trimmed.range(of: #""content"\s*:\s*""#, options: .regularExpression) {
+            var tail = String(trimmed[range.upperBound...])
+            if let end = tail.range(of: "\"") {
+                tail = String(tail[..<end.lowerBound])
+            }
+            return tail.replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\\"", with: "\"")
+        }
+        return trimmed
+    }
+
+    @MainActor
+    private func streamPhilosopher(
+        _ philosopher: Philosopher,
+        mode: String,
+        prior: [RTMessage],
+        userText: String?
+    ) async throws -> RTMessage {
+        let msgId = "\(mode)-\(philosopher.id)-\(UUID().uuidString)"
+        var row = RTMessage(id: msgId, speaker: philosopher.id, content: "")
+        messages = prior + [row]
+        activeSpeakerId = philosopher.id
+        let locale = L.prefersEnglish ? "en" : "zh"
+        let keyIdeas = philosopher.keyIdeas.joined(separator: "。")
+        let summary = philosopher.summary ?? ""
+        let hist = historyText(prior)
+        let onDelta: ArenaAPI.StreamDeltaHandler = { _, acc in
+            Task { @MainActor in
+                let preview = streamDisplay(acc)
+                row = RTMessage(id: msgId, speaker: philosopher.id, content: preview)
+                messages = prior + [row]
+            }
+        }
+        let resp: AgentRunResponse
+        if mode == "opening" {
+            resp = try await ArenaAPI.streamRoundtablePhilosopherOpening(
+                topic: debateTopic,
+                philosopherId: philosopher.id,
+                philosopherName: philosopher.displayName(isEnglish: L.prefersEnglish),
+                school: philosopher.school,
+                keyIdeas: keyIdeas,
+                summary: summary,
+                history: hist,
+                locale: locale,
+                onDelta: onDelta
+            )
+        } else {
+            resp = try await ArenaAPI.streamRoundtablePhilosopherReply(
+                topic: debateTopic,
+                userInput: userText ?? "",
+                philosopherId: philosopher.id,
+                philosopherName: philosopher.displayName(isEnglish: L.prefersEnglish),
+                school: philosopher.school,
+                keyIdeas: keyIdeas,
+                summary: summary,
+                history: hist,
+                locale: locale,
+                onDelta: onDelta
+            )
+        }
+        let final = streamDisplay(resp.text)
+        guard !final.isEmpty else { throw NSError(domain: "rt", code: 0) }
+        let done = RTMessage(id: msgId, speaker: philosopher.id, content: final)
+        messages = prior + [done]
+        return done
+    }
+
     private func startDebate() {
         stage = .debate
+        messages = []
         isThinking = true
-        let participants = selected.map { ["id": $0.id, "nameCN": $0.nameCN, "school": $0.school] as [String: Any] }
         Task {
             do {
-                let resp = try await ArenaAPI.generateRoundtableOpenings(topic: debateTopic, participants: participants)
-                let arr: [RoundtableMessageSlice]? = resp.roundtableMessages?.pick(english: L.prefersEnglish)
-                    ?? JsonPayload.parse(resp.text, as: RTMessagesPayload.self)?.messages?.map {
-                        RoundtableMessageSlice(speaker: $0.speaker, content: $0.content)
-                    }
-                if let arr, !arr.isEmpty {
-                    await MainActor.run {
-                        messages = arr.enumerated().map { i, m in
-                            RTMessage(id: "o-\(m.speaker)-\(i)", speaker: m.speaker, content: m.content)
-                        }
-                    }
-                } else {
-                    throw NSError(domain: "rt", code: 0)
+                var hist: [RTMessage] = []
+                for p in selected {
+                    let msg = try await streamPhilosopher(p, mode: "opening", prior: hist, userText: nil)
+                    hist.append(msg)
                 }
             } catch {
                 await MainActor.run {
@@ -314,34 +411,28 @@ struct RoundtableView: View {
                     errorAlert = L.roundtableOpeningFailed
                 }
             }
-            await MainActor.run { isThinking = false }
+            await MainActor.run {
+                isThinking = false
+                activeSpeakerId = nil
+            }
         }
     }
 
     private func sendUser() {
         let text = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty, !isThinking else { return }
         let userRowId = "u-\(UUID().uuidString)"
         userInput = ""
-        messages.append(RTMessage(id: userRowId, speaker: "user", content: text))
+        let userRow = RTMessage(id: userRowId, speaker: "user", content: text)
+        let prior = messages + [userRow]
+        messages = prior
         isThinking = true
-        let participants = selected.map { ["id": $0.id, "nameCN": $0.nameCN, "school": $0.school] as [String: Any] }
         Task {
             do {
-                let resp = try await ArenaAPI.generateRoundtableReply(topic: debateTopic, userInput: text, participants: participants)
-                let arr: [RoundtableMessageSlice]? = resp.roundtableMessages?.pick(english: L.prefersEnglish)
-                    ?? JsonPayload.parse(resp.text, as: RTMessagesPayload.self)?.messages?.map {
-                        RoundtableMessageSlice(speaker: $0.speaker, content: $0.content)
-                    }
-                if let arr, !arr.isEmpty {
-                    let more = arr.enumerated().map { i, m in
-                        RTMessage(id: "r-\(m.speaker)-\(i)-\(UUID().uuidString)", speaker: m.speaker, content: m.content)
-                    }
-                    await MainActor.run {
-                        messages.append(contentsOf: more)
-                    }
-                } else {
-                    throw NSError(domain: "rt", code: 1)
+                var hist = prior
+                for p in selected {
+                    let msg = try await streamPhilosopher(p, mode: "reply", prior: hist, userText: text)
+                    hist.append(msg)
                 }
             } catch {
                 await MainActor.run {
@@ -350,9 +441,16 @@ struct RoundtableView: View {
                     errorAlert = L.roundtableReplyFailed
                 }
             }
-            await MainActor.run { isThinking = false }
+            await MainActor.run {
+                isThinking = false
+                activeSpeakerId = nil
+            }
         }
     }
+}
+
+private struct RTContentPayload: Decodable {
+    let content: String?
 }
 
 private struct FlowSelected: View {
