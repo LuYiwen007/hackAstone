@@ -21,6 +21,16 @@ struct BattleLocaleSlice: Equatable {
     }
 }
 
+struct DisciplineSummaryBilingualParsed: Equatable {
+    let en: String
+    let zh: String
+}
+
+struct DisciplineDualReplyParsed: Equatable {
+    let builder: String
+    let breaker: String
+}
+
 struct DisciplineBattleBilingualParsed: Equatable {
     let en: BattleLocaleSlice
     let zh: BattleLocaleSlice
@@ -210,6 +220,69 @@ enum ArenaBilingualParsing {
             return RoundtableMessagesBilingualParsed(en: single, zh: single)
         }
         return nil
+    }
+
+    static func parseDisciplineSummary(from text: String, structured: Any?) -> DisciplineSummaryBilingualParsed? {
+        if let dict = structured as? [String: Any], let p = parseDisciplineSummaryDict(dict) { return p }
+        guard let data = text.data(using: .utf8),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        return parseDisciplineSummaryDict(root)
+    }
+
+    private static func parseDisciplineSummaryDict(_ root: [String: Any]) -> DisciplineSummaryBilingualParsed? {
+        func summary(_ raw: Any?) -> String? {
+            guard let o = raw as? [String: Any] else { return nil }
+            let s = String(describing: o["summary"] ?? o["reveal"] ?? o["fullExplanation"] ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return s.isEmpty ? nil : s
+        }
+        if let en = summary(root["en"]), let zh = summary(root["zh"]) {
+            return DisciplineSummaryBilingualParsed(en: en, zh: zh)
+        }
+        if let en = summary(pickLocaleBlock(root, keys: ["en", "english"])),
+           let zh = summary(pickLocaleBlock(root, keys: ["zh", "chinese", "cn"])) {
+            return DisciplineSummaryBilingualParsed(en: en, zh: zh)
+        }
+        let single = summary(root)
+        if let single { return DisciplineSummaryBilingualParsed(en: single, zh: single) }
+        return nil
+    }
+
+    static func parseDisciplineDual(from text: String, structured: Any?) -> DisciplineDualReplyParsed? {
+        if let dict = structured as? [String: Any],
+           let b = dict["builder"] as? String,
+           let k = dict["breaker"] as? String,
+           !b.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           !k.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return DisciplineDualReplyParsed(builder: b.trimmingCharacters(in: .whitespacesAndNewlines),
+                                             breaker: k.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return parseDisciplineDualMarkers(from: finalizeStreamSpeech(text))
+    }
+
+    static func finalizeStreamSpeech(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("{"),
+              let data = trimmed.data(using: .utf8),
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let c = o["content"] as? String,
+              !c.isEmpty
+        else { return trimmed }
+        return c
+    }
+
+    private static func parseDisciplineDualMarkers(from text: String) -> DisciplineDualReplyParsed? {
+        let patternBuilder = #"(?m)^\s*(?:\[Builder\]|【建构者】|建构者[:：])\s*"#
+        let patternBreaker = #"(?m)^\s*(?:\[Breaker\]|【破坏者】|破坏者[:：])\s*"#
+        guard let bRange = text.range(of: patternBuilder, options: .regularExpression),
+              let kRange = text.range(of: patternBreaker, options: .regularExpression),
+              bRange.lowerBound < kRange.lowerBound
+        else { return nil }
+        let builderText = String(text[bRange.upperBound..<kRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let breakerText = String(text[kRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !builderText.isEmpty, !breakerText.isEmpty else { return nil }
+        return DisciplineDualReplyParsed(builder: builderText, breaker: breakerText)
     }
 
     static func buildDebateNoteKey(philosopherId: String, question: String) -> String {

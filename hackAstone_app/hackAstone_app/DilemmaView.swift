@@ -14,10 +14,21 @@ private enum DMRole {
     case user, philosopher, judge
 }
 
+private enum DMThinkingRole {
+    case philosopher, judge
+}
+
 private struct DilemmaTurnDTO: Decodable {
     let philosopherReply: String?
     let judgeQuestion: String?
     let continueDebate: Bool?
+}
+
+private struct JudgeStepResult {
+    let judgeSpeaks: Bool
+    let judgeMessage: String
+    let addressTo: String?
+    let continueDebate: Bool
 }
 
 private struct DilemmaSummaryDTO: Decodable {
@@ -37,7 +48,7 @@ struct DilemmaView: View {
     @State private var messages: [DMMessage] = []
     @State private var userInput = ""
     @State private var isThinking = false
-    @State private var streamPreview = ""
+    @State private var thinkingRole: DMThinkingRole?
     @State private var canReveal = false
     @State private var fullExplanation = ""
     @State private var isGeneratingSummary = false
@@ -405,17 +416,12 @@ struct DilemmaView: View {
             ForEach(messages) { m in
                 dmBubble(m, philosopher: philosopher)
             }
-            if isThinking {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L.dilemmaThinking)
-                        .font(.caption)
-                        .foregroundStyle(ArenaTheme.textMuted)
-                    if !streamPreview.isEmpty {
-                        Text(streamPreview)
-                            .font(.caption)
-                            .foregroundStyle(ArenaTheme.textMuted)
-                    }
-                }
+            if isThinking, let role = thinkingRole {
+                Text(role == .philosopher
+                    ? L.philosopherThinking(name: philosopher.displayName(isEnglish: en))
+                    : L.judgeThinking)
+                    .font(.caption)
+                    .foregroundStyle(ArenaTheme.textMuted)
             }
 
             HStack(spacing: 10) {
@@ -574,65 +580,163 @@ struct DilemmaView: View {
         await MainActor.run {
             userInput = ""
             isThinking = true
-            streamPreview = ""
+            thinkingRole = nil
         }
         let userMsgId = "u-\(UUID().uuidString)"
         var next = await MainActor.run { messages }
         next.append(DMMessage(id: userMsgId, role: .user, content: content))
         await MainActor.run { messages = next }
 
-        let historyText = next.map { m -> String in
-            let speaker: String = {
-                switch m.role {
-                case .user: return L.user
-                case .judge: return L.judge
-                case .philosopher: return philosopher.displayName(isEnglish: en)
-                }
-            }()
-            return "\(speaker)：\(m.content)"
-        }.joined(separator: "\n")
+        let localeCode = en ? "en" : "zh"
+        let keyIdeas = philosopher.keyIdeas.joined(separator: en ? ", " : "、")
+        let summary = philosopher.summary ?? ""
+        let displayName = philosopher.displayName(isEnglish: en)
+        let userStance = option.stancePrompt(en)
 
-        do {
-            let resp = try await ArenaAPI.dilemmaTurn(
+        func historyBlock(_ msgs: [DMMessage]) -> String {
+            msgs.map { m -> String in
+                let speaker: String = {
+                    switch m.role {
+                    case .user: return L.user
+                    case .judge: return L.judge
+                    case .philosopher: return displayName
+                    }
+                }()
+                return "\(speaker)：\(m.content)"
+            }.joined(separator: "\n")
+        }
+
+        func streamPhilosopher(mode: String, prior: [DMMessage]) async throws -> DMMessage {
+            let msgId = "\(mode)-\(UUID().uuidString)"
+            var row = DMMessage(id: msgId, role: .philosopher, content: "")
+            await MainActor.run {
+                thinkingRole = .philosopher
+                messages = prior + [row]
+            }
+            let hist = historyBlock(prior)
+            let onDelta: ArenaAPI.StreamDeltaHandler = { _, acc in
+                Task { @MainActor in
+                    let preview = dmStreamDisplay(acc)
+                    row = DMMessage(id: msgId, role: .philosopher, content: preview)
+                    messages = prior + [row]
+                }
+            }
+            let resp: AgentRunResponse
+            if mode == "to-user" {
+                resp = try await ArenaAPI.streamDilemmaPhilosopherToUser(
+                    moralDilemmaTitle: dilemma.title(false),
+                    moralDilemmaEnglishTitle: dilemma.title(true),
+                    question: dilemma.question(false),
+                    promptLead: dilemma.promptLead(false),
+                    userStance: userStance,
+                    philosopherId: philosopher.id,
+                    philosopherName: displayName,
+                    philosopherSchool: philosopher.school,
+                    keyIdeas: keyIdeas,
+                    summary: summary,
+                    history: hist,
+                    locale: localeCode,
+                    onDelta: onDelta
+                )
+            } else {
+                resp = try await ArenaAPI.streamDilemmaPhilosopherToJudge(
+                    moralDilemmaTitle: dilemma.title(false),
+                    moralDilemmaEnglishTitle: dilemma.title(true),
+                    question: dilemma.question(false),
+                    promptLead: dilemma.promptLead(false),
+                    userStance: userStance,
+                    philosopherId: philosopher.id,
+                    philosopherName: displayName,
+                    philosopherSchool: philosopher.school,
+                    keyIdeas: keyIdeas,
+                    summary: summary,
+                    history: hist,
+                    locale: localeCode,
+                    onDelta: onDelta
+                )
+            }
+            let final = dmStreamDisplay(resp.text)
+            guard !final.isEmpty else {
+                throw NSError(domain: "dilemma", code: 1, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
+            }
+            let done = DMMessage(id: msgId, role: .philosopher, content: final)
+            await MainActor.run { messages = prior + [done] }
+            return done
+        }
+
+        func streamJudge(prior: [DMMessage]) async throws -> (judge: JudgeStepResult, judgeMsg: DMMessage?) {
+            let msgId = "judge-\(UUID().uuidString)"
+            var row = DMMessage(id: msgId, role: .judge, content: "")
+            await MainActor.run {
+                thinkingRole = .judge
+                messages = prior + [row]
+            }
+            let hist = historyBlock(prior)
+            let onDelta: ArenaAPI.StreamDeltaHandler = { _, acc in
+                Task { @MainActor in
+                    let preview = dmJudgeStreamDisplay(acc)
+                    row = DMMessage(id: msgId, role: .judge, content: preview)
+                    messages = prior + [row]
+                }
+            }
+            let resp = try await ArenaAPI.streamDilemmaJudgeStep(
                 moralDilemmaTitle: dilemma.title(false),
                 moralDilemmaEnglishTitle: dilemma.title(true),
                 question: dilemma.question(false),
                 promptLead: dilemma.promptLead(false),
-                userStance: option.stancePrompt(false),
-                philosopherName: philosopher.nameCN,
+                userStance: userStance,
+                philosopherName: displayName,
                 philosopherSchool: philosopher.school,
-                keyIdeas: philosopher.keyIdeas.joined(separator: "、"),
-                history: historyText,
-                onDelta: { _, acc in
-                    Task { @MainActor in streamPreview = acc }
-                }
+                history: hist,
+                locale: localeCode,
+                onDelta: onDelta
             )
-            let turn = resp.dilemmaTurn?.pick(english: en)
-                ?? JsonPayload.parse(resp.text, as: DilemmaTurnDTO.self).map {
-                    DilemmaTurnSliceParsed(
-                        philosopherReply: $0.philosopherReply ?? "",
-                        judgeQuestion: $0.judgeQuestion ?? "",
-                        continueDebate: $0.continueDebate ?? true
-                    )
-                }
-            guard let turn, !turn.philosopherReply.isEmpty, !turn.judgeQuestion.isEmpty else {
+            guard let parsed = resp.philosophyJudge else {
                 throw NSError(domain: "dilemma", code: 1, userInfo: [NSLocalizedDescriptionKey: L.topicBadJson])
             }
-            await MainActor.run {
-                messages.append(DMMessage(id: "ph-\(UUID().uuidString)", role: .philosopher, content: turn.philosopherReply))
-                messages.append(DMMessage(id: "jg-\(UUID().uuidString)", role: .judge, content: turn.judgeQuestion))
-                canReveal = turn.continueDebate == false
-                isThinking = false
-                streamPreview = ""
+            let judge = JudgeStepResult(
+                judgeSpeaks: parsed.judgeSpeaks,
+                judgeMessage: parsed.judgeMessage,
+                addressTo: parsed.addressTo,
+                continueDebate: parsed.continueDebate
+            )
+            if judge.judgeSpeaks, !judge.judgeMessage.isEmpty {
+                let final = dmJudgeStreamDisplay(resp.text).isEmpty ? judge.judgeMessage : dmJudgeStreamDisplay(resp.text)
+                let done = DMMessage(id: msgId, role: .judge, content: final)
+                await MainActor.run { messages = prior + [done] }
+                return (judge, done)
             }
+            await MainActor.run { messages = prior }
+            return (judge, nil)
+        }
+
+        do {
+            let philToUser = try await streamPhilosopher(mode: "to-user", prior: next)
+            var working = next + [philToUser]
+
+            let judgeResult = try await streamJudge(prior: working)
+            let judge = judgeResult.judge
+            if let judgeMsg = judgeResult.judgeMsg {
+                working.append(judgeMsg)
+            }
+
+            if judge.judgeSpeaks, judge.addressTo == "philosopher" {
+                let philToJudge = try await streamPhilosopher(mode: "to-judge", prior: working)
+                working.append(philToJudge)
+                await MainActor.run { messages = working }
+            }
+
+            await MainActor.run { canReveal = judge.continueDebate == false }
         } catch {
             await MainActor.run {
                 messages.removeAll { $0.id == userMsgId }
                 userInput = content
                 errorAlert = (error as NSError).localizedDescription
-                isThinking = false
-                streamPreview = ""
             }
+        }
+        await MainActor.run {
+            isThinking = false
+            thinkingRole = nil
         }
     }
 
@@ -641,7 +745,6 @@ struct DilemmaView: View {
             stage = .reveal
             isGeneratingSummary = true
             fullExplanation = ""
-            streamPreview = ""
         }
 
         let history = await MainActor.run { messages }.map { m -> String in
@@ -664,10 +767,7 @@ struct DilemmaView: View {
                 philosopherSchool: philosopher.school,
                 history: history,
                 onDelta: { _, acc in
-                    Task { @MainActor in
-                        streamPreview = acc
-                        fullExplanation = acc
-                    }
+                    Task { @MainActor in fullExplanation = acc }
                 }
             )
             let summaryText = resp.dilemmaSummary?.pick(english: en)
@@ -698,4 +798,35 @@ struct DilemmaView: View {
         }
         return en ? "CE \(period)" : "公元 \(period)"
     }
+}
+
+private func dmStreamDisplay(_ acc: String) -> String {
+    let trimmed = acc.trimmingCharacters(in: .whitespacesAndNewlines)
+    if let parsed = JsonPayload.parse(trimmed, as: DMContentPayload.self), let c = parsed.content, !c.isEmpty {
+        return c
+    }
+    if let range = trimmed.range(of: #""content"\s*:\s*""#, options: .regularExpression) {
+        var tail = String(trimmed[range.upperBound...])
+        if let end = tail.range(of: "\"") {
+            tail = String(tail[..<end.lowerBound])
+        }
+        return tail.replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\\"", with: "\"")
+    }
+    return trimmed
+}
+
+private struct DMContentPayload: Decodable {
+    let content: String?
+}
+
+private func dmJudgeStreamDisplay(_ acc: String) -> String {
+    var s = acc
+    if let range = s.range(of: "\nMETA:", options: .backwards) {
+        s = String(s[..<range.lowerBound])
+    } else if s.hasPrefix("META:") {
+        s = ""
+    }
+    s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+    if s == "[NO_JUDGE]" || s.hasPrefix("[NO_JUDGE]") { return "" }
+    return s
 }

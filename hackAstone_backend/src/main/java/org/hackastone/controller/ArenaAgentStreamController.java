@@ -8,6 +8,8 @@ import org.hackastone.biz.BailianStreamHandler;
 import org.hackastone.biz.DebateTopicParser;
 import org.hackastone.biz.DilemmaAiParser;
 import org.hackastone.biz.DisciplineBattleParser;
+import org.hackastone.biz.DisciplineDebateParser;
+import org.hackastone.biz.PhilosophyJudgeStepParser;
 import org.hackastone.biz.RoundtableMessagesParser;
 import org.hackastone.biz.RoundtableRequestSupport;
 import org.hackastone.config.BailianAgentConfig;
@@ -102,6 +104,52 @@ public class ArenaAgentStreamController {
         }, false);
     }
 
+    @PostMapping(value = "/discipline/debate/opponent/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter disciplineDebateOpponentStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.disciplineDebateOpponentReply(
+                str(request, "question"),
+                str(request, "builderView"),
+                str(request, "breakerView"),
+                str(request, "userChoice"),
+                str(request, "userMessage"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    @PostMapping(value = "/discipline/debate/dual/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter disciplineDebateDualStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.disciplineDebateDualReply(
+                str(request, "question"),
+                str(request, "builderView"),
+                str(request, "breakerView"),
+                str(request, "userMessage"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), (fullText, out) -> {
+            Map<String, String> dual = DisciplineDebateParser.parseDualReply(fullText);
+            if (dual != null) {
+                out.put("disciplineDual", dual);
+            }
+        }, false);
+    }
+
+    @PostMapping(value = "/discipline/debate/summary/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter disciplineDebateSummaryStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.disciplineDebateSummary(
+                str(request, "question"),
+                str(request, "builderView"),
+                str(request, "breakerView"),
+                str(request, "userChoice"),
+                str(request, "history"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), (fullText, out) -> {
+            Map<String, Object> summary = DisciplineDebateParser.parseSummary(fullText);
+            if (summary != null) {
+                out.put("disciplineSummary", summary);
+            }
+        }, false);
+    }
+
     @PostMapping(value = "/roundtable/openings/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter roundtableOpeningsStream(@RequestBody Map<String, Object> request) {
         String topic = String.valueOf(request.getOrDefault("topic", ""));
@@ -139,6 +187,23 @@ public class ArenaAgentStreamController {
                 str(request, "history"),
                 str(request, "locale"));
         return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    @PostMapping(value = "/philosophy/judge/step/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter philosophyJudgeStepStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.philosophyJudgeStep(
+                str(request, "debateQuestion"),
+                str(request, "philosopherName"),
+                str(request, "school"),
+                str(request, "userStance"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), (fullText, out) -> {
+            Map<String, Object> judge = PhilosophyJudgeStepParser.parse(fullText);
+            if (judge != null) {
+                out.put("philosophyJudge", judge);
+            }
+        }, false);
     }
 
     @PostMapping(value = "/roundtable/philosopher/opening/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -185,6 +250,63 @@ public class ArenaAgentStreamController {
                 () -> ArenaEchoPrompts.roundtableReply(topic, userInput, participantsJson, true));
     }
 
+    @PostMapping(value = "/dilemma/philosopher/to-user/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter dilemmaPhilosopherToUserStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.dilemmaPhilosopherToUser(
+                str(request, "moralDilemmaTitle"),
+                str(request, "moralDilemmaEnglishTitle"),
+                str(request, "question"),
+                str(request, "promptLead"),
+                str(request, "userStance"),
+                str(request, "philosopherId"),
+                str(request, "philosopherName"),
+                str(request, "philosopherSchool"),
+                str(request, "keyIdeas"),
+                str(request, "summary"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    @PostMapping(value = "/dilemma/judge/step/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter dilemmaJudgeStepStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.dilemmaJudgeStep(
+                str(request, "moralDilemmaTitle"),
+                str(request, "moralDilemmaEnglishTitle"),
+                str(request, "question"),
+                str(request, "promptLead"),
+                str(request, "userStance"),
+                str(request, "philosopherName"),
+                str(request, "philosopherSchool"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), (fullText, out) -> {
+            Map<String, Object> judge = PhilosophyJudgeStepParser.parse(fullText);
+            if (judge != null) {
+                out.put("philosophyJudge", judge);
+            }
+        }, false);
+    }
+
+    @PostMapping(value = "/dilemma/philosopher/to-judge/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter dilemmaPhilosopherToJudgeStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.dilemmaPhilosopherToJudge(
+                str(request, "moralDilemmaTitle"),
+                str(request, "moralDilemmaEnglishTitle"),
+                str(request, "question"),
+                str(request, "promptLead"),
+                str(request, "userStance"),
+                str(request, "philosopherId"),
+                str(request, "philosopherName"),
+                str(request, "philosopherSchool"),
+                str(request, "keyIdeas"),
+                str(request, "summary"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    /** @deprecated 合并双语 JSON 单轮；请用分步流式接口 */
     @PostMapping(value = "/dilemma/turn/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter dilemmaTurnStream(@RequestBody Map<String, Object> request) {
         String prompt = ArenaEchoPrompts.dilemmaTurn(

@@ -104,6 +104,10 @@ xcodebuild -scheme hackAstone_app -destination 'platform=iOS Simulator,name=iPho
 - `bailian.ledger-app-id`
 - `bailian.echo-app-id`
 - `bailian.sentinel-app-id`
+
+Echo 应用**系统提示词**（粘贴到百炼控制台，与代码契约同步）：
+
+- `hackAstone_backend/src/main/resources/arena/echo-system-prompt.txt`
 - `bailian.timeout-ms`（超时控制）
 - `bailian.cache-ttl-ms`（短期缓存，提速）
 
