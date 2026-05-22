@@ -250,6 +250,63 @@ public class ArenaAgentStreamController {
                 () -> ArenaEchoPrompts.roundtableReply(topic, userInput, participantsJson, true));
     }
 
+    @PostMapping(value = "/dilemma/philosopher/to-user/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter dilemmaPhilosopherToUserStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.dilemmaPhilosopherToUser(
+                str(request, "moralDilemmaTitle"),
+                str(request, "moralDilemmaEnglishTitle"),
+                str(request, "question"),
+                str(request, "promptLead"),
+                str(request, "userStance"),
+                str(request, "philosopherId"),
+                str(request, "philosopherName"),
+                str(request, "philosopherSchool"),
+                str(request, "keyIdeas"),
+                str(request, "summary"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    @PostMapping(value = "/dilemma/judge/step/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter dilemmaJudgeStepStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.dilemmaJudgeStep(
+                str(request, "moralDilemmaTitle"),
+                str(request, "moralDilemmaEnglishTitle"),
+                str(request, "question"),
+                str(request, "promptLead"),
+                str(request, "userStance"),
+                str(request, "philosopherName"),
+                str(request, "philosopherSchool"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), (fullText, out) -> {
+            Map<String, Object> judge = PhilosophyJudgeStepParser.parse(fullText);
+            if (judge != null) {
+                out.put("philosophyJudge", judge);
+            }
+        }, false);
+    }
+
+    @PostMapping(value = "/dilemma/philosopher/to-judge/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter dilemmaPhilosopherToJudgeStream(@RequestBody Map<String, Object> request) {
+        String prompt = ArenaEchoPrompts.dilemmaPhilosopherToJudge(
+                str(request, "moralDilemmaTitle"),
+                str(request, "moralDilemmaEnglishTitle"),
+                str(request, "question"),
+                str(request, "promptLead"),
+                str(request, "userStance"),
+                str(request, "philosopherId"),
+                str(request, "philosopherName"),
+                str(request, "philosopherSchool"),
+                str(request, "keyIdeas"),
+                str(request, "summary"),
+                str(request, "history"),
+                str(request, "locale"));
+        return streamEchoLike("echo", prompt, Collections.emptyList(), null, false);
+    }
+
+    /** @deprecated 合并双语 JSON 单轮；请用分步流式接口 */
     @PostMapping(value = "/dilemma/turn/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter dilemmaTurnStream(@RequestBody Map<String, Object> request) {
         String prompt = ArenaEchoPrompts.dilemmaTurn(

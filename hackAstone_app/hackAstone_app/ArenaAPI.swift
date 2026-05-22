@@ -666,6 +666,109 @@ enum ArenaAPI {
         return AgentRunResponse.fromDictionary(inner)
     }
 
+    static func streamDilemmaPhilosopherToUser(
+        moralDilemmaTitle: String,
+        moralDilemmaEnglishTitle: String,
+        question: String,
+        promptLead: String,
+        userStance: String,
+        philosopherId: String,
+        philosopherName: String,
+        philosopherSchool: String,
+        keyIdeas: String,
+        summary: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/dilemma/philosopher/to-user/stream",
+            jsonBody: [
+                "moralDilemmaTitle": moralDilemmaTitle,
+                "moralDilemmaEnglishTitle": moralDilemmaEnglishTitle,
+                "question": question,
+                "promptLead": promptLead,
+                "userStance": userStance,
+                "philosopherId": philosopherId,
+                "philosopherName": philosopherName,
+                "philosopherSchool": philosopherSchool,
+                "keyIdeas": keyIdeas,
+                "summary": summary,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func streamDilemmaJudgeStep(
+        moralDilemmaTitle: String,
+        moralDilemmaEnglishTitle: String,
+        question: String,
+        promptLead: String,
+        userStance: String,
+        philosopherName: String,
+        philosopherSchool: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/dilemma/judge/step/stream",
+            jsonBody: [
+                "moralDilemmaTitle": moralDilemmaTitle,
+                "moralDilemmaEnglishTitle": moralDilemmaEnglishTitle,
+                "question": question,
+                "promptLead": promptLead,
+                "userStance": userStance,
+                "philosopherName": philosopherName,
+                "philosopherSchool": philosopherSchool,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    static func streamDilemmaPhilosopherToJudge(
+        moralDilemmaTitle: String,
+        moralDilemmaEnglishTitle: String,
+        question: String,
+        promptLead: String,
+        userStance: String,
+        philosopherId: String,
+        philosopherName: String,
+        philosopherSchool: String,
+        keyIdeas: String,
+        summary: String,
+        history: String,
+        locale: String,
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
+        let inner = try await requestAgentStream(
+            path: "/arena/agent/dilemma/philosopher/to-judge/stream",
+            jsonBody: [
+                "moralDilemmaTitle": moralDilemmaTitle,
+                "moralDilemmaEnglishTitle": moralDilemmaEnglishTitle,
+                "question": question,
+                "promptLead": promptLead,
+                "userStance": userStance,
+                "philosopherId": philosopherId,
+                "philosopherName": philosopherName,
+                "philosopherSchool": philosopherSchool,
+                "keyIdeas": keyIdeas,
+                "summary": summary,
+                "history": history,
+                "locale": locale,
+            ],
+            onDelta: onDelta
+        )
+        return AgentRunResponse.fromDictionary(inner)
+    }
+
+    /// @deprecated 合并双语 JSON 单轮
     static func dilemmaTurn(
         moralDilemmaTitle: String,
         moralDilemmaEnglishTitle: String,

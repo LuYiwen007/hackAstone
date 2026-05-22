@@ -12,18 +12,32 @@ import {
   formatPhilosopherPeriod,
   localizeDilemma,
   parseDilemmaSummaryBilingual,
-  parseDilemmaTurnBilingual,
   summaryForLocale,
-  turnToMessages,
   type DilemmaStoredMessage,
   type DilemmaSummaryBilingual,
 } from "../data/dilemmaLocale";
+import {
+  finalizeJudgeSpeech,
+  judgeStreamDisplayText,
+  parsePhilosophyJudgeStep,
+} from "../data/philosophyJudgeLocale";
+import {
+  finalizeRoundtableSpeech,
+  roundtableStreamDisplayText,
+} from "../data/roundtableLocale";
 import { philosopherForLocale } from "../data/philosopherLocale";
 import type { Philosopher } from "../data/philosophers";
 import { DebateSummary } from "../components/DebateSummary";
-import { generateDilemmaSummary, generateDilemmaTurn, saveBattleRecord } from "../../shared/api/arena";
+import {
+  generateDilemmaSummary,
+  saveBattleRecord,
+  streamDilemmaJudgeStep,
+  streamDilemmaPhilosopherToJudge,
+  streamDilemmaPhilosopherToUser,
+} from "../../shared/api/arena";
 import { isLoggedIn } from "../../shared/api/client";
 type Stage = "setup" | "debate" | "reveal";
+type ThinkingRole = "philosopher" | "judge";
 
 export function Dilemma() {
   const { t, locale } = useArenaLocale();
@@ -35,6 +49,7 @@ export function Dilemma() {
   const [messages, setMessages] = useState<DilemmaStoredMessage[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingRole, setThinkingRole] = useState<ThinkingRole | null>(null);
   const [canReveal, setCanReveal] = useState(false);
   const [summaryLocales, setSummaryLocales] = useState<DilemmaSummaryBilingual | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -127,6 +142,95 @@ export function Dilemma() {
     setStage("debate");
   };
 
+  const dilemmaStreamBody = (prior: DilemmaStoredMessage[]) => {
+    const pLoc = philosopherForLocale(selectedPhilosopher!, locale);
+    const ideasSep = locale === "zh" ? "、" : ", ";
+    return {
+      moralDilemmaTitle: currentDilemma.title,
+      moralDilemmaEnglishTitle: currentDilemma.englishTitle,
+      question: currentDilemma.question,
+      promptLead: currentDilemma.promptLead,
+      userStance: selectedOption!.stancePrompt,
+      philosopherId: selectedPhilosopher!.id,
+      philosopherName: philosopherDisplayName(selectedPhilosopher!, locale),
+      philosopherSchool: pLoc.school,
+      keyIdeas: pLoc.keyIdeas.join(ideasSep),
+      summary: pLoc.summary ?? selectedPhilosopher!.summary ?? "",
+      history: buildHistoryText(prior),
+      locale,
+    };
+  };
+
+  const streamPhilosopherMessage = async (
+    mode: "to-user" | "to-judge",
+    prior: DilemmaStoredMessage[]
+  ): Promise<DilemmaStoredMessage> => {
+    const msgId = `${mode}-${Date.now()}`;
+    const placeholder: DilemmaStoredMessage = {
+      id: msgId,
+      role: "philosopher",
+      content: "",
+    };
+    setThinkingRole("philosopher");
+    setMessages([...prior, placeholder]);
+
+    const handlers = {
+      onDelta: (_d: string, acc: string) => {
+        const preview = roundtableStreamDisplayText(acc);
+        setMessages((curr) =>
+          curr.map((m) => (m.id === msgId ? { ...m, content: preview } : m))
+        );
+      },
+    };
+
+    const resp =
+      mode === "to-user"
+        ? await streamDilemmaPhilosopherToUser(dilemmaStreamBody(prior), handlers)
+        : await streamDilemmaPhilosopherToJudge(dilemmaStreamBody(prior), handlers);
+
+    const finalText = finalizeRoundtableSpeech(resp.text);
+    if (!finalText.trim()) throw new Error(t("dilemma.error.philosopherResponse"));
+
+    const finished = { ...placeholder, content: finalText };
+    setMessages((curr) => curr.map((m) => (m.id === msgId ? finished : m)));
+    return finished;
+  };
+
+  const streamJudgeMessage = async (prior: DilemmaStoredMessage[]) => {
+    const msgId = `judge-${Date.now()}`;
+    const placeholder: DilemmaStoredMessage = {
+      id: msgId,
+      role: "judge",
+      content: "",
+    };
+    setThinkingRole("judge");
+    setMessages([...prior, placeholder]);
+
+    const { philosopherId: _pid, keyIdeas: _k, summary: _s, ...judgeBody } = dilemmaStreamBody(prior);
+    const resp = await streamDilemmaJudgeStep(judgeBody, {
+      onDelta: (_d, acc) => {
+        const preview = judgeStreamDisplayText(acc);
+        setMessages((curr) =>
+          curr.map((m) => (m.id === msgId ? { ...m, content: preview } : m))
+        );
+      },
+    });
+
+    const judge = parsePhilosophyJudgeStep(resp.philosophyJudge ?? null, resp.text);
+    if (!judge) throw new Error(t("dilemma.error.turnFailed"));
+
+    if (judge.judgeSpeaks && judge.judgeMessage) {
+      const finished = {
+        ...placeholder,
+        content: finalizeJudgeSpeech(resp.text) || judge.judgeMessage,
+      };
+      setMessages([...prior, finished]);
+      return { judge, judgeMsg: finished };
+    }
+    setMessages(prior);
+    return { judge, judgeMsg: null as DilemmaStoredMessage | null };
+  };
+
   const handleUserTurn = async () => {
     if (!selectedOption || !selectedPhilosopher) {
       return;
@@ -148,35 +252,20 @@ export function Dilemma() {
     ];
     setMessages(nextMessages);
 
-    const historyText = buildHistoryText(nextMessages);
-
-    const pLoc = philosopherForLocale(selectedPhilosopher, locale);
-    const ideasSep = locale === "zh" ? "、" : ", ";
     try {
-      const response = await generateDilemmaTurn(
-        {
-          moralDilemmaTitle: currentDilemma.title,
-          moralDilemmaEnglishTitle: currentDilemma.englishTitle,
-          question: currentDilemma.question,
-          promptLead: currentDilemma.promptLead,
-          userStance: selectedOption.stancePrompt,
-          philosopherName: philosopherDisplayName(selectedPhilosopher, locale),
-          philosopherSchool: pLoc.school,
-          keyIdeas: pLoc.keyIdeas.join(ideasSep),
-          history: historyText,
-        },
-        { onDelta: (_d, acc) => setStreamPreview(acc) }
-      );
-      const turn =
-        parseDilemmaTurnBilingual(response.dilemmaTurn) ??
-        parseDilemmaTurnBilingual(response.text);
-      if (!turn) {
-        throw new Error(t("dilemma.error.philosopherResponse"));
+      const philToUser = await streamPhilosopherMessage("to-user", nextMessages);
+      const afterPhilosopher = [...nextMessages, philToUser];
+
+      const { judge, judgeMsg } = await streamJudgeMessage(afterPhilosopher);
+      let working = judgeMsg ? [...afterPhilosopher, judgeMsg] : afterPhilosopher;
+
+      if (judge.judgeSpeaks && judge.addressTo === "philosopher") {
+        const philToJudge = await streamPhilosopherMessage("to-judge", working);
+        working = [...working, philToJudge];
+        setMessages(working);
       }
 
-      const ts = Date.now();
-      setMessages((previous) => [...previous, ...turnToMessages(turn, ts)]);
-      setCanReveal(turn.en.continueDebate === false);
+      setCanReveal(judge.continueDebate === false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("dilemma.error.turnFailed");
       toast.error(msg);
@@ -184,6 +273,7 @@ export function Dilemma() {
       setUserInput(content);
     } finally {
       setIsThinking(false);
+      setThinkingRole(null);
       setStreamPreview("");
     }
   };
@@ -463,14 +553,13 @@ export function Dilemma() {
                   </p>
                 </div>
               ))}
-              {isThinking && (
-                <div className="space-y-2">
-                  <div className="text-sm italic text-zinc-500">{t("dilemma.thinking")}</div>
-                  {streamPreview ? (
-                    <pre className="max-h-48 overflow-auto rounded-lg border border-zinc-800 bg-zinc-900/80 p-3 text-sm whitespace-pre-wrap text-zinc-400">
-                      {streamPreview}
-                    </pre>
-                  ) : null}
+              {isThinking && thinkingRole && (
+                <div className="text-sm italic text-zinc-500">
+                  {thinkingRole === "philosopher"
+                    ? t("battle.philosopherThinking", {
+                        name: philosopherDisplayName(selectedPhilosopher, locale),
+                      })
+                    : t("battle.judgeThinking")}
                 </div>
               )}
             </div>

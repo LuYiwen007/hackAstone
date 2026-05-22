@@ -349,6 +349,51 @@ export function generateRoundtableReplyStream(
   );
 }
 
+export type DilemmaDebateStreamBody = {
+  moralDilemmaTitle: string;
+  moralDilemmaEnglishTitle: string;
+  question: string;
+  promptLead: string;
+  userStance: string;
+  philosopherId: string;
+  philosopherName: string;
+  philosopherSchool: string;
+  keyIdeas?: string;
+  summary?: string;
+  history: string;
+  locale: string;
+};
+
+export function streamDilemmaPhilosopherToUser(
+  body: DilemmaDebateStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/dilemma/philosopher/to-user/stream",
+    body,
+    handlers
+  );
+}
+
+export function streamDilemmaJudgeStep(
+  body: Omit<DilemmaDebateStreamBody, "philosopherId" | "keyIdeas" | "summary">,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>("/arena/agent/dilemma/judge/step/stream", body, handlers);
+}
+
+export function streamDilemmaPhilosopherToJudge(
+  body: DilemmaDebateStreamBody,
+  handlers: AgentStreamHandlers<AgentRunResponse> = {}
+) {
+  return apiPostStream<AgentRunResponse>(
+    "/arena/agent/dilemma/philosopher/to-judge/stream",
+    body,
+    handlers
+  );
+}
+
+/** @deprecated 合并双语 JSON 单轮；请用分步流式接口 */
 export function generateDilemmaTurn(
   body: {
     moralDilemmaTitle: string;

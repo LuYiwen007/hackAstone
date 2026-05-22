@@ -112,6 +112,10 @@ public final class ArenaEchoPrompts {
             "场景：hackAstone 认知竞技场学科辩论（Builder 建构者 vs Breaker 破坏者），文明理性，"
                     + "避免违法、暴力、色情、仇恨及敏感政治煽动表述。";
 
+    private static final String DILEMMA_EDUCATION_CONTEXT =
+            "场景：hackAstone 认知竞技场道德困境讨论，文明理性，"
+                    + "避免违法、暴力、色情、仇恨及敏感政治煽动表述。";
+
     private static String header(String task, String acceptance, String constraints, String returnSchema) {
         return "[ROLE]\n" + ROLE + "\n\n"
                 + "[TASK]\n" + task + "\n\n"
@@ -496,6 +500,148 @@ public final class ArenaEchoPrompts {
         ) + "辩题：" + topic + "\n用户发言：" + userInput + "\n参与者：" + participantsJson;
     }
 
+    /** 道德困境：哲学家流式回应用户（纯文本，逻辑同哲学辩论） */
+    public static String dilemmaPhilosopherToUser(
+            String moralDilemmaTitle,
+            String moralDilemmaTitleEn,
+            String question,
+            String promptLead,
+            String userStance,
+            String philosopherId,
+            String philosopherName,
+            String school,
+            String keyIdeas,
+            String summary,
+            String history,
+            String locale) {
+        boolean en = locale != null && locale.toLowerCase(Locale.ROOT).startsWith("en");
+        String lang = en ? "English" : "Chinese";
+        String task = "You ARE " + philosopherName + " (" + school + ") discussing a moral dilemma with the user. "
+                + "The user just spoke—reply in YOUR historical voice only. Do NOT speak as Judge."
+                + (en ? "" : " 第一人称回应用户，勿裁判口吻，勿 JSON。");
+        String constraints = dilemmaSpeechConstraints(en, lang, false);
+        String tail = dilemmaSpeechContext(
+                moralDilemmaTitle, moralDilemmaTitleEn, question, promptLead, userStance,
+                keyIdeas, summary, history, null, philosopherId, philosopherName, school);
+        return headerPlainSpeech(task, "Distinct in-character reply; non-empty", constraints, tail);
+    }
+
+    /** 道德困境：哲学家流式回应 Judge 追问（纯文本） */
+    public static String dilemmaPhilosopherToJudge(
+            String moralDilemmaTitle,
+            String moralDilemmaTitleEn,
+            String question,
+            String promptLead,
+            String userStance,
+            String philosopherId,
+            String philosopherName,
+            String school,
+            String keyIdeas,
+            String summary,
+            String history,
+            String locale) {
+        boolean en = locale != null && locale.toLowerCase(Locale.ROOT).startsWith("en");
+        String lang = en ? "English" : "Chinese";
+        String task = "You ARE " + philosopherName + " (" + school + ") in a moral dilemma discussion. "
+                + "The Judge has just questioned you (see last Judge line in history). "
+                + "Reply to the Judge in first person only—not to re-argue with the user."
+                + (en ? "" : " 仅回应裁判追问，勿重复上一轮对用户的全文。");
+        String constraints = dilemmaSpeechConstraints(en, lang, false);
+        String tail = dilemmaSpeechContext(
+                moralDilemmaTitle, moralDilemmaTitleEn, question, promptLead, userStance,
+                keyIdeas, summary, history, null, philosopherId, philosopherName, school);
+        return headerPlainSpeech(task, "Distinct in-character reply to Judge; non-empty", constraints, tail);
+    }
+
+    /** 道德困境：Judge 是否介入（流式纯文本；格式同哲学辩论 Judge 步） */
+    public static String dilemmaJudgeStep(
+            String moralDilemmaTitle,
+            String moralDilemmaTitleEn,
+            String question,
+            String promptLead,
+            String userStance,
+            String philosopherName,
+            String school,
+            String history,
+            String locale) {
+        boolean en = locale != null && locale.toLowerCase(Locale.ROOT).startsWith("en");
+        String lang = en ? "English" : "Chinese";
+        String task = en
+                ? "Read the moral dilemma discussion history (including the latest user and philosopher messages). "
+                        + "You are Judge. Decide whether to intervene to guide both sides. Do NOT speak as the philosopher."
+                : "阅读道德困境对话历史（含用户与哲学家刚才的发言）。你作为 Judge 决定是否介入引导双方。不替哲学家发言。";
+        String constraints = DILEMMA_EDUCATION_CONTEXT + "；" + lang + " only；裁判第三人称；"
+                + (en ? "55-120 words when intervening" : "介入时约 55-120 字")
+                + "；不介入时仅输出 " + PhilosophyJudgeStepParser.NO_JUDGE + "；"
+                + "介入时输出引导/追问正文，最后一行单独输出 META:{\"addressTo\":\"user|philosopher\",\"continueDebate\":true}；"
+                + "addressTo 表示本轮主要追问谁；勿 JSON 围栏；勿哲学家口吻。";
+        StringBuilder tail = new StringBuilder();
+        tail.append("道德困境：").append(moralDilemmaTitle);
+        if (moralDilemmaTitleEn != null && !moralDilemmaTitleEn.isBlank()) {
+            tail.append(" (").append(moralDilemmaTitleEn).append(")");
+        }
+        tail.append("\n问题：").append(question).append("\n");
+        if (promptLead != null && !promptLead.isBlank()) {
+            tail.append("讨论提醒：").append(promptLead.trim()).append("\n");
+        }
+        tail.append("哲学家：").append(philosopherName).append("（").append(school).append("）\n");
+        tail.append("用户立场：").append(userStance).append("\n");
+        if (history != null && !history.isBlank()) {
+            tail.append("对话历史：\n").append(history).append("\n");
+        }
+        return headerJudgePlainSpeech(task, "Valid [NO_JUDGE] or non-empty message with META line", constraints, tail.toString());
+    }
+
+    private static String dilemmaSpeechConstraints(boolean en, String lang, boolean opening) {
+        String len = opening ? (en ? "about 70-110 words" : "约 70-110 字") : (en ? "about 55-95 words" : "约 55-95 字");
+        String anti = en
+                ? "FORBIDDEN: identical openings (e.g. 'Dear colleagues'), self-intro formula ('I am X'), "
+                        + "numbered book lists, closing 'let us rationally discuss', copying others' style from history."
+                : "严禁千篇一律开场、自报家门、罗列著作、理性对话口号收尾、克隆他人口吻。";
+        return DILEMMA_EDUCATION_CONTEXT + "；" + lang + " only；第一人称；" + len + "；"
+                + anti + "；" + (opening ? "" : "须回应用户具体观点。");
+    }
+
+    private static String dilemmaSpeechContext(
+            String moralDilemmaTitle,
+            String moralDilemmaTitleEn,
+            String question,
+            String promptLead,
+            String userStance,
+            String keyIdeas,
+            String summary,
+            String history,
+            String latestUserLine,
+            String philosopherId,
+            String philosopherName,
+            String school) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[PERSONA_VOICE]\n").append(roundtablePersonaVoice(philosopherId, philosopherName, school, keyIdeas));
+        if (summary != null && !summary.isBlank()) {
+            sb.append("\n人物背景（仅供把握语气，勿照抄）：").append(summary.trim());
+        }
+        sb.append("\n\n道德困境：").append(moralDilemmaTitle);
+        if (moralDilemmaTitleEn != null && !moralDilemmaTitleEn.isBlank()) {
+            sb.append(" (").append(moralDilemmaTitleEn).append(")");
+        }
+        sb.append("\n问题：").append(question).append("\n");
+        if (promptLead != null && !promptLead.isBlank()) {
+            sb.append("讨论提醒：").append(promptLead.trim()).append("\n");
+        }
+        sb.append("用户立场：").append(userStance).append("\n");
+        if (keyIdeas != null && !keyIdeas.isBlank()) {
+            sb.append("你的核心思想：").append(keyIdeas).append("\n");
+        }
+        if (latestUserLine != null && !latestUserLine.isBlank()) {
+            sb.append("用户本轮发言：").append(latestUserLine).append("\n");
+        }
+        if (history != null && !history.isBlank()) {
+            sb.append("对话历史：\n").append(history).append("\n");
+        }
+        return sb.toString();
+    }
+
+    /** @deprecated 道德困境合并单轮双语 JSON；请用 dilemmaPhilosopherToUser + dilemmaJudgeStep 分步流式 */
     public static String dilemmaTurn(String title, String titleEn, String question, String promptLead,
                                      String userStance, String philosopherName, String school, String keyIdeas,
                                      String history) {
