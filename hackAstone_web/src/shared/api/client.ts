@@ -1,8 +1,11 @@
+import { ApiClientError } from "./apiError";
 import {
   DEFAULT_USER_SETTINGS,
   normalizeUserSettings,
   type UserSettings,
 } from "./userSettings";
+
+export { ApiClientError, localizeApiError } from "./apiError";
 
 export type { UserSettings } from "./userSettings";
 export { DEFAULT_USER_SETTINGS, normalizeUserSettings } from "./userSettings";
@@ -121,7 +124,7 @@ export async function apiGet<T>(path: string): Promise<T> {
   }
   const body = (await res.json()) as ApiResult<T>;
   if (!body.success) {
-    throw new Error(body.message || "请求失败");
+    throw new ApiClientError(body.code ?? 0, body.message || "请求失败");
   }
   return body.data;
 }
@@ -140,7 +143,7 @@ export async function apiPost<T>(path: string, bodyPayload: unknown): Promise<T>
   }
   const body = (await res.json()) as ApiResult<T>;
   if (!body.success) {
-    throw new Error(body.message || "请求失败");
+    throw new ApiClientError(body.code ?? 0, body.message || "请求失败");
   }
   return body.data;
 }
@@ -159,7 +162,7 @@ export async function apiPut<T>(path: string, bodyPayload: unknown): Promise<T> 
   }
   const body = (await res.json()) as ApiResult<T>;
   if (!body.success) {
-    throw new Error(body.message || "请求失败");
+    throw new ApiClientError(body.code ?? 0, body.message || "请求失败");
   }
   return body.data;
 }
@@ -202,7 +205,7 @@ export async function uploadUserAvatar(file: File): Promise<UserProfile> {
   }
   const body = (await res.json()) as ApiResult<UserProfile>;
   if (!body.success) {
-    throw new Error(body.message || "上传失败");
+    throw new ApiClientError(body.code ?? 0, body.message || "上传失败");
   }
   return {
     ...body.data,

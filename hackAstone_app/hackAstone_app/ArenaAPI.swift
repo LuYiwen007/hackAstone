@@ -4,14 +4,29 @@ enum ArenaAPIError: LocalizedError {
     case badURL
     case httpStatus(Int)
     case serverMessage(String)
+    /// 业务错误（HTTP 200，success=false），含后端 code
+    case serverBiz(code: Int, message: String)
     case decode
     case network(Error)
+
+    var bizCode: Int? {
+        if case .serverBiz(let code, _) = self { return code }
+        return nil
+    }
+
+    var serverText: String? {
+        switch self {
+        case .serverMessage(let m), .serverBiz(_, let m): return m
+        default: return nil
+        }
+    }
 
     var errorDescription: String? {
         switch self {
         case .badURL: return "无效的接口地址"
         case .httpStatus(let c): return "HTTP \(c)"
         case .serverMessage(let m): return m
+        case .serverBiz(_, let m): return m
         case .decode: return "数据解析失败"
         case .network(let err):
             if let urlErr = err as? URLError {
@@ -164,7 +179,8 @@ enum ArenaAPI {
         guard let obj else { throw ArenaAPIError.decode }
         guard (obj["success"] as? Bool) == true else {
             let msg = (obj["message"] as? String) ?? "请求失败"
-            throw ArenaAPIError.serverMessage(msg)
+            let code = (obj["code"] as? Int) ?? (obj["code"] as? NSNumber)?.intValue ?? 0
+            throw ArenaAPIError.serverBiz(code: code, message: msg)
         }
         guard let inner = obj["data"] else { throw ArenaAPIError.decode }
         return inner

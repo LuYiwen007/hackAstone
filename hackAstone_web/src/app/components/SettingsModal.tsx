@@ -38,56 +38,15 @@ type SettingsModalProps = {
   onClose: () => void;
 };
 
-const plans = [
-  {
-    id: "free",
-    name: "免费版",
-    nameEn: "Free",
-    price: "¥0",
-    period: "/月",
-    description: "探索认知对抗的起点",
-    features: ["每日 5 场辩论", "基础思维画像", "3 位思想家"],
-    icon: Shield,
-    color: "zinc",
-    current: true,
-  },
-  {
-    id: "pro",
-    name: "专业版",
-    nameEn: "Pro",
-    price: "¥29",
-    period: "/月",
-    description: "深度认知训练体验",
-    features: [
-      "无限场次辩论",
-      "完整思维画像分析",
-      "全部思想家解锁",
-      "圆桌辩论模式",
-      "闪卡与测验生成",
-    ],
-    icon: Zap,
-    color: "orange",
-    current: false,
-  },
-  {
-    id: "elite",
-    name: "精英版",
-    nameEn: "Elite",
-    price: "¥89",
-    period: "/月",
-    description: "顶级认知竞技体验",
-    features: [
-      "专业版全部功能",
-      "AI 深度反馈报告",
-      "认知偏差周报",
-      "优先体验新功能",
-      "专属社群",
-    ],
-    icon: Crown,
-    color: "purple",
-    current: false,
-  },
-];
+const subscriptionPlans = [
+  { id: "free", icon: Shield, color: "zinc" as const, current: true, featureCount: 3 },
+  { id: "pro", icon: Zap, color: "orange" as const, current: false, featureCount: 5 },
+  { id: "elite", icon: Crown, color: "purple" as const, current: false, featureCount: 5 },
+] as const;
+
+function subscriptionFeatureKeys(planId: string, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => `settings.plan.${planId}.feature${i + 1}`);
+}
 
 const navItems: {
   id: SettingsSection;
@@ -221,7 +180,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const isZh = locale === "zh";
   const displayName =
     nickname.trim() || ctxDisplayName || auth?.nickname || auth?.username || (isZh ? "认知竞技者" : "Arena Player");
-  const planLabel = isZh ? "免费版" : "Free";
+  const planLabel = t("settings.plan.free.name");
   const prefs = settings.preferences;
   const notifications = settings.notifications;
   const theme = settings.appearance.theme;
@@ -589,14 +548,11 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
             {section === "subscription" && (
               <div className="py-2">
-                <p className="mb-5 text-xs text-zinc-500">
-                  {isZh
-                    ? "解锁完整认知训练体验，加速思维升级"
-                    : "Unlock the full cognitive training experience"}
-                </p>
+                <p className="mb-5 text-xs text-zinc-500">{t("settings.subscription.lead")}</p>
                 <div className="space-y-3">
-                  {plans.map((plan) => {
+                  {subscriptionPlans.map((plan) => {
                     const Icon = plan.icon;
+                    const planName = t(`settings.plan.${plan.id}.name`);
                     const colorMap = {
                       zinc: "border-zinc-700 bg-zinc-800/40",
                       orange: "border-orange-600/60 bg-orange-950/30",
@@ -607,7 +563,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                       orange: "text-orange-400",
                       purple: "text-purple-400",
                     };
-                    const color = plan.color as keyof typeof colorMap;
+                    const color = plan.color;
                     return (
                       <div
                         key={plan.id}
@@ -615,32 +571,32 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                       >
                         {plan.current ? (
                           <span className="absolute top-3 right-3 rounded-full bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
-                            {isZh ? "当前方案" : "Current"}
+                            {t("settings.plan.current")}
                           </span>
                         ) : null}
                         <div className="mb-3 flex items-start gap-3">
                           <Icon className={`mt-0.5 h-5 w-5 ${accentMap[color]}`} />
                           <div>
-                            <div className="text-sm font-semibold text-zinc-100">
-                              {isZh ? plan.name : plan.nameEn}
+                            <div className="text-sm font-semibold text-zinc-100">{planName}</div>
+                            <div className="text-xs text-zinc-500">
+                              {t(`settings.plan.${plan.id}.desc`)}
                             </div>
-                            <div className="text-xs text-zinc-500">{plan.description}</div>
                           </div>
                           <div className="ml-auto text-right">
                             <span className={`text-lg font-bold ${accentMap[color]}`}>
-                              {plan.price}
+                              {t(`settings.plan.${plan.id}.price`)}
                             </span>
-                            <span className="text-xs text-zinc-600">{plan.period}</span>
+                            <span className="text-xs text-zinc-600">{t("settings.plan.period")}</span>
                           </div>
                         </div>
                         <ul className="mb-3 space-y-1">
-                          {plan.features.map((f) => (
+                          {subscriptionFeatureKeys(plan.id, plan.featureCount).map((key) => (
                             <li
-                              key={f}
+                              key={key}
                               className="flex items-center gap-2 text-xs text-zinc-400"
                             >
                               <Check className="h-3 w-3 shrink-0 text-zinc-500" />
-                              {f}
+                              {t(key)}
                             </li>
                           ))}
                         </ul>
@@ -653,9 +609,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                                 : "bg-orange-600 text-white hover:bg-orange-700"
                             }`}
                           >
-                            {isZh
-                              ? `升级到${plan.name}`
-                              : `Upgrade to ${plan.nameEn}`}
+                            {t("settings.plan.upgrade", { name: planName })}
                           </button>
                         ) : null}
                       </div>
