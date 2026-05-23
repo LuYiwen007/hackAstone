@@ -58,8 +58,9 @@ export function fetchArenaCatalog(locale: ArenaLocale = "en") {
   return apiGet<ArenaCatalogPayload>(`/arena/catalog?locale=${locale}`);
 }
 
-export function fetchMindProfile() {
-  return apiGet<MindProfilePayload>("/arena/profile");
+export function fetchMindProfile(locale: ArenaLocale = "en") {
+  const loc = locale.startsWith("zh") ? "zh" : "en";
+  return apiGet<MindProfilePayload>(`/arena/profile?locale=${loc}`);
 }
 
 export type RoundtableMessagesBilingual = {
@@ -426,6 +427,9 @@ export function generateDilemmaSummary(
   return apiPostStream<AgentRunResponse>("/arena/agent/dilemma/summary/stream", body, handlers);
 }
 
+export type { ProfileI18n, ProfileI18nSlice } from "./profileI18n";
+export { buildProfileI18n, dilemmaOptionLabel, dilemmaTopicTitle, tFromStrings } from "./profileI18n";
+
 export function saveBattleRecord(body: {
   battleType: string;
   topic: string;
@@ -433,6 +437,7 @@ export function saveBattleRecord(body: {
   judgeSummary: string;
   changedStance: boolean;
   messages?: unknown;
+  profileI18n?: import("./profileI18n").ProfileI18n;
 }) {
   return apiPost<string>("/arena/battle/record", body);
 }

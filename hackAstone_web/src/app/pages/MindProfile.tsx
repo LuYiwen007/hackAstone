@@ -12,21 +12,31 @@ import { useUserSettings } from "../context/UserSettingsContext";
 
 function statLabelKey(label: string): string {
   const map: Record<string, string> = {
+    battles: "profile.stats.battles",
+    changed: "profile.stats.changed",
+    blindspots: "profile.stats.blindspots",
+    accuracy: "profile.stats.accuracy",
     "已完成对局": "profile.stats.battles",
     "改变立场次数": "profile.stats.changed",
     "思维盲区": "profile.stats.blindspots",
     "准确判断率": "profile.stats.accuracy",
   };
-  return map[label] || label;
+  return map[label] ? map[label] : `profile.stats.${label}`;
+}
+
+function statValue(stats: MindProfilePayload["stats"], key: string, legacyZh: string): string {
+  return stats.find((s) => s.label === key)?.value
+    ?? stats.find((s) => s.label === legacyZh)?.value
+    ?? "0";
 }
 
 const emptyProfile: MindProfilePayload = {
   biases: [],
   stats: [
-    { label: "已完成对局", value: "0" },
-    { label: "改变立场次数", value: "0" },
-    { label: "思维盲区", value: "0" },
-    { label: "准确判断率", value: "--" },
+    { label: "battles", value: "0" },
+    { label: "changed", value: "0" },
+    { label: "blindspots", value: "0" },
+    { label: "accuracy", value: "--" },
   ],
   recentBattles: [],
 };
@@ -37,7 +47,7 @@ export function MindProfile() {
   const [error, setError] = useState("");
   const loggedIn = isLoggedIn();
   const auth = getAuth();
-  const { t } = useArenaLocale();
+  const { t, locale } = useArenaLocale();
   const { displayName, refreshFromServer } = useUserSettings();
 
   useEffect(() => {
@@ -48,7 +58,7 @@ export function MindProfile() {
     void refreshFromServer();
     setLoading(true);
     setError("");
-    fetchMindProfile()
+    fetchMindProfile(locale)
       .then((res) => {
         setData(res);
       })
@@ -57,15 +67,14 @@ export function MindProfile() {
         setError(msg);
       })
       .finally(() => setLoading(false));
-  }, [loggedIn, auth?.userId, t]);
+  }, [loggedIn, auth?.userId, locale, t]);
 
   const { biases, stats, recentBattles } = data;
   const statsWithIcons = stats.map((s) => ({ ...s, icon: Users }));
 
   // 从 stats 中提取关键数字用于洞察
-  const battlesCount = parseInt(stats.find((s) => s.label === "已完成对局")?.value || "0", 10) || 0;
-  const changedCount = parseInt(stats.find((s) => s.label === "改变立场次数")?.value || "0", 10) || 0;
-  const accuracyStr = stats.find((s) => s.label === "准确判断率")?.value || "--";
+  const battlesCount = parseInt(statValue(stats, "battles", "已完成对局"), 10) || 0;
+  const changedCount = parseInt(statValue(stats, "changed", "改变立场次数"), 10) || 0;
 
   // 找出最高和最低的偏差
   const sortedBiases = [...biases].sort((a, b) => b.percentage - a.percentage);

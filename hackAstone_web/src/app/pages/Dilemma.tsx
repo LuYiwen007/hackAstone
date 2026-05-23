@@ -29,6 +29,10 @@ import { philosopherForLocale } from "../data/philosopherLocale";
 import type { Philosopher } from "../data/philosophers";
 import { DebateSummary } from "../components/DebateSummary";
 import {
+  buildProfileI18n,
+  dilemmaOptionLabel,
+  dilemmaTopicTitle,
+  fetchArenaI18n,
   generateDilemmaSummary,
   maybeSaveBattleRecord,
   streamDilemmaJudgeStep,
@@ -309,20 +313,54 @@ export function Dilemma() {
         setSummaryLocales(summary);
         const summaryText = summaryForLocale(summary, locale);
         if (isLoggedIn()) {
-          maybeSaveBattleRecord({
-            battleType: "dilemma",
-            topic: currentDilemma.title,
-            userChoice: selectedOption.label,
-            judgeSummary: summaryText,
-            changedStance: false,
-            messages: messages.map((m) => ({
-              role: m.role,
-              content: dilemmaMessageContent(m, locale, t, selectedOption.label),
-            })),
-          }).catch((err: unknown) => {
-            const msg = err instanceof Error ? err.message : "";
-            toast.error(t("dilemma.saveFailed") + ": " + msg);
-          });
+          void (async () => {
+            try {
+              const [enPack, zhPack] = await Promise.all([
+                fetchArenaI18n("en"),
+                fetchArenaI18n("zh"),
+              ]);
+              const optId = selectedOption.id;
+              const dilemmaId = currentDilemma.id;
+              await maybeSaveBattleRecord({
+                battleType: "dilemma",
+                topic: locale === "zh" ? currentDilemma.title : currentDilemma.englishTitle,
+                userChoice: selectedOption.label,
+                judgeSummary: summaryText,
+                changedStance: false,
+                messages: messages.map((m) => ({
+                  role: m.role,
+                  content: dilemmaMessageContent(m, locale, t, selectedOption.label),
+                })),
+                profileI18n: buildProfileI18n(
+                  {
+                    topic: dilemmaTopicTitle(
+                      dilemmaId,
+                      "en",
+                      enPack.strings,
+                      currentDilemma.title,
+                      currentDilemma.englishTitle
+                    ),
+                    userChoice: dilemmaOptionLabel(dilemmaId, optId, enPack.strings),
+                    judgeSummary: summary.en.fullExplanation,
+                  },
+                  {
+                    topic: dilemmaTopicTitle(
+                      dilemmaId,
+                      "zh",
+                      zhPack.strings,
+                      currentDilemma.title,
+                      currentDilemma.englishTitle
+                    ),
+                    userChoice: dilemmaOptionLabel(dilemmaId, optId, zhPack.strings),
+                    judgeSummary: summary.zh.fullExplanation,
+                  }
+                ),
+              });
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : "";
+              toast.error(t("dilemma.saveFailed") + ": " + msg);
+            }
+          })();
         }
       } else {
         throw new Error(t("dilemma.error.summaryFailed"));

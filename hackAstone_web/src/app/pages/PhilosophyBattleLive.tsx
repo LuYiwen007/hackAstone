@@ -7,12 +7,15 @@ import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleCo
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { DebateSummary } from "../components/DebateSummary";
 import {
+  buildProfileI18n,
+  fetchArenaI18n,
   generateTopic,
   runEchoQuery,
   maybeSaveBattleRecord,
   streamPhilosophyJudgeStep,
   streamPhilosophyPhilosopherToJudge,
   streamPhilosophyPhilosopherToUser,
+  tFromStrings,
 } from "../../shared/api/arena";
 import { isLoggedIn } from "../../shared/api/client";
 import { playArenaInteractionSound } from "../../shared/arenaPreferences";
@@ -399,16 +402,44 @@ export function PhilosophyBattleLive() {
       if (parsed?.fullExplanation) {
         setFullExplanation(parsed.fullExplanation);
         if (isLoggedIn()) {
-          maybeSaveBattleRecord({
-            battleType: "philosophy",
-            topic: topic.question,
-            userChoice: choiceLabel(choice),
-            judgeSummary: parsed.fullExplanation,
-            changedStance: false,
-            messages: messages.map((m) => ({ role: m.role, content: m.content })),
-          }).catch(() => {
-            // 保存失败静默处理
-          });
+          void (async () => {
+            try {
+              const [enPack, zhPack] = await Promise.all([
+                fetchArenaI18n("en"),
+                fetchArenaI18n("zh"),
+              ]);
+              const tEn = tFromStrings(enPack.strings);
+              const tZh = tFromStrings(zhPack.strings);
+              const choiceText = (c: Exclude<Choice, null>, tr: typeof tEn) => {
+                if (c === "agree") return tr("battle.agree");
+                if (c === "disagree") return tr("battle.disagree");
+                return tr("battle.uncertain");
+              };
+              const explanation = parsed.fullExplanation;
+              await maybeSaveBattleRecord({
+                battleType: "philosophy",
+                topic: topic.question,
+                userChoice: choiceLabel(choice),
+                judgeSummary: explanation,
+                changedStance: false,
+                messages: messages.map((m) => ({ role: m.role, content: m.content })),
+                profileI18n: buildProfileI18n(
+                  {
+                    topic: topic.question,
+                    userChoice: choiceText(choice, tEn),
+                    judgeSummary: explanation,
+                  },
+                  {
+                    topic: topic.question,
+                    userChoice: choiceText(choice, tZh),
+                    judgeSummary: explanation,
+                  }
+                ),
+              });
+            } catch {
+              /* 保存失败静默处理 */
+            }
+          })();
         }
       } else {
         throw new Error(t("error.summaryField"));
