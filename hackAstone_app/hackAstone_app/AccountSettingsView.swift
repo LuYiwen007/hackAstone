@@ -584,31 +584,41 @@ struct AccountSettingsView: View {
                 Image(systemName: plan.icon)
                     .foregroundStyle(plan.accent)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(plan.title(L: L))
+                    Text(L.settingsPlanName(id: plan.id))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(ArenaTheme.textPrimary)
-                    Text(plan.subtitle(L: L))
+                    Text(L.settingsPlanDesc(id: plan.id))
                         .font(.caption2)
                         .foregroundStyle(ArenaTheme.textMuted)
                 }
                 Spacer()
-                if plan.isCurrent {
-                    Text(L.settingsCurrentPlan)
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(ArenaTheme.surface)
-                        .clipShape(Capsule())
-                        .foregroundStyle(ArenaTheme.textMuted)
+                VStack(alignment: .trailing, spacing: 0) {
+                    if plan.isCurrent {
+                        Text(L.settingsCurrentPlan)
+                            .font(.caption2)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(ArenaTheme.surface)
+                            .clipShape(Capsule())
+                            .foregroundStyle(ArenaTheme.textMuted)
+                    }
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text(L.settingsPlanPrice(id: plan.id))
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(plan.accent)
+                        Text(L.settingsPlanPeriod)
+                            .font(.caption2)
+                            .foregroundStyle(ArenaTheme.textMuted)
+                    }
                 }
             }
-            ForEach(plan.features(L: L), id: \.self) { line in
+            ForEach(L.settingsPlanFeatures(id: plan.id), id: \.self) { line in
                 Label(line, systemImage: "checkmark")
                     .font(.caption2)
                     .foregroundStyle(ArenaTheme.textMuted)
             }
             if !plan.isCurrent {
-                Text(L.settingsUpgrade)
+                Text(L.settingsUpgradeTo(planName: L.settingsPlanName(id: plan.id)))
                     .font(.caption.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -805,33 +815,6 @@ private struct SubscriptionPlan: Identifiable {
     let border: Color
     let cardBackground: Color
     let buttonFill: Color
-
-    func title(L: ArenaL10n) -> String {
-        switch id {
-        case "free": return L.settingsPlanFree
-        case "pro": return L.en ? "Pro" : "专业版"
-        default: return L.en ? "Elite" : "精英版"
-        }
-    }
-
-    func subtitle(L: ArenaL10n) -> String {
-        L.en ? "Cognitive training plan" : "认知训练方案"
-    }
-
-    func features(L: ArenaL10n) -> [String] {
-        if L.en {
-            switch id {
-            case "free": return ["5 debates / day", "Basic mind profile", "3 philosophers"]
-            case "pro": return ["Unlimited debates", "Full mind profile", "All philosophers"]
-            default: return ["Everything in Pro", "AI deep reports", "Weekly bias digest"]
-            }
-        }
-        switch id {
-        case "free": return ["每日 5 场辩论", "基础思维画像", "3 位思想家"]
-        case "pro": return ["无限场次辩论", "完整思维画像", "全部思想家"]
-        default: return ["专业版全部功能", "AI 深度反馈", "认知偏差周报"]
-        }
-    }
 
     static let all: [SubscriptionPlan] = [
         SubscriptionPlan(

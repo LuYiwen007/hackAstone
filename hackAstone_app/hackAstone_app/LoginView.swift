@@ -176,8 +176,20 @@ struct LoginView: View {
             }
         } catch let err {
             await MainActor.run {
-                error = (err as? LocalizedError)?.errorDescription ?? err.localizedDescription
+                error = localizedLoginError(err, L: L)
             }
         }
+    }
+
+    private func localizedLoginError(_ err: Error, L: ArenaL10n) -> String {
+        if let api = err as? ArenaAPIError {
+            if case .serverBiz(let code, let message) = api {
+                return L.apiErrorMessage(code: code, serverMessage: message)
+            }
+            if let text = api.serverText, !text.isEmpty {
+                return L.apiErrorMessage(code: api.bizCode ?? 0, serverMessage: text)
+            }
+        }
+        return (err as? LocalizedError)?.errorDescription ?? err.localizedDescription
     }
 }

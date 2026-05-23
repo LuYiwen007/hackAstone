@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { Brain, Eye, EyeOff } from "lucide-react";
-import { apiPost, setAuth } from "../../shared/api/client";
+import { apiPost, localizeApiError, setAuth } from "../../shared/api/client";
 import { useArenaLocale } from "../context/ArenaLocaleContext";
 
 type LoginResponse = {
@@ -58,8 +58,7 @@ export function LoginPage() {
         navigate("/profile");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t("error.generic") || "操作失败";
-      setError(msg);
+      setError(localizeApiError(err, t));
     } finally {
       setLoading(false);
     }

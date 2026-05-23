@@ -149,6 +149,37 @@ struct ArenaL10n {
     var noAccount: String { en ? "Don't have an account?" : "还没有账号？" }
     var loginNow: String { en ? "Login now" : "直接登录" }
     var registerNow: String { en ? "Register now" : "立即注册" }
+    var errorGeneric: String { en ? "Something went wrong. Please try again." : "操作失败，请稍后重试" }
+    var errorUserNotExist: String {
+        en ? "Account not found. Check your nickname or email." : "用户不存在，请检查昵称或邮箱"
+    }
+    var errorPassword: String { en ? "Incorrect password." : "密码错误" }
+    var errorUserExist: String { en ? "This account already exists." : "用户已存在" }
+    var errorEmailTaken: String { en ? "This email is already registered." : "该邮箱已被注册" }
+    var errorNicknameTaken: String { en ? "This nickname is already taken." : "该昵称已被使用" }
+    var errorParam: String { en ? "Invalid input. Please check and try again." : "输入有误，请检查后重试" }
+
+    /// 将后端业务码映射为当前界面语言（与 Web error.* 对齐）
+    func apiErrorMessage(code: Int, serverMessage: String) -> String {
+        switch code {
+        case 400: return errorParam
+        case 1001: return errorUserExist
+        case 1002: return errorUserNotExist
+        case 1003: return errorPassword
+        default:
+            break
+        }
+        switch serverMessage {
+        case "用户不存在": return errorUserNotExist
+        case "密码错误": return errorPassword
+        case "用户已存在": return errorUserExist
+        case "该邮箱已被注册": return errorEmailTaken
+        case "该昵称已被使用": return errorNicknameTaken
+        default:
+            return serverMessage.isEmpty ? errorGeneric : serverMessage
+        }
+    }
+
     var profileGuestTitle: String { en ? "Your mind profile" : "你的思维画像" }
     var profileGuestHint: String {
         en ? "Login to view your personalized mind analysis." : "登录后即可查看属于你的个性化思维分析。"
@@ -204,8 +235,97 @@ struct ArenaL10n {
         en ? "Display countdown during debates" : "在辩论时显示作答倒计时"
     }
     var settingsSubscriptionLead: String {
-        en ? "Unlock the full cognitive training experience" : "解锁完整认知训练体验，加速思维升级"
+        en
+            ? "Unlock the full cognitive training experience and level up your thinking."
+            : "解锁完整认知训练体验，加速思维升级"
     }
+    var settingsPlanPeriod: String { en ? "/mo" : "/月" }
+    var settingsPlanPro: String { en ? "Pro" : "专业版" }
+    var settingsPlanElite: String { en ? "Elite" : "精英版" }
+    var settingsPlanFreeDesc: String {
+        en ? "Start exploring cognitive sparring" : "探索认知对抗的起点"
+    }
+    var settingsPlanProDesc: String { en ? "Deep cognitive training" : "深度认知训练体验" }
+    var settingsPlanEliteDesc: String {
+        en ? "Top-tier cognitive arena experience" : "顶级认知竞技体验"
+    }
+    var settingsPlanFreePrice: String { "¥0" }
+    var settingsPlanProPrice: String { "¥29" }
+    var settingsPlanElitePrice: String { "¥89" }
+
+    func settingsPlanDesc(id: String) -> String {
+        switch id {
+        case "free": return settingsPlanFreeDesc
+        case "pro": return settingsPlanProDesc
+        default: return settingsPlanEliteDesc
+        }
+    }
+
+    func settingsPlanPrice(id: String) -> String {
+        switch id {
+        case "free": return settingsPlanFreePrice
+        case "pro": return settingsPlanProPrice
+        default: return settingsPlanElitePrice
+        }
+    }
+
+    func settingsPlanName(id: String) -> String {
+        switch id {
+        case "free": return settingsPlanFree
+        case "pro": return settingsPlanPro
+        default: return settingsPlanElite
+        }
+    }
+
+    func settingsPlanFeatures(id: String) -> [String] {
+        if en {
+            switch id {
+            case "free":
+                return ["5 debates per day", "Basic mind profile", "3 philosophers"]
+            case "pro":
+                return [
+                    "Unlimited debates",
+                    "Full mind profile analysis",
+                    "All philosophers unlocked",
+                    "Roundtable debate mode",
+                    "Flashcards & quizzes",
+                ]
+            default:
+                return [
+                    "Everything in Pro",
+                    "AI deep feedback reports",
+                    "Weekly bias digest",
+                    "Early access to new features",
+                    "Exclusive community",
+                ]
+            }
+        }
+        switch id {
+        case "free":
+            return ["每日 5 场辩论", "基础思维画像", "3 位思想家"]
+        case "pro":
+            return [
+                "无限场次辩论",
+                "完整思维画像分析",
+                "全部思想家解锁",
+                "圆桌辩论模式",
+                "闪卡与测验生成",
+            ]
+        default:
+            return [
+                "专业版全部功能",
+                "AI 深度反馈报告",
+                "认知偏差周报",
+                "优先体验新功能",
+                "专属社群",
+            ]
+        }
+    }
+
+    func settingsUpgradeTo(planName: String) -> String {
+        en ? "Upgrade to \(planName)" : "升级到\(planName)"
+    }
+
     var settingsCurrentPlan: String { en ? "Current" : "当前方案" }
     var settingsInterfaceLanguage: String { en ? "Interface Language" : "界面语言" }
     var settingsSystemLanguageNote: String {
