@@ -4,18 +4,19 @@ import { useParams, Link } from "react-router";
 import { ArrowLeft, AlertCircle, MessageSquare } from "lucide-react";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
 import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleContext";
-import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import type { DebateTopicContent } from "../data/debateTopicTypes";
 import { DebateSummary } from "../components/DebateSummary";
 import {
   generateTopic,
   runEchoQuery,
-  saveBattleRecord,
+  maybeSaveBattleRecord,
   streamPhilosophyJudgeStep,
   streamPhilosophyPhilosopherToJudge,
   streamPhilosophyPhilosopherToUser,
 } from "../../shared/api/arena";
 import { isLoggedIn } from "../../shared/api/client";
+import { playArenaInteractionSound } from "../../shared/arenaPreferences";
+import { useUserSettings } from "../context/UserSettingsContext";
 import { philosopherForLocale } from "../data/philosopherLocale";
 import { parseJsonPayload } from "../../shared/jsonPayload";
 import {
@@ -47,6 +48,8 @@ type SummaryResult = {
 export function PhilosophyBattleLive() {
   const { id } = useParams();
   const { t, locale } = useArenaLocale();
+  const { settings } = useUserSettings();
+  const showThinkingTimer = settings.preferences.timer;
   const { philosophers } = useArenaCatalog();
   const philosopher = philosophers.find((p) => p.id === id);
   const displayName = philosopher ? philosopherDisplayName(philosopher, locale) : "";
@@ -65,12 +68,33 @@ export function PhilosophyBattleLive() {
   const [fullExplanation, setFullExplanation] = useState<string>("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const [thinkSeconds, setThinkSeconds] = useState(120);
+  const prevMessageCount = useRef(0);
 
   const tablePreparingLabel = t("battle.tablePreparing");
   const philosopherThinkingLabel = t("battle.philosopherThinking", {
     name: displayName || philosopher?.nameCN || "",
   });
   const judgeThinkingLabel = t("battle.judgeThinking");
+
+  useEffect(() => {
+    if (stage !== "debate" || !showThinkingTimer || isThinking) return;
+    setThinkSeconds(120);
+    const timer = window.setInterval(() => {
+      setThinkSeconds((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [stage, showThinkingTimer, isThinking, messages.length]);
+
+  useEffect(() => {
+    if (messages.length > prevMessageCount.current) {
+      const last = messages[messages.length - 1];
+      if (last && last.role !== "user") {
+        playArenaInteractionSound();
+      }
+    }
+    prevMessageCount.current = messages.length;
+  }, [messages]);
 
   useEffect(() => {
     if (stage !== "debate") return;
@@ -375,7 +399,7 @@ export function PhilosophyBattleLive() {
       if (parsed?.fullExplanation) {
         setFullExplanation(parsed.fullExplanation);
         if (isLoggedIn()) {
-          saveBattleRecord({
+          maybeSaveBattleRecord({
             battleType: "philosophy",
             topic: topic.question,
             userChoice: choiceLabel(choice),
@@ -408,7 +432,6 @@ export function PhilosophyBattleLive() {
               <span>{t("battle.backToMap")}</span>
             </Link>
             <div className="flex items-center gap-3">
-              <LanguageSwitcher />
               <div className="text-sm text-right">
                 <div className="font-bold">{displayName}</div>
                 <div className="text-zinc-500">{philosopher.school}</div>
@@ -535,6 +558,17 @@ export function PhilosophyBattleLive() {
               </div>
 
               <div className="shrink-0 p-4 border-t border-zinc-800 bg-zinc-950/80 space-y-3">
+                {showThinkingTimer && !isThinking ? (
+                  <div
+                    className={`text-xs font-medium tabular-nums ${
+                      thinkSeconds <= 30 ? "text-orange-400" : "text-zinc-500"
+                    }`}
+                  >
+                    {locale === "zh"
+                      ? `作答倒计时 ${thinkSeconds}s`
+                      : `Time to respond: ${thinkSeconds}s`}
+                  </div>
+                ) : null}
                 <div className="flex gap-3">
                   <input
                     value={userInput}

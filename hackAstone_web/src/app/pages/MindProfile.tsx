@@ -6,7 +6,9 @@ import {
   type MindProfilePayload,
 } from "../../shared/api/arena";
 import { getAuth, isLoggedIn } from "../../shared/api/client";
+import { UserAvatar } from "../components/UserAvatar";
 import { useArenaLocale } from "../context/ArenaLocaleContext";
+import { useUserSettings } from "../context/UserSettingsContext";
 
 function statLabelKey(label: string): string {
   const map: Record<string, string> = {
@@ -36,12 +38,14 @@ export function MindProfile() {
   const loggedIn = isLoggedIn();
   const auth = getAuth();
   const { t } = useArenaLocale();
+  const { displayName, refreshFromServer } = useUserSettings();
 
   useEffect(() => {
     if (!loggedIn) {
       setLoading(false);
       return;
     }
+    void refreshFromServer();
     setLoading(true);
     setError("");
     fetchMindProfile()
@@ -84,8 +88,8 @@ export function MindProfile() {
           </div>
         </header>
         <main className="max-w-6xl mx-auto px-6 py-24 text-center">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-3xl mx-auto mb-6">
-            🧠
+          <div className="mx-auto mb-6 flex justify-center">
+            <UserAvatar size={80} name={displayName} />
           </div>
           <h1 className="text-3xl font-bold mb-4">{t("profile.guestTitle")}</h1>
           <p className="text-zinc-400 text-lg mb-8 max-w-md mx-auto">
@@ -115,8 +119,9 @@ export function MindProfile() {
             <ArrowLeft className="w-5 h-5" />
             <span>{t("profile.backHome")}</span>
           </Link>
-          <div className="text-sm text-zinc-500">
-            {auth?.nickname || auth?.username}
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <UserAvatar size={28} name={displayName} />
+            <span>{displayName}</span>
           </div>
         </div>
       </header>
@@ -145,8 +150,8 @@ export function MindProfile() {
           <>
             {/* Profile Header */}
             <div className="mb-12 text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-3xl mx-auto mb-4">
-                🧠
+              <div className="mx-auto mb-4 flex justify-center">
+                <UserAvatar size={80} name={displayName} />
               </div>
               <h1 className="text-4xl font-bold mb-2">{t("profile.title")}</h1>
               <p className="text-zinc-400 text-lg">{t("profile.subtitle")}</p>

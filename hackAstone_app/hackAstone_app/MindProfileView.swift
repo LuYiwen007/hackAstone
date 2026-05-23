@@ -1,4 +1,12 @@
 import SwiftUI
+import UIKit
+
+private enum ProfileAvatarStore {
+    static let key = "user_avatar_jpeg_data"
+    static var data: Data? {
+        get { UserDefaults.standard.data(forKey: key) }
+    }
+}
 
 struct MindProfileView: View {
     @EnvironmentObject private var locale: AppLocaleStore
@@ -7,8 +15,15 @@ struct MindProfileView: View {
     @State private var data = MindProfileView.fallback
     @State private var loadError: String?
     @State private var loading = true
+    @State private var avatarUIImage: UIImage?
+    @State private var serverAvatarURL: URL?
 
     private var L: ArenaL10n { locale.L }
+    private var profileDisplayName: String {
+        auth.session?.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? auth.session!.displayName
+            : L.mindProfileTitle
+    }
 
     var body: some View {
         Group {
@@ -40,7 +55,7 @@ struct MindProfileView: View {
             .padding(.horizontal, 16)
 
             Spacer()
-            Text("🧠").font(.system(size: 56))
+            profileAvatarView(size: 80)
             Text(L.profileGuestTitle)
                 .font(.title.weight(.bold))
                 .foregroundStyle(ArenaTheme.textPrimary)
@@ -94,8 +109,7 @@ struct MindProfileView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text("🧠")
-                .font(.system(size: 48))
+            profileAvatarView(size: 72)
             Text(L.mindProfileTitle)
                 .font(.largeTitle.weight(.bold))
                 .foregroundStyle(ArenaTheme.textPrimary)
@@ -277,7 +291,72 @@ struct MindProfileView: View {
         .padding(.top, 8)
     }
 
+    private func profileAvatarView(size: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [ArenaTheme.orangeAccent, Color.red.opacity(0.85)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: size, height: size)
+            if let avatarUIImage {
+                Image(uiImage: avatarUIImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+            } else if let serverAvatarURL {
+                AsyncImage(url: serverAvatarURL) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        Text(String(profileDisplayName.prefix(1)).uppercased())
+                            .font(.system(size: size * 0.38, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+            } else {
+                Text(String(profileDisplayName.prefix(1)).uppercased())
+                    .font(.system(size: size * 0.38, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        }
+    }
+
+    private static func resolveAvatarURL(_ path: String?) -> URL? {
+        guard let path else { return nil }
+        let t = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return nil }
+        if t.hasPrefix("http://") || t.hasPrefix("https://") || t.hasPrefix("data:") {
+            return URL(string: t)
+        }
+        let base = ArenaConfiguration.apiBaseURLString
+        return URL(string: t.hasPrefix("/") ? base + t : base + "/" + t)
+    }
+
+    private func loadUserAvatar() async {
+        if let data = ProfileAvatarStore.data, let img = UIImage(data: data) {
+            await MainActor.run { avatarUIImage = img }
+        }
+        guard auth.isLoggedIn else { return }
+        do {
+            let user = try await ArenaAPI.fetchCurrentUser()
+            await MainActor.run {
+                if avatarUIImage == nil {
+                    serverAvatarURL = Self.resolveAvatarURL(user.avatarUrl)
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
     private func load() async {
+        await loadUserAvatar()
         await MainActor.run { loading = true }
         do {
             let profile = try await ArenaAPI.fetchMindProfile()

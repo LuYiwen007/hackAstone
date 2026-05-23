@@ -81,6 +81,12 @@
         WHERE id = #{userId}
     </update>
 
+    <update id="updateAvatarUrl">
+        UPDATE ha_user
+        SET avatar_url = #{avatarUrl}, updated_at = NOW()
+        WHERE id = #{userId}
+    </update>
+
     <select id="selectByNicknameExceptUser" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM ha_user

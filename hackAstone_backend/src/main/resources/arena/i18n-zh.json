@@ -8,6 +8,8 @@
   "nav.profile": "思维画像",
   "nav.login": "登录",
   "nav.logout": "退出登录",
+  "settings.open": "设置",
+  "settings.close": "关闭设置",
   "lang.switch": "语言",
   "lang.en": "English",
   "lang.zh": "中文",

@@ -20,7 +20,7 @@ import {
 } from "../data/disciplineLocale";
 import { isLoggedIn } from "../../shared/api/client";
 import {
-  saveBattleRecord,
+  maybeSaveBattleRecord,
   streamDisciplineDebateDual,
   streamDisciplineDebateOpponent,
   streamDisciplineDebateSummary,
@@ -60,7 +60,7 @@ export function Battle() {
     const summaryText = summaryLocales
       ? disciplineSummaryForLocale(summaryLocales, locale)
       : battle.reveal ?? "";
-    saveBattleRecord({
+    maybeSaveBattleRecord({
       battleType: "battle",
       topic: battle.question,
       userChoice: choice,

@@ -3,7 +3,8 @@ import type { DisciplineBattleBilingual } from "../../app/data/battleLocale";
 import type { Philosopher } from "../../app/data/philosophers";
 import type { DebateTopicContent } from "../../app/data/debateTopicTypes";
 import type { ArenaLocale } from "../i18n/format";
-import { apiGet, apiPost } from "./client";
+import { getArenaPreferences } from "../arenaPreferences";
+import { apiGet, apiPost, isLoggedIn } from "./client";
 import { apiPostStream, type AgentStreamHandlers } from "./stream";
 
 export type { DisciplineBattleBilingual };
@@ -434,6 +435,16 @@ export function saveBattleRecord(body: {
   messages?: unknown;
 }) {
   return apiPost<string>("/arena/battle/record", body);
+}
+
+/** 尊重用户「自动保存辩论记录」设置 */
+export function maybeSaveBattleRecord(
+  body: Parameters<typeof saveBattleRecord>[0]
+): Promise<string | void> {
+  if (!isLoggedIn() || !getArenaPreferences().autoSave) {
+    return Promise.resolve();
+  }
+  return saveBattleRecord(body);
 }
 
 export function buildDebateNoteKey(philosopherId: string, question: string) {

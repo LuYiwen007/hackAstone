@@ -1,0 +1,49 @@
+/* 外观主题：覆盖常用页面背景 */
+html[data-arena-theme="darker"] body,
+html[data-arena-theme="darker"] .bg-zinc-950 {
+  background-color: #09090b !important;
+}
+
+html[data-arena-theme="darker"] .bg-zinc-900 {
+  background-color: #0c0c0e !important;
+}
+
+html[data-arena-theme="midnight"] body,
+html[data-arena-theme="midnight"] .bg-zinc-950 {
+  background-color: #0f0f1a !important;
+}
+
+html[data-arena-theme="midnight"] .bg-zinc-900 {
+  background-color: #141425 !important;
+}
+
+html[data-arena-theme="midnight"] .border-zinc-800 {
+  border-color: #2a2a42 !important;
+}
+
+/* 紧凑模式：略减主区域内边距 */
+html.arena-compact .max-w-6xl.mx-auto.px-6,
+html.arena-compact .max-w-7xl.mx-auto.px-6,
+html.arena-compact .max-w-4xl.mx-auto {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+html.arena-compact .py-12 {
+  padding-top: 2rem !important;
+  padding-bottom: 2rem !important;
+}
+
+html.arena-compact .gap-4 {
+  gap: 0.75rem !important;
+}
+
+/* 关闭动画 */
+html.arena-no-animations *,
+html.arena-no-animations *::before,
+html.arena-no-animations *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

@@ -30,7 +30,7 @@ import type { Philosopher } from "../data/philosophers";
 import { DebateSummary } from "../components/DebateSummary";
 import {
   generateDilemmaSummary,
-  saveBattleRecord,
+  maybeSaveBattleRecord,
   streamDilemmaJudgeStep,
   streamDilemmaPhilosopherToJudge,
   streamDilemmaPhilosopherToUser,
@@ -309,7 +309,7 @@ export function Dilemma() {
         setSummaryLocales(summary);
         const summaryText = summaryForLocale(summary, locale);
         if (isLoggedIn()) {
-          saveBattleRecord({
+          maybeSaveBattleRecord({
             battleType: "dilemma",
             topic: currentDilemma.title,
             userChoice: selectedOption.label,
@@ -673,7 +673,6 @@ function PhilosopherChoiceCard({
   const { t, locale } = useArenaLocale();
   const p = philosopherForLocale(philosopher, locale);
   const displayName = philosopherDisplayName(philosopher, locale);
-  const secondaryName = locale === "zh" ? philosopher.name : philosopher.nameCN;
   const ideasSep = locale === "zh" ? "、" : ", ";
   return (
     <button
@@ -696,7 +695,6 @@ function PhilosopherChoiceCard({
               </span>
             )}
           </div>
-          <div className="truncate text-xs text-zinc-500">{secondaryName}</div>
           <div className="mt-1 text-xs text-zinc-400">
             {p.school} · {formatPhilosopherPeriod(philosopher.period, t)}
           </div>

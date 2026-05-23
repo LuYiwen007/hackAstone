@@ -26,5 +26,7 @@ public interface UserMapper {
 
     int updateNickname(@Param("userId") String userId, @Param("nickname") String nickname);
 
+    int updateAvatarUrl(@Param("userId") String userId, @Param("avatarUrl") String avatarUrl);
+
     UserEntity selectByNicknameExceptUser(@Param("nickname") String nickname, @Param("userId") String userId);
 }

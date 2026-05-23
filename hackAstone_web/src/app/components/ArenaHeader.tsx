@@ -1,8 +1,11 @@
-import { AlertCircle, LogIn, LogOut, Swords, User, Users, UsersRound } from "lucide-react";
+import { useState } from "react";
+import { AlertCircle, LogIn, LogOut, Settings, Swords, User, Users, UsersRound } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useArenaLocale } from "../context/ArenaLocaleContext";
-import { LanguageSwitcher } from "./LanguageSwitcher";
-import { getAuth, clearAuth, isLoggedIn } from "../../shared/api/client";
+import { SettingsModal } from "./SettingsModal";
+import { UserAvatar } from "./UserAvatar";
+import { clearAuth, isLoggedIn } from "../../shared/api/client";
+import { useUserSettings } from "../context/UserSettingsContext";
 
 type ArenaPage = "home" | "disciplines" | "roundtable" | "dilemma";
 
@@ -20,8 +23,9 @@ type ArenaHeaderProps = {
 export function ArenaHeader({ currentPage, theme }: ArenaHeaderProps) {
   const { t } = useArenaLocale();
   const navigate = useNavigate();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const loggedIn = isLoggedIn();
-  const auth = getAuth();
+  const { displayName } = useUserSettings();
 
   const handleLogout = () => {
     clearAuth();
@@ -57,16 +61,24 @@ export function ArenaHeader({ currentPage, theme }: ArenaHeaderProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <LanguageSwitcher />
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              title={t("settings.open")}
+              aria-label={t("settings.open")}
+            >
+              <Settings className="h-4 w-4" />
+            </button>
             {loggedIn ? (
               <div className="flex items-center gap-2">
                 <Link
                   to="/profile"
                   className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800"
                 >
-                  <User className="h-4 w-4" />
+                  <UserAvatar size={24} name={displayName} />
                   <span className="text-sm max-w-[80px] truncate">
-                    {auth?.nickname || auth?.username || t("nav.profile")}
+                    {displayName || t("nav.profile")}
                   </span>
                 </Link>
                 <button
@@ -124,6 +136,7 @@ export function ArenaHeader({ currentPage, theme }: ArenaHeaderProps) {
           })}
         </div>
       </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </header>
   );
 }
