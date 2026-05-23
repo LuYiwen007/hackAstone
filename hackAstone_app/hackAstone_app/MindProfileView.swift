@@ -34,7 +34,7 @@ struct MindProfileView: View {
             }
         }
         .background(ArenaTheme.background)
-        .task(id: auth.session?.userId) {
+        .task(id: "\(auth.session?.userId ?? "")-\(locale.catalogLocale)") {
             guard auth.isLoggedIn else {
                 loading = false
                 return
@@ -167,14 +167,14 @@ struct MindProfileView: View {
                 ForEach(Array(data.biases.enumerated()), id: \.offset) { _, bias in
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text(L.localizeBiasName(bias.name))
+                            Text(bias.name)
                                 .font(.headline)
                             Spacer()
                             Text("\(bias.percentage)%")
                                 .font(.headline)
                                 .foregroundStyle(ArenaTheme.orangeAccent)
                         }
-                        Text(L.localizeBiasDescription(bias.description))
+                        Text(bias.description)
                             .font(.caption)
                             .foregroundStyle(ArenaTheme.textMuted)
                         Text(L.occurrences(bias.instances))
@@ -245,7 +245,7 @@ struct MindProfileView: View {
                                 Text(L.yourPick)
                                     .font(.caption2)
                                     .foregroundStyle(ArenaTheme.textMuted)
-                                Text(b.choice)
+                                Text(L.localizeRecentChoice(b.choice))
                                     .font(.caption)
                             }
                             VStack(alignment: .leading, spacing: 4) {
@@ -359,7 +359,7 @@ struct MindProfileView: View {
         await loadUserAvatar()
         await MainActor.run { loading = true }
         do {
-            let profile = try await ArenaAPI.fetchMindProfile()
+            let profile = try await ArenaAPI.fetchMindProfile(locale: locale.catalogLocale)
             await MainActor.run {
                 data = profile
                 loadError = nil

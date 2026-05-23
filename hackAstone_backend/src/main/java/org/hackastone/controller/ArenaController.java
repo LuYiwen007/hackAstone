@@ -122,12 +122,21 @@ public class ArenaController {
         record.setJudgeSummary(String.valueOf(request.getOrDefault("judgeSummary", "")));
         record.setChangedStance(Boolean.TRUE.equals(request.get("changedStance")) ? 1 : 0);
         Object messages = request.get("messages");
-        if (messages != null) {
-            try {
-                record.setMessages(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(messages));
-            } catch (Exception e) {
-                record.setMessages(null);
+        Object profileI18n = request.get("profileI18n");
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            if (profileI18n != null) {
+                Map<String, Object> wrapper = new java.util.LinkedHashMap<>();
+                wrapper.put("profileI18n", profileI18n);
+                if (messages != null) {
+                    wrapper.put("chat", messages);
+                }
+                record.setMessages(mapper.writeValueAsString(wrapper));
+            } else if (messages != null) {
+                record.setMessages(mapper.writeValueAsString(messages));
             }
+        } catch (Exception e) {
+            record.setMessages(null);
         }
 
         battleRecordService.saveRecord(record);
@@ -138,12 +147,13 @@ public class ArenaController {
      * 思维画像：基于当前登录用户返回个性化数据
      */
     @GetMapping("/profile")
-    public Result<Map<String, Object>> profile() {
+    public Result<Map<String, Object>> profile(
+            @org.springframework.web.bind.annotation.RequestParam(value = "locale", defaultValue = "en") String locale) {
         String userId = UserContext.getCurrentUserId();
         if (userId == null) {
             return Result.success(arenaDataService.getProfile());
         }
-        return Result.success(userProfileService.getOrCreateProfile(userId));
+        return Result.success(userProfileService.getOrCreateProfile(userId, locale));
     }
 
     /**

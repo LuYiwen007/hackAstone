@@ -337,8 +337,9 @@ enum ArenaAPI {
         return (phil, battles, topics)
     }
 
-    static func fetchMindProfile() async throws -> MindProfilePayload {
-        let data = try await request(path: "/arena/profile", method: "GET")
+    static func fetchMindProfile(locale: String = "en") async throws -> MindProfilePayload {
+        let loc = locale.lowercased().hasPrefix("zh") ? "zh" : "en"
+        let data = try await request(path: "/arena/profile?locale=\(loc)", method: "GET")
         let inner = try envelopeData(data)
         let d = try JSONSerialization.data(withJSONObject: inner)
         return try JSONDecoder().decode(MindProfilePayload.self, from: d)
@@ -350,7 +351,8 @@ enum ArenaAPI {
         userChoice: String,
         judgeSummary: String,
         changedStance: Bool,
-        messages: [[String: String]]? = nil
+        messages: [[String: String]]? = nil,
+        profileI18n: [String: Any]? = nil
     ) async throws {
         var body: [String: Any] = [
             "battleType": battleType,
@@ -360,6 +362,7 @@ enum ArenaAPI {
             "changedStance": changedStance,
         ]
         if let messages { body["messages"] = messages }
+        if let profileI18n { body["profileI18n"] = profileI18n }
         _ = try await request(path: "/arena/battle/record", method: "POST", jsonBody: body)
     }
 

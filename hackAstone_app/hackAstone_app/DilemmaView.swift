@@ -775,12 +775,27 @@ struct DilemmaView: View {
             if let summaryText, !summaryText.isEmpty {
                 await MainActor.run { fullExplanation = summaryText }
                 if AuthStore.bearerToken != nil {
+                    let summaryEn = resp.dilemmaSummary?.pick(english: true) ?? summaryText
+                    let summaryZh = resp.dilemmaSummary?.pick(english: false) ?? summaryText
+                    let profileI18n: [String: Any] = [
+                        "en": [
+                            "topic": dilemma.title(true),
+                            "userChoice": option.label(true),
+                            "judgeSummary": summaryEn,
+                        ],
+                        "zh": [
+                            "topic": dilemma.title(false),
+                            "userChoice": option.label(false),
+                            "judgeSummary": summaryZh,
+                        ],
+                    ]
                     try? await ArenaAPI.saveBattleRecord(
                         battleType: "dilemma",
                         topic: dilemma.title(en),
                         userChoice: option.label(en),
                         judgeSummary: summaryText,
-                        changedStance: false
+                        changedStance: false,
+                        profileI18n: profileI18n
                     )
                 }
             } else {

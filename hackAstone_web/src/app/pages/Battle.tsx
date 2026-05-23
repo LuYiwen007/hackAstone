@@ -20,6 +20,7 @@ import {
 } from "../data/disciplineLocale";
 import { isLoggedIn } from "../../shared/api/client";
 import {
+  buildProfileI18n,
   maybeSaveBattleRecord,
   streamDisciplineDebateDual,
   streamDisciplineDebateOpponent,
@@ -60,6 +61,8 @@ export function Battle() {
     const summaryText = summaryLocales
       ? disciplineSummaryForLocale(summaryLocales, locale)
       : battle.reveal ?? "";
+    const battleEn = rawBattle ? battleForLocale(rawBattle, "en") : undefined;
+    const battleZh = rawBattle ? battleForLocale(rawBattle, "zh") : undefined;
     maybeSaveBattleRecord({
       battleType: "battle",
       topic: battle.question,
@@ -67,10 +70,25 @@ export function Battle() {
       judgeSummary: summaryText,
       changedStance: false,
       messages,
+      profileI18n:
+        summaryLocales && battleEn && battleZh
+          ? buildProfileI18n(
+              {
+                topic: battleEn.question,
+                userChoice: choice,
+                judgeSummary: disciplineSummaryForLocale(summaryLocales, "en"),
+              },
+              {
+                topic: battleZh.question,
+                userChoice: choice,
+                judgeSummary: disciplineSummaryForLocale(summaryLocales, "zh"),
+              }
+            )
+          : undefined,
     }).catch(() => {
       /* ignore */
     });
-  }, [stage, battle, choice, summaryLocales, locale, messages]);
+  }, [stage, battle, rawBattle, choice, summaryLocales, locale, messages]);
 
   if (!battle) {
     return (
