@@ -432,9 +432,6 @@ export function Home() {
                       <h4 className="truncate font-bold transition-colors group-hover:text-cyan-300">
                         {philosopherDisplayName(philosopher, locale)}
                       </h4>
-                      <p className="truncate text-xs text-zinc-500">
-                        {locale === "zh" ? philosopher.name : philosopher.nameCN}
-                      </p>
                       <p className="mt-1 text-xs text-zinc-600">
                         {p.school}
                         {locale === "en" ? ` · ${philosopher.period > 0 ? philosopher.period : `${Math.abs(philosopher.period)} BCE`}` : ` · ${philosopher.period}`}

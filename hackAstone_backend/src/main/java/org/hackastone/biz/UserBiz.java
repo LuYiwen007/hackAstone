@@ -6,9 +6,11 @@ import org.hackastone.base.util.constants.ResultEnum;
 import org.hackastone.base.util.exception.HackAstoneBizException;
 import org.hackastone.core.component.IdGenerator;
 import org.hackastone.core.component.PasswordHasher;
+import org.hackastone.controller.model.UserSettingsPayload;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -27,6 +29,12 @@ public class UserBiz {
 
     @Autowired
     private PasswordHasher passwordHasher;
+
+    @Autowired
+    private UserSettingsService userSettingsService;
+
+    @Autowired
+    private AvatarStorageService avatarStorageService;
 
     /**
      * 注册：分配 uid（USR0001…），邮箱与昵称唯一，密码 BCrypt 存储
@@ -101,6 +109,21 @@ public class UserBiz {
         }
         user.setPassword(null);
         return user;
+    }
+
+    public UserEntity updateAvatar(String userId, MultipartFile file) {
+        String avatarPath = avatarStorageService.storeAvatar(userId, file);
+        userMapper.updateAvatarUrl(userId, avatarPath);
+        return getCurrentUser(userId);
+    }
+
+    public UserSettingsPayload updateSettings(String userId, UserSettingsPayload patch) {
+        return userSettingsService.update(userId, patch);
+    }
+
+    public UserSettingsPayload getSettings(String userId) {
+        UserEntity user = userMapper.selectById(userId);
+        return userSettingsService.read(user);
     }
 
     public UserEntity updateNickname(String userId, String nickname) {

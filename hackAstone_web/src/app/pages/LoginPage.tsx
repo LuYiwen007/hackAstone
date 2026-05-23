@@ -9,6 +9,7 @@ type LoginResponse = {
   userId: string;
   email?: string;
   nickname: string;
+  avatarUrl?: string;
 };
 
 export function LoginPage() {
@@ -41,6 +42,7 @@ export function LoginPage() {
           username: loginRes.email || loginRes.nickname,
           nickname: loginRes.nickname,
           email: loginRes.email,
+          avatarUrl: loginRes.avatarUrl,
         });
         navigate("/profile");
       } else {
@@ -51,6 +53,7 @@ export function LoginPage() {
           username: loginRes.email || loginRes.nickname,
           nickname: loginRes.nickname,
           email: loginRes.email,
+          avatarUrl: loginRes.avatarUrl,
         });
         navigate("/profile");
       }

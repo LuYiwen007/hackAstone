@@ -8,6 +8,8 @@
   "nav.profile": "Mind Profile",
   "nav.login": "Login",
   "nav.logout": "Logout",
+  "settings.open": "Settings",
+  "settings.close": "Close settings",
   "lang.switch": "Language",
   "lang.en": "English",
   "lang.zh": "中文",

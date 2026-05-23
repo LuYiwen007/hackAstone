@@ -13,7 +13,6 @@ import {
   formatMessage,
   LOCALE_STORAGE_KEY,
   normalizeLocale,
-  readStoredLocale,
   type ArenaLocale,
 } from "../../shared/i18n/format";
 
@@ -29,7 +28,8 @@ export type ArenaLocaleContextValue = {
 const ArenaLocaleContext = createContext<ArenaLocaleContextValue | null>(null);
 
 export function ArenaLocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<ArenaLocale>(() => readStoredLocale());
+  /** Web 默认英文；仅通过设置页或已登录用户的服务端 settings 切换 */
+  const [locale, setLocaleState] = useState<ArenaLocale>(DEFAULT_LOCALE);
   const [strings, setStrings] = useState<Record<string, string>>({});
   const [i18nReady, setI18nReady] = useState(false);
   const [i18nError, setI18nError] = useState<string | null>(null);

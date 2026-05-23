@@ -177,6 +177,65 @@ struct ArenaL10n {
         en ? "Account settings are available on iPhone and iPad." : "账号设置请在 iPhone / iPad 应用中使用。"
     }
 
+    var settingsSearchPlaceholder: String { en ? "Search settings…" : "搜索设置…" }
+    var settingsNavGeneral: String { en ? "General" : "通用" }
+    var settingsNavSubscription: String { en ? "Plan & Billing" : "订阅方案" }
+    var settingsNavLanguage: String { en ? "Language" : "语言" }
+    var settingsNavAppearance: String { en ? "Appearance" : "外观" }
+    var settingsNavNotifications: String { en ? "Notifications" : "通知" }
+    var settingsPlanFree: String { en ? "Free" : "免费版" }
+    var settingsDefaultUser: String { en ? "Arena Player" : "认知竞技者" }
+    var settingsSectionAccount: String { en ? "Account" : "账户" }
+    var settingsAccountType: String { en ? "Account Type" : "账户类型" }
+    var settingsAccountTypeDesc: String { en ? "Currently on Free plan" : "当前使用免费版" }
+    var settingsUpgrade: String { en ? "Upgrade" : "升级" }
+    var settingsDataPrivacy: String { en ? "Data & Privacy" : "数据与隐私" }
+    var settingsDataPrivacyDesc: String { en ? "Manage your learning data" : "管理你的学习数据" }
+    var settingsManage: String { en ? "Manage" : "管理" }
+    var settingsSectionPreferences: String { en ? "Preferences" : "偏好设置" }
+    var settingsAutoSave: String { en ? "Auto-save debate history" : "自动保存辩论记录" }
+    var settingsAutoSaveDesc: String {
+        en ? "Save results to mind profile automatically" : "辩论结束后自动保存到思维画像"
+    }
+    var settingsSound: String { en ? "Sound Effects" : "声音效果" }
+    var settingsSoundDesc: String { en ? "Auditory feedback for interactions" : "交互音效反馈" }
+    var settingsTimer: String { en ? "Show Thinking Timer" : "显示思考时间" }
+    var settingsTimerDesc: String {
+        en ? "Display countdown during debates" : "在辩论时显示作答倒计时"
+    }
+    var settingsSubscriptionLead: String {
+        en ? "Unlock the full cognitive training experience" : "解锁完整认知训练体验，加速思维升级"
+    }
+    var settingsCurrentPlan: String { en ? "Current" : "当前方案" }
+    var settingsInterfaceLanguage: String { en ? "Interface Language" : "界面语言" }
+    var settingsSystemLanguageNote: String {
+        en ? "The app follows your device language." : "应用跟随系统语言，可在系统设置中切换。"
+    }
+    var settingsColorTheme: String { en ? "Color Theme" : "颜色主题" }
+    var settingsThemeDark: String { en ? "Dark" : "深色" }
+    var settingsThemeDarker: String { en ? "Darker" : "更深" }
+    var settingsThemeMidnight: String { en ? "Midnight" : "午夜" }
+    var settingsLayoutDensity: String { en ? "Layout Density" : "布局密度" }
+    var settingsCompact: String { en ? "Compact Mode" : "紧凑模式" }
+    var settingsCompactDesc: String {
+        en ? "Reduce spacing to show more content" : "减少间距，显示更多内容"
+    }
+    var settingsAnimations: String { en ? "Animations" : "动画效果" }
+    var settingsAnimationsDesc: String { en ? "UI transition animations" : "界面过渡动画" }
+    var settingsNotificationSection: String { en ? "Notification Settings" : "通知设置" }
+    var settingsNotifyDaily: String { en ? "Daily Mind Challenge" : "每日思维挑战" }
+    var settingsNotifyDailyDesc: String {
+        en ? "Receive a new debate topic each day" : "每天推送一个新的辩论题目"
+    }
+    var settingsNotifyWeekly: String { en ? "Weekly Mind Report" : "周度思维报告" }
+    var settingsNotifyWeeklyDesc: String {
+        en ? "Get cognitive bias analysis every Monday" : "每周一收到认知偏差分析报告"
+    }
+    var settingsNotifyUpdates: String { en ? "Feature Updates" : "新功能更新" }
+    var settingsNotifyUpdatesDesc: String {
+        en ? "Get notified when new features launch" : "当有新的思想家或模式上线时通知"
+    }
+
     // MARK: - Disciplines
 
     var disciplinesHeroTitle: String { en ? "Are you sure you thought it through?" : "你真的想对了吗？" }

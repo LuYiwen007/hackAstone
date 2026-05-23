@@ -226,11 +226,34 @@ enum ArenaAPI {
         )
     }
 
+    struct UserSettingsDTO: Decodable {
+        struct Preferences: Decodable {
+            let autoSave: Bool?
+            let sound: Bool?
+            let timer: Bool?
+            let compact: Bool?
+            let animations: Bool?
+        }
+        struct Notifications: Decodable {
+            let daily: Bool?
+            let weekly: Bool?
+            let updates: Bool?
+        }
+        struct Appearance: Decodable {
+            let theme: String?
+        }
+        let locale: String?
+        let preferences: Preferences?
+        let notifications: Notifications?
+        let appearance: Appearance?
+    }
+
     struct UserProfileDTO: Decodable {
         let userId: String
         let email: String?
         let nickname: String
         let avatarUrl: String?
+        let settings: UserSettingsDTO?
     }
 
     static func fetchCurrentUser() async throws -> UserProfileDTO {
@@ -246,6 +269,40 @@ enum ArenaAPI {
             method: "PUT",
             jsonBody: ["nickname": nickname]
         )
+        let inner = try envelopeData(data)
+        let d = try JSONSerialization.data(withJSONObject: inner)
+        return try JSONDecoder().decode(UserProfileDTO.self, from: d)
+    }
+
+    static func updateSettings(jsonBody: [String: Any]) async throws -> UserSettingsDTO {
+        let data = try await request(path: "/user/settings", method: "PUT", jsonBody: jsonBody)
+        let inner = try envelopeData(data) as? [String: Any]
+        guard let settings = inner?["settings"] else { throw ArenaAPIError.decode }
+        let d = try JSONSerialization.data(withJSONObject: settings)
+        return try JSONDecoder().decode(UserSettingsDTO.self, from: d)
+    }
+
+    static func uploadAvatar(jpegData: Data) async throws -> UserProfileDTO {
+        let base = ArenaConfiguration.apiBaseURLString
+        guard let url = URL(string: "\(base)/user/avatar") else { throw ArenaAPIError.badURL }
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        if let token = AuthStore.bearerToken, !token.isEmpty {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"avatar.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(jpegData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        req.httpBody = body
+        let (data, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
+            throw ArenaAPIError.httpStatus((resp as? HTTPURLResponse)?.statusCode ?? -1)
+        }
         let inner = try envelopeData(data)
         let d = try JSONSerialization.data(withJSONObject: inner)
         return try JSONDecoder().decode(UserProfileDTO.self, from: d)

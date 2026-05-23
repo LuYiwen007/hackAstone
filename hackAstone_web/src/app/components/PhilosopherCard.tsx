@@ -31,7 +31,6 @@ export function PhilosopherCard({ philosopher, onClose, onStartDebate }: Philoso
   const { philosophers } = useArenaCatalog();
   const p = philosopherForLocale(philosopher, locale);
   const displayName = philosopherDisplayName(p, locale);
-  const secondaryName = locale === "zh" ? p.name : p.nameCN;
   const influencedBy =
     p.influences?.influencedBy
       ?.map((id) => {
@@ -57,7 +56,6 @@ export function PhilosopherCard({ philosopher, onClose, onStartDebate }: Philoso
             <PhilosopherAvatar philosopher={p} className="h-16 w-16 flex-shrink-0 text-2xl" />
             <div className="flex-1 min-w-0">
               <h2 className="text-2xl font-bold mb-1">{displayName}</h2>
-              <p className="text-zinc-400">{secondaryName}</p>
               <div className="flex flex-wrap gap-2 mt-3">
                 {p.lifespan && (
                   <div className="flex items-center gap-1 text-xs text-zinc-500">
