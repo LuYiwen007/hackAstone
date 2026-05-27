@@ -1,0 +1,468 @@
+{
+  "socrates": {
+    "school": "Ancient Greek Philosophy",
+    "keyIdeas": [
+      "Know thyself",
+      "Virtue is knowledge",
+      "Socratic method"
+    ],
+    "lifespan": "470–399 BCE",
+    "birthPlace": "Athens",
+    "summary": "Founder of Western philosophy. He guided people toward truth through dialogue and questioning. Held that virtue is knowledge and that no one does wrong willingly.",
+    "majorWorks": [
+      "None extant (known through Plato's dialogues)"
+    ],
+    "famousQuotes": [
+      "The unexamined life is not worth living",
+      "I know that I know nothing",
+      "Know thyself"
+    ]
+  },
+  "plato": {
+    "school": "Ancient Greek Philosophy",
+    "keyIdeas": [
+      "Theory of Forms",
+      "The ideal state",
+      "Tripartite soul"
+    ],
+    "lifespan": "427–347 BCE",
+    "birthPlace": "Athens",
+    "summary": "Founder of the Theory of Forms, holding that true reality exists in the realm of ideas while the sensible world is only a copy. Founded the first Western academy.",
+    "majorWorks": [
+      "Republic",
+      "Phaedo",
+      "Symposium"
+    ],
+    "famousQuotes": [
+      "The visible world is the shadow of the intelligible world",
+      "Philosophers must become kings",
+      "The body is the prison of the soul"
+    ]
+  },
+  "aristotle": {
+    "school": "Ancient Greek Philosophy",
+    "keyIdeas": [
+      "Metaphysics",
+      "The golden mean",
+      "Four causes"
+    ],
+    "lifespan": "384–322 BCE",
+    "birthPlace": "Stagira",
+    "summary": "An encyclopedic philosopher who systematized logic, physics, biology, and more. Emphasized empirical observation and systematic inquiry.",
+    "majorWorks": [
+      "Metaphysics",
+      "Nicomachean Ethics",
+      "Politics"
+    ],
+    "famousQuotes": [
+      "Man is by nature a political animal",
+      "Virtue is a habit",
+      "Plato is dear to me, but truth is dearer"
+    ]
+  },
+  "epicurus": {
+    "school": "Epicureanism",
+    "keyIdeas": [
+      "Hedonism",
+      "Atomism",
+      "Divine non-intervention"
+    ]
+  },
+  "confucius": {
+    "school": "Confucianism",
+    "keyIdeas": [
+      "Benevolence (Ren)",
+      "Ritual propriety",
+      "The mean"
+    ],
+    "lifespan": "551–479 BCE",
+    "birthPlace": "Lu (present-day Qufu, Shandong)",
+    "summary": "Founder of Confucianism, stressing benevolence, ritual propriety, and moral cultivation. Advocated education and self-cultivation to realize an ideal society.",
+    "majorWorks": [
+      "Analects (recorded by disciples)",
+      "Spring and Autumn Annals"
+    ],
+    "famousQuotes": [
+      "Do not impose on others what you would not choose for yourself",
+      "Learning without thought is labor lost",
+      "When three walk together, there must be a teacher among them"
+    ]
+  },
+  "laozi": {
+    "school": "Daoism",
+    "keyIdeas": [
+      "The Dao",
+      "Rule by non-action",
+      "Highest good is like water"
+    ],
+    "lifespan": "c. 571–471 BCE",
+    "birthPlace": "Chu (present-day Luyi, Henan)",
+    "summary": "Founder of Daoism, advocating alignment with nature and governance through non-action (wuwei). Held that forced human intervention disrupts the natural order.",
+    "majorWorks": [
+      "Dao De Jing"
+    ],
+    "famousQuotes": [
+      "The Dao that can be told is not the eternal Dao",
+      "The highest good is like water",
+      "Act without acting, and nothing is left undone"
+    ]
+  },
+  "mozi": {
+    "school": "Mohism",
+    "keyIdeas": [
+      "Universal love",
+      "Against aggression",
+      "Elevating the worthy"
+    ]
+  },
+  "mengzi": {
+    "school": "Confucianism",
+    "keyIdeas": [
+      "Innate human goodness",
+      "Benevolent government",
+      "The people come first"
+    ],
+    "lifespan": "372–289 BCE",
+    "birthPlace": "Zou (present-day Zoucheng, Shandong)",
+    "summary": "A major Confucian thinker who developed Confucius's teachings, arguing for innate human goodness and benevolent government.",
+    "majorWorks": [
+      "Mencius"
+    ],
+    "famousQuotes": [
+      "Human nature is good, as water tends downward",
+      "The people are most important; the state next; the ruler least",
+      "Neither wealth nor rank can corrupt; neither poverty nor hardship can break; neither force nor power can bend"
+    ]
+  },
+  "zhuangzi": {
+    "school": "Daoism",
+    "keyIdeas": [
+      "Free and easy wandering",
+      "Equality of things",
+      "Unity of heaven and humanity"
+    ],
+    "lifespan": "c. 369–286 BCE",
+    "birthPlace": "Song (present-day Shangqiu, Henan)",
+    "summary": "A leading Daoist who developed Laozi's thought, emphasizing spiritual freedom and the equality of all things.",
+    "majorWorks": [
+      "Zhuangzi"
+    ],
+    "famousQuotes": [
+      "Life is finite, but knowledge is infinite",
+      "Heaven and earth were born with me; the ten thousand things and I are one",
+      "Zhuang Zhou dreams he is a butterfly"
+    ]
+  },
+  "xunzi": {
+    "school": "Confucianism",
+    "keyIdeas": [
+      "Human nature is bad",
+      "Ritual and law together",
+      "Heaven and humanity distinct"
+    ]
+  },
+  "buddha": {
+    "school": "Buddhism",
+    "keyIdeas": [
+      "Four Noble Truths",
+      "Noble Eightfold Path",
+      "Dependent origination and emptiness"
+    ],
+    "lifespan": "563–483 BCE",
+    "birthPlace": "Kapilavastu (present-day Nepal)",
+    "summary": "Founder of Buddhism, teaching the Four Noble Truths and the Noble Eightfold Path as the way to liberation through practice.",
+    "majorWorks": [
+      "Buddhist scriptures (recorded by disciples)"
+    ],
+    "famousQuotes": [
+      "All is suffering",
+      "All phenomena are without self",
+      "All conditioned things are impermanent"
+    ]
+  },
+  "nagarjuna": {
+    "school": "Buddhism",
+    "keyIdeas": [
+      "Madhyamaka",
+      "Emptiness",
+      "Two truths"
+    ]
+  },
+  "augustine": {
+    "school": "Christian Philosophy",
+    "keyIdeas": [
+      "City of God",
+      "Original sin",
+      "Philosophy of time"
+    ]
+  },
+  "aquinas": {
+    "school": "Scholasticism",
+    "keyIdeas": [
+      "Five ways",
+      "Natural law",
+      "Faith and reason"
+    ]
+  },
+  "avicenna": {
+    "school": "Islamic Philosophy",
+    "keyIdeas": [
+      "Existence and essence",
+      "Philosophy of the soul",
+      "Necessary existence"
+    ]
+  },
+  "averroes": {
+    "school": "Islamic Philosophy",
+    "keyIdeas": [
+      "Double truth",
+      "Supremacy of reason",
+      "Commentaries on Aristotle"
+    ]
+  },
+  "descartes": {
+    "school": "Rationalism",
+    "keyIdeas": [
+      "I think, therefore I am",
+      "Mind-body dualism",
+      "Innate ideas"
+    ],
+    "lifespan": "1596–1650",
+    "birthPlace": "France",
+    "summary": "Father of modern philosophy. Developed rationalist method and held that certain knowledge comes through reason.",
+    "majorWorks": [
+      "Discourse on the Method",
+      "Meditations on First Philosophy"
+    ],
+    "famousQuotes": [
+      "I think, therefore I am",
+      "Doubt everything",
+      "Give me matter and motion and I will construct the universe"
+    ]
+  },
+  "spinoza": {
+    "school": "Rationalism",
+    "keyIdeas": [
+      "Pantheism",
+      "Substance monism",
+      "Freedom as necessity"
+    ]
+  },
+  "locke": {
+    "school": "Empiricism",
+    "keyIdeas": [
+      "Tabula rasa",
+      "Social contract",
+      "Natural rights"
+    ]
+  },
+  "hume": {
+    "school": "Empiricism",
+    "keyIdeas": [
+      "Skepticism about causation",
+      "Impressions and ideas",
+      "Sentimentalism"
+    ]
+  },
+  "kant": {
+    "school": "German Classical Philosophy",
+    "keyIdeas": [
+      "Transcendental philosophy",
+      "Critique of pure reason",
+      "Categorical imperative"
+    ],
+    "lifespan": "1724–1804",
+    "birthPlace": "Königsberg (present-day Kaliningrad, Russia)",
+    "summary": "A culminating figure of German classical philosophy, advancing transcendental philosophy and the categorical imperative with major contributions to epistemology and ethics.",
+    "majorWorks": [
+      "Critique of Pure Reason",
+      "Critique of Practical Reason",
+      "Critique of Judgment"
+    ],
+    "famousQuotes": [
+      "Two things fill the mind with awe: the starry heavens above and the moral law within",
+      "Act so that you treat humanity always as an end, never merely as a means",
+      "Have courage to use your own understanding"
+    ]
+  },
+  "rousseau": {
+    "school": "Enlightenment",
+    "keyIdeas": [
+      "Social contract",
+      "General will",
+      "State of nature"
+    ]
+  },
+  "hegel": {
+    "school": "German Idealism",
+    "keyIdeas": [
+      "Dialectic",
+      "Absolute spirit",
+      "Philosophy of history"
+    ],
+    "lifespan": "1770–1831",
+    "birthPlace": "Stuttgart, Germany",
+    "summary": "A master of German idealism who built a comprehensive dialectical system with lasting influence on later philosophy.",
+    "majorWorks": [
+      "Phenomenology of Spirit",
+      "Science of Logic",
+      "Elements of the Philosophy of Right"
+    ],
+    "famousQuotes": [
+      "What is rational is actual; what is actual is rational",
+      "The owl of Minerva spreads its wings only at dusk",
+      "History is the self-unfolding of absolute spirit"
+    ]
+  },
+  "marx": {
+    "school": "Marxism",
+    "keyIdeas": [
+      "Historical materialism",
+      "Surplus value",
+      "Class struggle"
+    ],
+    "lifespan": "1818–1883",
+    "birthPlace": "Trier, Germany",
+    "summary": "Founder of Marxism, formulating historical materialism and the theory of surplus value with vast impact on world history.",
+    "majorWorks": [
+      "Capital",
+      "The Communist Manifesto",
+      "Economic and Philosophic Manuscripts of 1844"
+    ],
+    "famousQuotes": [
+      "Workers of the world, unite!",
+      "Philosophers have only interpreted the world; the point is to change it",
+      "History is nothing but the activity of people pursuing their ends"
+    ]
+  },
+  "nietzsche": {
+    "school": "Proto-existentialism",
+    "keyIdeas": [
+      "Übermensch",
+      "Eternal recurrence",
+      "Will to power"
+    ],
+    "lifespan": "1844–1900",
+    "birthPlace": "Röcken, Germany",
+    "summary": "A proto-existentialist who sharply criticized traditional morality and Christianity, advancing the Übermensch and the will to power.",
+    "majorWorks": [
+      "Thus Spoke Zarathustra",
+      "Beyond Good and Evil",
+      "On the Genealogy of Morality"
+    ],
+    "famousQuotes": [
+      "God is dead",
+      "What does not kill me makes me stronger",
+      "Man is a rope stretched between animal and Übermensch"
+    ]
+  },
+  "kierkegaard": {
+    "school": "Existentialism",
+    "keyIdeas": [
+      "Existence precedes essence",
+      "Anxiety",
+      "Leap of faith"
+    ]
+  },
+  "husserl": {
+    "school": "Phenomenology",
+    "keyIdeas": [
+      "Phenomenological reduction",
+      "Intentionality",
+      "Lifeworld"
+    ]
+  },
+  "heidegger": {
+    "school": "Existentialism",
+    "keyIdeas": [
+      "Dasein",
+      "Being and time",
+      "Being-toward-death"
+    ],
+    "lifespan": "1889–1976",
+    "birthPlace": "Meßkirch, Germany",
+    "summary": "One of the most important philosophers of the 20th century, exploring the meaning of being with major contributions to phenomenology and existentialism.",
+    "majorWorks": [
+      "Being and Time",
+      "Holzwege (Off the Beaten Track)"
+    ],
+    "famousQuotes": [
+      "Human being is being-toward-death",
+      "Language is the house of being",
+      "Dasein is always my Dasein"
+    ]
+  },
+  "sartre": {
+    "school": "Existentialism",
+    "keyIdeas": [
+      "Existence precedes essence",
+      "Radical freedom",
+      "Hell is other people"
+    ],
+    "lifespan": "1905–1980",
+    "birthPlace": "Paris, France",
+    "summary": "A leading existentialist emphasizing radical freedom and responsibility, with wide influence on 20th-century thought.",
+    "majorWorks": [
+      "Being and Nothingness",
+      "Existentialism Is a Humanism"
+    ],
+    "famousQuotes": [
+      "Existence precedes essence",
+      "Hell is other people",
+      "Man is condemned to be free"
+    ]
+  },
+  "wittgenstein": {
+    "school": "Analytic Philosophy",
+    "keyIdeas": [
+      "Language games",
+      "Philosophical logic",
+      "The unsayable"
+    ]
+  },
+  "foucault": {
+    "school": "Postmodernism",
+    "keyIdeas": [
+      "Power/knowledge",
+      "Discipline",
+      "Biopolitics"
+    ],
+    "lifespan": "1926–1984",
+    "birthPlace": "Poitiers, France",
+    "summary": "A major postmodern thinker studying power, knowledge, and subjectivity, with deep influence on contemporary thought.",
+    "majorWorks": [
+      "Madness and Civilization",
+      "Discipline and Punish",
+      "The History of Sexuality"
+    ],
+    "famousQuotes": [
+      "Knowledge is power",
+      "It is not people who create discourse; discourse creates people",
+      "We should be wary of what appears to liberate us"
+    ]
+  },
+  "james": {
+    "school": "Pragmatism",
+    "keyIdeas": [
+      "实用主义",
+      "Stream of consciousness",
+      "Pluralistic universe"
+    ]
+  },
+  "dewey": {
+    "school": "Pragmatism",
+    "keyIdeas": [
+      "Instrumentalism",
+      "Democratic education",
+      "Philosophy of experience"
+    ]
+  },
+  "rawls": {
+    "school": "Political Philosophy",
+    "keyIdeas": [
+      "Theory of justice",
+      "Veil of ignorance",
+      "Difference principle"
+    ]
+  }
+}

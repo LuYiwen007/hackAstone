@@ -8,11 +8,12 @@ import type { Philosopher } from "../data/philosophers";
 import worldLand from "../data/ne_110m_land.json";
 import {
   getPhilosophersByPeriodAndRegion,
-  regions,
-  timePeriods,
   type CatalogTimePeriodMeta,
 } from "../data/catalogMeta";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
+import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleContext";
+import { philosopherForLocale } from "../data/philosopherLocale";
+import { formatMessage } from "../../shared/i18n/format";
 
 const MAP_VIEWBOX = { width: 1000, height: 520 };
 const MAP_LAT_RANGE = { min: -85, max: 85 };
@@ -81,17 +82,20 @@ function toMapPercent(value: number, dimension: number) {
   return `${(value / dimension) * 100}%`;
 }
 
-function describePeriod(period: CatalogTimePeriodMeta) {
-  if (period.showAll) {
-    return "显示全部时代的哲学家";
-  }
-
-  return `${period.startYear} 至 ${period.endYear}`;
-}
-
 export function Home() {
   const navigate = useNavigate();
-  const { philosophers } = useArenaCatalog();
+  const { t, locale } = useArenaLocale();
+  const { philosophers, regions, timePeriods } = useArenaCatalog();
+
+  const describePeriod = (period: CatalogTimePeriodMeta) => {
+    if (period.showAll) {
+      return t("home.period.allPhilosophers");
+    }
+    return formatMessage(t("home.period.range"), {
+      start: String(period.startYear),
+      end: String(period.endYear),
+    });
+  };
   const [selectedPeriodId, setSelectedPeriodId] = useState("all");
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedPhilosopher, setSelectedPhilosopher] = useState<Philosopher | null>(null);
@@ -148,15 +152,15 @@ export function Home() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-8 text-center">
           <h2 className="mb-2 bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-4xl font-bold text-transparent">
-            在世界地图上挑选时代与思想
+            {t("home.hero.title")}
           </h2>
-          <p className="text-zinc-400">先选时间，再点大洲区域，就能看到这个阶段活跃的哲学家。</p>
+          <p className="text-zinc-400">{t("home.hero.subtitle")}</p>
         </div>
 
         <section className="mb-12 rounded-xl border border-zinc-800 bg-zinc-900 p-6">
           <div className="mb-4 flex items-center gap-3">
             <Clock className="h-5 w-5 text-cyan-400" />
-            <h3 className="text-xl font-bold">时间轴</h3>
+            <h3 className="text-xl font-bold">{t("home.timeline")}</h3>
           </div>
 
           {currentPeriod && (
@@ -193,20 +197,20 @@ export function Home() {
           />
 
           <div className="mt-4 grid grid-cols-4 gap-2 text-center text-xs text-zinc-600 md:grid-cols-7">
-            <span>古代</span>
-            <span>古典晚期</span>
-            <span>中古</span>
-            <span>近代</span>
-            <span>现代</span>
-            <span>跨地域</span>
-            <span>全部</span>
+            <span>{t("home.timeline.ancient")}</span>
+            <span>{t("home.timeline.lateAntiquity")}</span>
+            <span>{t("home.timeline.medieval")}</span>
+            <span>{t("home.timeline.earlyModern")}</span>
+            <span>{t("home.timeline.modern")}</span>
+            <span>{t("home.timeline.crossEra")}</span>
+            <span>{t("home.timeline.all")}</span>
           </div>
         </section>
 
         <section className="mb-8">
           <div className="mb-4 flex items-center gap-3">
             <Globe2 className="h-5 w-5 text-cyan-400" />
-            <h3 className="text-xl font-bold">世界地图</h3>
+            <h3 className="text-xl font-bold">{t("home.map.title")}</h3>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.15),_transparent_42%),linear-gradient(180deg,rgba(9,9,11,0.98),rgba(24,24,27,0.94))] p-4 md:p-6">
@@ -364,7 +368,11 @@ export function Home() {
                           >
                             <div className="text-sm font-bold md:text-base">{region.name}</div>
                             <div className="mt-1 text-[11px] text-zinc-400 md:text-xs">
-                              {regionItems.length > 0 ? `${regionItems.length} 位哲学家` : "暂无人物"}
+                              {regionItems.length > 0
+                                ? formatMessage(t("home.map.philosophersCount"), {
+                                    count: regionItems.length,
+                                  })
+                                : t("home.map.noFigures")}
                             </div>
 
                             {previewPhilosophers.length > 0 && (
@@ -409,7 +417,9 @@ export function Home() {
             </h3>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {regionPhilosophers.map((philosopher) => (
+              {regionPhilosophers.map((philosopher) => {
+                const p = philosopherForLocale(philosopher, locale);
+                return (
                 <button
                   key={philosopher.id}
                   type="button"
@@ -420,24 +430,25 @@ export function Home() {
                     <PhilosopherAvatar philosopher={philosopher} className="h-12 w-12 flex-shrink-0 text-lg" />
                     <div className="min-w-0 flex-1">
                       <h4 className="truncate font-bold transition-colors group-hover:text-cyan-300">
-                        {philosopher.nameCN}
+                        {philosopherDisplayName(philosopher, locale)}
                       </h4>
-                      <p className="truncate text-xs text-zinc-500">{philosopher.name}</p>
                       <p className="mt-1 text-xs text-zinc-600">
-                        {philosopher.school} · {philosopher.period}
+                        {p.school}
+                        {locale === "en" ? ` · ${philosopher.period > 0 ? philosopher.period : `${Math.abs(philosopher.period)} BCE`}` : ` · ${philosopher.period}`}
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-1 text-xs text-zinc-500">
-                    {philosopher.keyIdeas.slice(0, 2).map((idea) => (
+                    {p.keyIdeas.slice(0, 2).map((idea) => (
                       <div key={idea} className="truncate">
                         • {idea}
                       </div>
                     ))}
                   </div>
                 </button>
-              ))}
+              );
+              })}
             </div>
 
             <button
@@ -445,7 +456,7 @@ export function Home() {
               onClick={() => setSelectedRegion(null)}
               className="mt-6 w-full rounded-lg border border-zinc-700 py-3 transition-colors hover:border-zinc-500"
             >
-              返回地图
+              {t("home.backToMap")}
             </button>
           </section>
         )}
@@ -453,15 +464,17 @@ export function Home() {
         {selectedRegion && regionPhilosophers.length === 0 && (
           <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center">
             <p className="mb-4 text-zinc-400">
-              {currentPeriod?.label} 的 {regions.find((region) => region.id === selectedRegion)?.name}
-              目前没有可展示的哲学家。
+              {formatMessage(t("home.noPhilosophersInRegion"), {
+                period: currentPeriod?.label ?? "",
+                region: regions.find((region) => region.id === selectedRegion)?.name ?? "",
+              })}
             </p>
             <button
               type="button"
               onClick={() => setSelectedRegion(null)}
               className="rounded-lg border border-zinc-700 px-6 py-3 transition-colors hover:border-zinc-500"
             >
-              返回地图
+              {t("home.backToMap")}
             </button>
           </section>
         )}
@@ -476,7 +489,7 @@ export function Home() {
       </main>
 
       <footer className="mt-20 border-t border-zinc-800 py-8 text-center text-sm text-zinc-600">
-        <p>Cognitive Arena · 让世界地图、时间与思想连起来</p>
+        <p>{t("home.footer")}</p>
       </footer>
     </div>
   );

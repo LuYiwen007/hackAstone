@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.hackastone.base.dal.entity.PlanEntity;
 import org.hackastone.base.dal.mapper.PlanMapper;
 import org.hackastone.base.util.Result;
+import org.hackastone.base.util.auth.UserContext;
 import org.hackastone.base.util.template.BizTemplate;
 import org.hackastone.controller.model.AiPlanDraftRequest;
 import org.hackastone.controller.model.AiPlanDraftResponse;
@@ -34,7 +35,13 @@ public class PlanController {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final String AI_DRAFT_USER_ID = "guest";
+    private String requireUserId() {
+        String userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            throw new org.hackastone.base.util.exception.HackAstoneBizException("未登录");
+        }
+        return userId;
+    }
 
     /**
      * 保存 AI 生成的学习计划草稿（储存与拆分）
@@ -43,10 +50,11 @@ public class PlanController {
     @PostMapping("/ai-draft")
     public Result<AiPlanDraftResponse> saveAiPlanDraft(@RequestBody AiPlanDraftRequest request) {
         return bizTemplate.execute(() -> {
+            String userId = requireUserId();
             String planId = idGenerator.generate("PLN", "PLN");
             PlanEntity entity = new PlanEntity();
             entity.setId(planId);
-            entity.setUserId(AI_DRAFT_USER_ID);
+            entity.setUserId(userId);
             entity.setTitle(request.getPlanName());
             entity.setDescription(request.getPlanSubtitle());
             entity.setPlanType("AI_DRAFT");
@@ -78,7 +86,8 @@ public class PlanController {
     @GetMapping("/ai-draft/{id}")
     public Result<AiPlanDraftResponse> getAiPlanDraft(@PathVariable String id) {
         return bizTemplate.execute(() -> {
-            PlanEntity entity = planMapper.selectById(id);
+            String userId = requireUserId();
+            PlanEntity entity = planMapper.selectByIdAndUserId(id, userId);
             if (entity == null) {
                 throw new org.hackastone.base.util.exception.HackAstoneBizException("计划不存在");
             }

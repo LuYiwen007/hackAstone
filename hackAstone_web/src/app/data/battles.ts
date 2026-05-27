@@ -1,3 +1,5 @@
+import type { BattleLocales } from "./battleLocale";
+
 export interface Battle {
   id: string;
   question: string;
@@ -6,6 +8,8 @@ export interface Battle {
   breakerView: string;
   judgeQuestions: string[];
   reveal: string;
+  /** AI 出题：同一次生成中英文两套文案 */
+  locales?: BattleLocales;
 }
 
 export const battles: Battle[] = [

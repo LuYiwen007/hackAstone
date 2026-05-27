@@ -1,5 +1,11 @@
-import { AlertCircle, Swords, User, Users, UsersRound } from "lucide-react";
-import { Link } from "react-router";
+import { useState } from "react";
+import { AlertCircle, LogIn, LogOut, Settings, Swords, User, Users, UsersRound } from "lucide-react";
+import { Link, useNavigate } from "react-router";
+import { useArenaLocale } from "../context/ArenaLocaleContext";
+import { SettingsModal } from "./SettingsModal";
+import { UserAvatar } from "./UserAvatar";
+import { clearAuth, isLoggedIn } from "../../shared/api/client";
+import { useUserSettings } from "../context/UserSettingsContext";
 
 type ArenaPage = "home" | "disciplines" | "roundtable" | "dilemma";
 
@@ -14,21 +20,32 @@ type ArenaHeaderProps = {
   };
 };
 
-const pageMeta: Record<
-  ArenaPage,
-  {
-    label: string;
-    to: string;
-    icon?: typeof AlertCircle;
-  }
-> = {
-  home: { label: "哲学辩论", to: "/" },
-  disciplines: { label: "学科辩论", to: "/disciplines" },
-  roundtable: { label: "圆桌辩论", to: "/roundtable", icon: UsersRound },
-  dilemma: { label: "道德困境", to: "/dilemma", icon: AlertCircle },
-};
-
 export function ArenaHeader({ currentPage, theme }: ArenaHeaderProps) {
+  const { t } = useArenaLocale();
+  const navigate = useNavigate();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const loggedIn = isLoggedIn();
+  const { displayName } = useUserSettings();
+
+  const handleLogout = () => {
+    clearAuth();
+    window.location.reload();
+  };
+
+  const pageMeta: Record<
+    ArenaPage,
+    {
+      labelKey: string;
+      to: string;
+      icon?: typeof AlertCircle;
+    }
+  > = {
+    home: { labelKey: "nav.philosophy", to: "/" },
+    disciplines: { labelKey: "nav.disciplines", to: "/disciplines" },
+    roundtable: { labelKey: "nav.roundtable", to: "/roundtable", icon: UsersRound },
+    dilemma: { labelKey: "nav.dilemma", to: "/dilemma", icon: AlertCircle },
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm">
       <div className="mx-auto max-w-7xl px-6 py-4">
@@ -38,18 +55,50 @@ export function ArenaHeader({ currentPage, theme }: ArenaHeaderProps) {
               <Users className={`h-6 w-6 ${theme.iconFg ?? "text-white"}`} />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Cognitive Arena</h1>
-              <p className="text-xs text-zinc-500">跨时空思想对话场</p>
+              <h1 className="text-xl font-bold">{t("app.title")}</h1>
+              <p className="text-xs text-zinc-500">{t("app.subtitle")}</p>
             </div>
           </div>
 
-          <Link
-            to="/profile"
-            className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800"
-          >
-            <User className="h-4 w-4" />
-            <span className="text-sm">思维画像</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              title={t("settings.open")}
+              aria-label={t("settings.open")}
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+            {loggedIn ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800"
+                >
+                  <UserAvatar size={24} name={displayName} />
+                  <span className="text-sm max-w-[80px] truncate">
+                    {displayName || t("nav.profile")}
+                  </span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 transition-colors hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
+                  title={t("nav.logout")}
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 transition-colors hover:bg-zinc-800 text-zinc-300 hover:text-white"
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="text-sm">{t("nav.login")}</span>
+              </Link>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -76,13 +125,18 @@ export function ArenaHeader({ currentPage, theme }: ArenaHeaderProps) {
                     : "border-transparent text-zinc-400 hover:border-zinc-800 hover:bg-zinc-900 hover:text-zinc-100"
                 }`}
               >
-                {Icon ? <Icon className="h-4 w-4" /> : pageKey === "disciplines" ? <Swords className="h-4 w-4" /> : null}
-                <span>{page.label}</span>
+                {Icon ? (
+                  <Icon className="h-4 w-4" />
+                ) : pageKey === "disciplines" ? (
+                  <Swords className="h-4 w-4" />
+                ) : null}
+                <span>{t(page.labelKey)}</span>
               </Link>
             );
           })}
         </div>
       </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </header>
   );
 }

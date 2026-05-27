@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.hackastone.base.dal.mapper.BattleRecordMapper">
+
+    <resultMap id="BaseResultMap" type="org.hackastone.base.dal.entity.BattleRecordEntity">
+        <id column="id" property="id" jdbcType="VARCHAR"/>
+        <result column="user_id" property="userId" jdbcType="VARCHAR"/>
+        <result column="battle_type" property="battleType" jdbcType="VARCHAR"/>
+        <result column="topic" property="topic" jdbcType="VARCHAR"/>
+        <result column="user_choice" property="userChoice" jdbcType="VARCHAR"/>
+        <result column="judge_summary" property="judgeSummary" jdbcType="VARCHAR"/>
+        <result column="changed_stance" property="changedStance" jdbcType="TINYINT"/>
+        <result column="messages" property="messages" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="org.hackastone.base.dal.entity.BattleRecordEntity">
+        INSERT INTO ha_battle_record
+        (id, user_id, battle_type, topic, user_choice, judge_summary, changed_stance, messages, created_at)
+        VALUES
+        (#{id}, #{userId}, #{battleType}, #{topic}, #{userChoice}, #{judgeSummary}, #{changedStance}, #{messages}, NOW())
+    </insert>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT id, user_id, battle_type, topic, user_choice, judge_summary, changed_stance, messages, created_at
+        FROM ha_battle_record
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectRecentByUserId" resultMap="BaseResultMap">
+        SELECT id, user_id, battle_type, topic, user_choice, judge_summary, changed_stance, messages, created_at
+        FROM ha_battle_record
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM ha_battle_record WHERE user_id = #{userId}
+    </select>
+
+    <select id="countChangedStanceByUserId" resultType="int">
+        SELECT COUNT(*) FROM ha_battle_record WHERE user_id = #{userId} AND changed_stance = 1
+    </select>
+
+</mapper>

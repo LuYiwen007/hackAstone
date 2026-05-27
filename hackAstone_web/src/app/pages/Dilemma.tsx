@@ -1,51 +1,97 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { AlertCircle, ArrowLeft, MessageSquare } from "lucide-react";
 import { Link } from "react-router";
 import { ArenaHeader } from "../components/ArenaHeader";
 import { PhilosopherAvatar } from "../components/PhilosopherAvatar";
 import { useArenaCatalog } from "../context/ArenaCatalogContext";
-import { dilemmas, getDilemma, type DilemmaOption } from "../data/dilemmas";
+import { philosopherDisplayName, useArenaLocale } from "../context/ArenaLocaleContext";
+import { dilemmas, getDilemma } from "../data/dilemmas";
+import {
+  dilemmaMessageContent,
+  formatPhilosopherPeriod,
+  localizeDilemma,
+  parseDilemmaSummaryBilingual,
+  summaryForLocale,
+  type DilemmaStoredMessage,
+  type DilemmaSummaryBilingual,
+} from "../data/dilemmaLocale";
+import {
+  finalizeJudgeSpeech,
+  judgeStreamDisplayText,
+  parsePhilosophyJudgeStep,
+} from "../data/philosophyJudgeLocale";
+import {
+  finalizeRoundtableSpeech,
+  roundtableStreamDisplayText,
+} from "../data/roundtableLocale";
+import { philosopherForLocale } from "../data/philosopherLocale";
 import type { Philosopher } from "../data/philosophers";
 import { DebateSummary } from "../components/DebateSummary";
-import { runEchoQuery } from "../../shared/api/arena";
-
+import {
+  buildProfileI18n,
+  dilemmaOptionLabel,
+  dilemmaTopicTitle,
+  fetchArenaI18n,
+  generateDilemmaSummary,
+  maybeSaveBattleRecord,
+  streamDilemmaJudgeStep,
+  streamDilemmaPhilosopherToJudge,
+  streamDilemmaPhilosopherToUser,
+} from "../../shared/api/arena";
+import { isLoggedIn } from "../../shared/api/client";
 type Stage = "setup" | "debate" | "reveal";
-type MessageRole = "user" | "philosopher" | "judge";
-
-type DebateMessage = {
-  id: string;
-  role: MessageRole;
-  content: string;
-};
-
-type TurnResult = {
-  philosopherReply: string;
-  judgeQuestion: string;
-  continueDebate: boolean;
-};
-
-type SummaryResult = {
-  fullExplanation: string;
-};
+type ThinkingRole = "philosopher" | "judge";
 
 export function Dilemma() {
+  const { t, locale } = useArenaLocale();
   const { philosophers } = useArenaCatalog();
   const [selectedDilemmaId, setSelectedDilemmaId] = useState(dilemmas[0].id);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [selectedPhilosopherId, setSelectedPhilosopherId] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("setup");
-  const [messages, setMessages] = useState<DebateMessage[]>([]);
+  const [messages, setMessages] = useState<DilemmaStoredMessage[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingRole, setThinkingRole] = useState<ThinkingRole | null>(null);
   const [canReveal, setCanReveal] = useState(false);
-  const [fullExplanation, setFullExplanation] = useState("");
+  const [summaryLocales, setSummaryLocales] = useState<DilemmaSummaryBilingual | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [streamPreview, setStreamPreview] = useState("");
 
-  const currentDilemma = getDilemma(selectedDilemmaId);
+  const fullExplanation = summaryForLocale(summaryLocales, locale);
+
+  const buildHistoryText = (msgs: DilemmaStoredMessage[]) =>
+    msgs
+      .map((message) => {
+        const speaker =
+          message.role === "user"
+            ? t("dilemma.history.user")
+            : message.role === "judge"
+              ? t("dilemma.history.judge")
+              : selectedPhilosopher
+                ? philosopherDisplayName(selectedPhilosopher, locale)
+                : "";
+        const body = dilemmaMessageContent(message, locale, t, selectedOption?.label);
+        return `${speaker}：${body}`;
+      })
+      .join("\n");
+
+  const currentDilemma = useMemo(
+    () => localizeDilemma(getDilemma(selectedDilemmaId), t),
+    [selectedDilemmaId, t, locale]
+  );
+  const localizedDilemmaTabs = useMemo(
+    () => dilemmas.map((d) => localizeDilemma(d, t)),
+    [t, locale]
+  );
   const selectedOption =
     currentDilemma.options.find((option) => option.id === selectedOptionId) ?? null;
   const selectedPhilosopher =
     philosophers.find((philosopher) => philosopher.id === selectedPhilosopherId) ?? null;
+  const selectedPhilosopherDisplay = selectedPhilosopher
+    ? philosopherForLocale(selectedPhilosopher, locale)
+    : null;
 
   const recommendedPhilosophers = useMemo(() => {
     const preferred = new Set(currentDilemma.recommendedPhilosophers);
@@ -67,7 +113,7 @@ export function Dilemma() {
     setMessages([]);
     setUserInput("");
     setCanReveal(false);
-    setFullExplanation("");
+    setSummaryLocales(null);
   };
 
   const handleSelectOption = (optionId: string) => {
@@ -77,7 +123,7 @@ export function Dilemma() {
     setMessages([]);
     setUserInput("");
     setCanReveal(false);
-    setFullExplanation("");
+    setSummaryLocales(null);
   };
 
   const handleChoosePhilosopher = (philosopher: Philosopher) => {
@@ -90,13 +136,103 @@ export function Dilemma() {
       {
         id: `judge-opening-${Date.now()}`,
         role: "judge",
-        content: `你当前选择了“${selectedOption.label}”。请先说明你的理由，并尝试回应这个困境最尖锐的反对意见。`,
+        i18nKey: "dilemma.judge.opening",
+        choiceOptionId: selectedOption.id,
       },
     ]);
     setUserInput("");
     setCanReveal(false);
-    setFullExplanation("");
+    setSummaryLocales(null);
     setStage("debate");
+  };
+
+  const dilemmaStreamBody = (prior: DilemmaStoredMessage[]) => {
+    const pLoc = philosopherForLocale(selectedPhilosopher!, locale);
+    const ideasSep = locale === "zh" ? "、" : ", ";
+    return {
+      moralDilemmaTitle: currentDilemma.title,
+      moralDilemmaEnglishTitle: currentDilemma.englishTitle,
+      question: currentDilemma.question,
+      promptLead: currentDilemma.promptLead,
+      userStance: selectedOption!.stancePrompt,
+      philosopherId: selectedPhilosopher!.id,
+      philosopherName: philosopherDisplayName(selectedPhilosopher!, locale),
+      philosopherSchool: pLoc.school,
+      keyIdeas: pLoc.keyIdeas.join(ideasSep),
+      summary: pLoc.summary ?? selectedPhilosopher!.summary ?? "",
+      history: buildHistoryText(prior),
+      locale,
+    };
+  };
+
+  const streamPhilosopherMessage = async (
+    mode: "to-user" | "to-judge",
+    prior: DilemmaStoredMessage[]
+  ): Promise<DilemmaStoredMessage> => {
+    const msgId = `${mode}-${Date.now()}`;
+    const placeholder: DilemmaStoredMessage = {
+      id: msgId,
+      role: "philosopher",
+      content: "",
+    };
+    setThinkingRole("philosopher");
+    setMessages([...prior, placeholder]);
+
+    const handlers = {
+      onDelta: (_d: string, acc: string) => {
+        const preview = roundtableStreamDisplayText(acc);
+        setMessages((curr) =>
+          curr.map((m) => (m.id === msgId ? { ...m, content: preview } : m))
+        );
+      },
+    };
+
+    const resp =
+      mode === "to-user"
+        ? await streamDilemmaPhilosopherToUser(dilemmaStreamBody(prior), handlers)
+        : await streamDilemmaPhilosopherToJudge(dilemmaStreamBody(prior), handlers);
+
+    const finalText = finalizeRoundtableSpeech(resp.text);
+    if (!finalText.trim()) throw new Error(t("dilemma.error.philosopherResponse"));
+
+    const finished = { ...placeholder, content: finalText };
+    setMessages((curr) => curr.map((m) => (m.id === msgId ? finished : m)));
+    return finished;
+  };
+
+  const streamJudgeMessage = async (prior: DilemmaStoredMessage[]) => {
+    const msgId = `judge-${Date.now()}`;
+    const placeholder: DilemmaStoredMessage = {
+      id: msgId,
+      role: "judge",
+      content: "",
+    };
+    setThinkingRole("judge");
+    setMessages([...prior, placeholder]);
+
+    const { philosopherId: _pid, keyIdeas: _k, summary: _s, ...judgeBody } = dilemmaStreamBody(prior);
+    const resp = await streamDilemmaJudgeStep(judgeBody, {
+      onDelta: (_d, acc) => {
+        const preview = judgeStreamDisplayText(acc);
+        setMessages((curr) =>
+          curr.map((m) => (m.id === msgId ? { ...m, content: preview } : m))
+        );
+      },
+    });
+
+    const judge = parsePhilosophyJudgeStep(resp.philosophyJudge ?? null, resp.text);
+    if (!judge) throw new Error(t("dilemma.error.turnFailed"));
+
+    if (judge.judgeSpeaks && judge.judgeMessage) {
+      const finished = {
+        ...placeholder,
+        content: finalizeJudgeSpeech(resp.text) || judge.judgeMessage,
+      };
+      setMessages([...prior, finished]);
+      return { judge, judgeMsg: finished };
+    }
+    setMessages(prior);
+    return { judge, judgeMsg: null as DilemmaStoredMessage | null };
   };
 
   const handleUserTurn = async () => {
@@ -109,101 +245,40 @@ export function Dilemma() {
       return;
     }
 
+    const userMsgId = `user-${Date.now()}`;
     setUserInput("");
     setIsThinking(true);
+    setStreamPreview("");
 
     const nextMessages = [
       ...messages,
-      { id: `user-${Date.now()}`, role: "user" as const, content },
+      { id: userMsgId, role: "user" as const, content },
     ];
     setMessages(nextMessages);
 
-    const historyText = nextMessages
-      .map((message) => {
-        const speaker =
-          message.role === "user"
-            ? "用户"
-            : message.role === "judge"
-              ? "Judge"
-              : selectedPhilosopher.nameCN;
-        return `${speaker}：${message.content}`;
-      })
-      .join("\n");
-
-    const turnQuery = [
-      "[ROLE]",
-      "CA-Echo-LLM",
-      "",
-      "[TASK]",
-      "围绕给定道德困境继续一轮哲学讨论：先以哲学家身份回应用户，再以 Judge 身份追问，并判断是否可以进入总结。",
-      "",
-      "[REPO_CONTEXT]",
-      "project=hackAstone",
-      "",
-      "[TARGET_FILES]",
-      "NONE",
-      "",
-      "[API_CONTRACT]",
-      "NONE",
-      "",
-      "[ACCEPTANCE_CRITERIA]",
-      "返回 philosopherReply/judgeQuestion/continueDebate 三个字段",
-      "",
-      "[CONSTRAINTS]",
-      "中文输出；哲学家回应要体现其思想风格；仅返回 JSON；continueDebate 为布尔值",
-      "",
-      "[RETURN_FORMAT]",
-      "json",
-      "",
-      `道德困境：${currentDilemma.title} (${currentDilemma.englishTitle})`,
-      `问题：${currentDilemma.question}`,
-      `用户立场：${selectedOption.stancePrompt}`,
-      `哲学家：${selectedPhilosopher.nameCN}；学派：${selectedPhilosopher.school}；关键思想：${selectedPhilosopher.keyIdeas.join("、")}`,
-      `讨论提醒：${currentDilemma.promptLead}`,
-      "历史：",
-      historyText,
-    ].join("\n");
-
     try {
-      const response = await runEchoQuery(turnQuery);
-      const parsed = parseJsonPayload<TurnResult>(response.text);
-      const turn =
-        parsed?.philosopherReply && parsed?.judgeQuestion
-          ? parsed
-          : localTurnFallback(selectedPhilosopher, currentDilemma.title, selectedOption, content);
+      const philToUser = await streamPhilosopherMessage("to-user", nextMessages);
+      const afterPhilosopher = [...nextMessages, philToUser];
 
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: `philosopher-${Date.now()}`,
-          role: "philosopher",
-          content: turn.philosopherReply,
-        },
-        {
-          id: `judge-${Date.now()}`,
-          role: "judge",
-          content: turn.judgeQuestion,
-        },
-      ]);
-      setCanReveal(turn.continueDebate === false);
-    } catch {
-      const turn = localTurnFallback(selectedPhilosopher, currentDilemma.title, selectedOption, content);
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: `philosopher-${Date.now()}`,
-          role: "philosopher",
-          content: turn.philosopherReply,
-        },
-        {
-          id: `judge-${Date.now()}`,
-          role: "judge",
-          content: turn.judgeQuestion,
-        },
-      ]);
-      setCanReveal(false);
+      const { judge, judgeMsg } = await streamJudgeMessage(afterPhilosopher);
+      let working = judgeMsg ? [...afterPhilosopher, judgeMsg] : afterPhilosopher;
+
+      if (judge.judgeSpeaks && judge.addressTo === "philosopher") {
+        const philToJudge = await streamPhilosopherMessage("to-judge", working);
+        working = [...working, philToJudge];
+        setMessages(working);
+      }
+
+      setCanReveal(judge.continueDebate === false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("dilemma.error.turnFailed");
+      toast.error(msg);
+      setMessages((previous) => previous.filter((m) => m.id !== userMsgId));
+      setUserInput(content);
     } finally {
       setIsThinking(false);
+      setThinkingRole(null);
+      setStreamPreview("");
     }
   };
 
@@ -214,63 +289,88 @@ export function Dilemma() {
 
     setStage("reveal");
     setIsGeneratingSummary(true);
-    setFullExplanation(localSummaryFallback(selectedPhilosopher, currentDilemma.title, selectedOption));
+    setSummaryLocales(null);
+    setStreamPreview("");
 
-    const history = messages
-      .map((message) => {
-        const speaker =
-          message.role === "user"
-            ? "用户"
-            : message.role === "judge"
-              ? "Judge"
-              : selectedPhilosopher.nameCN;
-        return `${speaker}：${message.content}`;
-      })
-      .join("\n");
-
-    const summaryQuery = [
-      "[ROLE]",
-      "CA-Echo-LLM",
-      "",
-      "[TASK]",
-      "根据道德困境讨论历史生成一份完整总结，解释用户立场与哲学家回应的张力。",
-      "",
-      "[REPO_CONTEXT]",
-      "project=hackAstone",
-      "",
-      "[TARGET_FILES]",
-      "NONE",
-      "",
-      "[API_CONTRACT]",
-      "NONE",
-      "",
-      "[ACCEPTANCE_CRITERIA]",
-      "返回 fullExplanation 字段",
-      "",
-      "[CONSTRAINTS]",
-      "中文输出；条理清晰；保留哲学家风格；仅返回 JSON",
-      "",
-      "[RETURN_FORMAT]",
-      "json",
-      "",
-      `道德困境：${currentDilemma.title}`,
-      `问题：${currentDilemma.question}`,
-      `用户立场：${selectedOption.stancePrompt}`,
-      `哲学家：${selectedPhilosopher.nameCN}；学派：${selectedPhilosopher.school}`,
-      "历史：",
-      history,
-    ].join("\n");
+    const history = buildHistoryText(messages);
 
     try {
-      const response = await runEchoQuery(summaryQuery);
-      const parsed = parseJsonPayload<SummaryResult>(response.text);
-      if (parsed?.fullExplanation) {
-        setFullExplanation(parsed.fullExplanation);
+      const response = await generateDilemmaSummary(
+        {
+          moralDilemmaTitle: currentDilemma.title,
+          question: currentDilemma.question,
+          userStance: selectedOption.stancePrompt,
+          philosopherName: philosopherDisplayName(selectedPhilosopher, locale),
+          philosopherSchool: philosopherForLocale(selectedPhilosopher, locale).school,
+          history,
+        },
+        { onDelta: (_d, acc) => setStreamPreview(acc) }
+      );
+      const summary =
+        parseDilemmaSummaryBilingual(response.dilemmaSummary) ??
+        parseDilemmaSummaryBilingual(response.text);
+      if (summary) {
+        setSummaryLocales(summary);
+        const summaryText = summaryForLocale(summary, locale);
+        if (isLoggedIn()) {
+          void (async () => {
+            try {
+              const [enPack, zhPack] = await Promise.all([
+                fetchArenaI18n("en"),
+                fetchArenaI18n("zh"),
+              ]);
+              const optId = selectedOption.id;
+              const dilemmaId = currentDilemma.id;
+              await maybeSaveBattleRecord({
+                battleType: "dilemma",
+                topic: locale === "zh" ? currentDilemma.title : currentDilemma.englishTitle,
+                userChoice: selectedOption.label,
+                judgeSummary: summaryText,
+                changedStance: false,
+                messages: messages.map((m) => ({
+                  role: m.role,
+                  content: dilemmaMessageContent(m, locale, t, selectedOption.label),
+                })),
+                profileI18n: buildProfileI18n(
+                  {
+                    topic: dilemmaTopicTitle(
+                      dilemmaId,
+                      "en",
+                      enPack.strings,
+                      currentDilemma.title,
+                      currentDilemma.englishTitle
+                    ),
+                    userChoice: dilemmaOptionLabel(dilemmaId, optId, enPack.strings),
+                    judgeSummary: summary.en.fullExplanation,
+                  },
+                  {
+                    topic: dilemmaTopicTitle(
+                      dilemmaId,
+                      "zh",
+                      zhPack.strings,
+                      currentDilemma.title,
+                      currentDilemma.englishTitle
+                    ),
+                    userChoice: dilemmaOptionLabel(dilemmaId, optId, zhPack.strings),
+                    judgeSummary: summary.zh.fullExplanation,
+                  }
+                ),
+              });
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : "";
+              toast.error(t("dilemma.saveFailed") + ": " + msg);
+            }
+          })();
+        }
+      } else {
+        throw new Error(t("dilemma.error.summaryFailed"));
       }
-    } catch {
-      // 保留本地总结兜底
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("dilemma.error.summaryFailed");
+      toast.error(msg);
     } finally {
       setIsGeneratingSummary(false);
+      setStreamPreview("");
     }
   };
 
@@ -280,7 +380,7 @@ export function Dilemma() {
     setMessages([]);
     setUserInput("");
     setCanReveal(false);
-    setFullExplanation("");
+    setSummaryLocales(null);
   };
 
   return (
@@ -298,13 +398,15 @@ export function Dilemma() {
         {stage === "setup" && (
           <>
             <section className="mb-10 text-center">
-              <p className="mb-3 text-sm uppercase tracking-[0.35em] text-cyan-400">Moral Dilemmas</p>
-              <h2 className="mb-3 text-4xl font-bold text-white">道德困境</h2>
-              <p className="text-zinc-400">和哲学家讨论道德困境</p>
+              <p className="mb-3 text-sm uppercase tracking-[0.35em] text-cyan-400">
+                {t("dilemma.title")}
+              </p>
+              <h2 className="mb-3 text-4xl font-bold text-white">{t("dilemma.title")}</h2>
+              <p className="text-zinc-400">{t("dilemma.subtitle")}</p>
             </section>
 
             <section className="mb-6 flex flex-wrap justify-center gap-3">
-              {dilemmas.map((dilemma) => {
+              {localizedDilemmaTabs.map((dilemma) => {
                 const active = dilemma.id === currentDilemma.id;
                 return (
                   <button
@@ -348,12 +450,12 @@ export function Dilemma() {
                   className="hidden items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white md:flex"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  <span>返回首页</span>
+                  <span>{t("dilemma.backHome")}</span>
                 </Link>
               </div>
 
               <div className="mb-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
-                <div className="mb-2 text-sm text-cyan-300">核心提问</div>
+                <div className="mb-2 text-sm text-cyan-300">{t("dilemma.coreQuestion")}</div>
                 <p className="text-xl font-semibold leading-relaxed">{currentDilemma.question}</p>
               </div>
 
@@ -381,21 +483,21 @@ export function Dilemma() {
               {selectedOption && (
                 <div className="mt-8">
                   <div className="mb-4 rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5">
-                    <div className="mb-2 text-sm text-orange-300">你当前的立场</div>
+                    <div className="mb-2 text-sm text-orange-300">{t("dilemma.yourStance")}</div>
                     <div className="font-semibold text-white">{selectedOption.label}</div>
                     <p className="mt-2 text-sm text-zinc-400">{selectedOption.summary}</p>
                   </div>
 
                   <div className="mb-4">
-                    <h4 className="text-2xl font-bold">选择一位哲学家和你讨论</h4>
+                    <h4 className="text-2xl font-bold">{t("dilemma.selectPhilosopher")}</h4>
                     <p className="mt-2 text-zinc-400">
-                      点击哲学家卡片后，会直接进入和他围绕当前困境的讨论窗口。
+                      {t("dilemma.selectPhilosopherHint")}
                     </p>
                   </div>
 
                   {recommendedPhilosophers.length > 0 && (
                     <div className="mb-8">
-                      <div className="mb-3 text-sm text-cyan-300">推荐哲学家</div>
+                      <div className="mb-3 text-sm text-cyan-300">{t("dilemma.recommended")}</div>
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {recommendedPhilosophers.map((philosopher) => (
                           <PhilosopherChoiceCard
@@ -410,7 +512,7 @@ export function Dilemma() {
                   )}
 
                   <div>
-                    <div className="mb-3 text-sm text-zinc-400">全部哲学家</div>
+                    <div className="mb-3 text-sm text-zinc-400">{t("dilemma.allPhilosophers")}</div>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {otherPhilosophers.map((philosopher) => (
                         <PhilosopherChoiceCard
@@ -427,30 +529,34 @@ export function Dilemma() {
           </>
         )}
 
-        {stage === "debate" && selectedOption && selectedPhilosopher && (
+        {stage === "debate" && selectedOption && selectedPhilosopher && selectedPhilosopherDisplay && (
           <div className="mx-auto max-w-4xl">
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-sm text-cyan-300">{currentDilemma.title}</div>
-                <h2 className="text-3xl font-bold">{selectedPhilosopher.nameCN} 的讨论窗口</h2>
+                <h2 className="text-3xl font-bold">
+                  {t("dilemma.discussionWindow", {
+                    name: philosopherDisplayName(selectedPhilosopher, locale),
+                  })}
+                </h2>
               </div>
               <button
                 type="button"
                 onClick={resetDiscussion}
                 className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
               >
-                重新选择哲学家
+                {t("dilemma.reselect")}
               </button>
             </div>
 
             <div className="mb-6 grid gap-4 md:grid-cols-[1.3fr_0.9fr]">
               <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-                <div className="mb-2 text-sm text-zinc-500">当前困境</div>
+                <div className="mb-2 text-sm text-zinc-500">{t("dilemma.currentDilemma")}</div>
                 <div className="mb-2 text-xl font-semibold">{currentDilemma.question}</div>
                 <p className="text-sm leading-6 text-zinc-400">{currentDilemma.promptLead}</p>
               </div>
               <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-                <div className="mb-2 text-sm text-zinc-500">你的选择</div>
+                <div className="mb-2 text-sm text-zinc-500">{t("dilemma.yourChoice")}</div>
                 <div className="font-semibold text-white">{selectedOption.label}</div>
                 <p className="mt-2 text-sm leading-6 text-zinc-400">{selectedOption.summary}</p>
               </div>
@@ -458,7 +564,7 @@ export function Dilemma() {
 
             <div className="mb-6 flex items-center gap-3 text-zinc-400">
               <AlertCircle className="h-4 w-4" />
-              <span>讨论会按“哲学家回应 + Judge 追问”的方式推进，和辩论窗口保持一致。</span>
+              <span>{t("dilemma.discussionHint")}</span>
             </div>
 
             <div className="mb-6 space-y-4">
@@ -475,15 +581,25 @@ export function Dilemma() {
                 >
                   <div className="mb-2 text-xs text-zinc-500">
                     {message.role === "user"
-                      ? "你"
+                      ? t("dilemma.you")
                       : message.role === "philosopher"
-                        ? selectedPhilosopher.nameCN
-                        : "Judge"}
+                        ? philosopherDisplayName(selectedPhilosopher, locale)
+                        : t("dilemma.history.judge")}
                   </div>
-                  <p className="whitespace-pre-wrap leading-7 text-zinc-100">{message.content}</p>
+                  <p className="whitespace-pre-wrap leading-7 text-zinc-100">
+                    {dilemmaMessageContent(message, locale, t, selectedOption?.label)}
+                  </p>
                 </div>
               ))}
-              {isThinking && <div className="text-sm italic text-zinc-500">哲学家与 Judge 正在思考...</div>}
+              {isThinking && thinkingRole && (
+                <div className="text-sm italic text-zinc-500">
+                  {thinkingRole === "philosopher"
+                    ? t("battle.philosopherThinking", {
+                        name: philosopherDisplayName(selectedPhilosopher, locale),
+                      })
+                    : t("battle.judgeThinking")}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -495,7 +611,9 @@ export function Dilemma() {
                     void handleUserTurn();
                   }
                 }}
-                placeholder={`继续追问 ${selectedPhilosopher.nameCN}，或者补充你的理由...`}
+                placeholder={t("dilemma.inputPlaceholder", {
+                  name: philosopherDisplayName(selectedPhilosopher, locale),
+                })}
                 className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-zinc-100 outline-none transition-colors focus:border-cyan-500"
               />
               <button
@@ -514,7 +632,7 @@ export function Dilemma() {
               disabled={!canReveal && messages.length < 4}
               className="mt-6 w-full rounded-xl bg-yellow-600 py-3 font-bold text-zinc-950 transition-colors hover:bg-yellow-500 disabled:bg-zinc-700 disabled:text-zinc-300"
             >
-              进入总结
+              {t("dilemma.enterSummary")}
             </button>
           </div>
         )}
@@ -523,19 +641,33 @@ export function Dilemma() {
           <div className="mx-auto max-w-4xl rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
             <div className="mb-6">
               <div className="mb-2 text-sm text-cyan-300">{currentDilemma.title}</div>
-              <h3 className="text-3xl font-bold">完整分析</h3>
+              <h3 className="text-3xl font-bold">{t("dilemma.summary.title")}</h3>
               <p className="mt-2 text-zinc-400">
-                你选择的是“{selectedOption.label}”，讨论对象是 {selectedPhilosopher.nameCN}。
+                {t("dilemma.summary.yourChoice", {
+                  choice: selectedOption.label,
+                  name: philosopherDisplayName(selectedPhilosopher, locale),
+                })}
               </p>
             </div>
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
               <p className="whitespace-pre-line leading-8 text-zinc-300">
-                {isGeneratingSummary ? "正在生成总结..." : fullExplanation}
+                {isGeneratingSummary ? (
+                  streamPreview ? (
+                    <pre className="max-h-64 overflow-auto whitespace-pre-wrap text-zinc-400">{streamPreview}</pre>
+                  ) : (
+                    t("dilemma.summary.generating")
+                  )
+                ) : fullExplanation ? (
+                  fullExplanation
+                ) : (
+                  t("dilemma.summary.failed")
+                )}
               </p>
             </div>
 
             <DebateSummary
+              sourceType="dilemma"
               philosopher={selectedPhilosopher}
               question={`${currentDilemma.title}：${currentDilemma.question}`}
               userChoice="uncertain"
@@ -551,13 +683,13 @@ export function Dilemma() {
                 onClick={resetDiscussion}
                 className="flex-1 rounded-xl border border-zinc-700 py-3 text-center transition-colors hover:border-zinc-500"
               >
-                继续换哲学家讨论
+                {t("dilemma.continue")}
               </button>
               <Link
                 to="/profile"
                 className="flex-1 rounded-xl bg-cyan-600 py-3 text-center font-bold text-white transition-colors hover:bg-cyan-500"
               >
-                查看思维画像
+                {t("dilemma.viewProfile")}
               </Link>
             </div>
           </div>
@@ -576,6 +708,10 @@ function PhilosopherChoiceCard({
   onChoose: (philosopher: Philosopher) => void;
   featured?: boolean;
 }) {
+  const { t, locale } = useArenaLocale();
+  const p = philosopherForLocale(philosopher, locale);
+  const displayName = philosopherDisplayName(philosopher, locale);
+  const ideasSep = locale === "zh" ? "、" : ", ";
   return (
     <button
       type="button"
@@ -590,88 +726,21 @@ function PhilosopherChoiceCard({
         <PhilosopherAvatar philosopher={philosopher} className="h-12 w-12 flex-shrink-0 text-lg" />
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
-            <h5 className="truncate font-bold text-white">{philosopher.nameCN}</h5>
+            <h5 className="truncate font-bold text-white">{displayName}</h5>
             {featured && (
               <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[11px] text-cyan-300">
-                推荐
+                {t("dilemma.recommended")}
               </span>
             )}
           </div>
-          <div className="truncate text-xs text-zinc-500">{philosopher.name}</div>
           <div className="mt-1 text-xs text-zinc-400">
-            {philosopher.school} · {formatPeriod(philosopher.period)}
+            {p.school} · {formatPhilosopherPeriod(philosopher.period, t)}
           </div>
         </div>
       </div>
       <div className="line-clamp-2 text-sm leading-6 text-zinc-400">
-        {philosopher.keyIdeas.slice(0, 3).join("、")}
+        {p.keyIdeas.slice(0, 3).join(ideasSep)}
       </div>
     </button>
   );
-}
-
-function formatPeriod(period: number) {
-  if (period < 0) {
-    return `公元前 ${Math.abs(period)}`;
-  }
-  return `公元 ${period}`;
-}
-
-function localTurnFallback(
-  philosopher: Philosopher,
-  dilemmaTitle: string,
-  option: DilemmaOption,
-  userInput: string
-): TurnResult {
-  return {
-    philosopherReply: `${philosopher.nameCN}：你刚才坚持“${option.label}”，这说明你把 ${userInput.slice(
-      0,
-      24
-    )} 放在了论证中心。但在 ${dilemmaTitle} 中，真正关键的是你愿意为哪一种原则承担后果，以及你如何界定人的价值。`,
-    judgeQuestion:
-      "Judge：如果把你的立场推广成所有人都遵守的规则，它最容易在哪个情境下失效？你会怎么修补它？",
-    continueDebate: true,
-  };
-}
-
-function localSummaryFallback(
-  philosopher: Philosopher,
-  dilemmaTitle: string,
-  option: DilemmaOption
-) {
-  return [
-    `${philosopher.nameCN} 会把这场关于“${dilemmaTitle}”的讨论，拉回到更深层的原则问题。`,
-    "",
-    `你的选择是：${option.label}。`,
-    `这意味着你优先考虑的是：${option.summary}`,
-    "",
-    `如果继续沿着 ${philosopher.nameCN} 的思路推进，讨论通常会落到三个问题上：`,
-    "1. 你究竟把什么看作最应该被保护的价值。",
-    "2. 你的规则是否能在更普遍的情境中成立。",
-    "3. 当后果与原则冲突时，你愿意牺牲哪一边。",
-    "",
-    "这一版先保留为通用总结，后续我们还可以继续细化每个困境的专属生成结果。",
-  ].join("\n");
-}
-
-function parseJsonPayload<T>(raw: string): T | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  const direct = tryParse<T>(trimmed);
-  if (direct) return direct;
-  const fenced =
-    trimmed.match(/```json\s*([\s\S]*?)\s*```/i) || trimmed.match(/```\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) return tryParse<T>(fenced[1].trim());
-  const first = trimmed.indexOf("{");
-  const last = trimmed.lastIndexOf("}");
-  if (first >= 0 && last > first) return tryParse<T>(trimmed.slice(first, last + 1));
-  return null;
-}
-
-function tryParse<T>(text: string): T | null {
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
 }

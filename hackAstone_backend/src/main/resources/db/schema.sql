@@ -24,15 +24,18 @@ INSERT INTO `id_sequence` (`entity_type`, `current_value`, `step`) VALUES
 ('USR', 0, 1),  -- 用户 ID 序列
 ('PLN', 0, 1),  -- 计划 ID 序列
 ('UDT', 0, 1),  -- 使用数据 ID 序列
-('AIC', 0, 1);  -- AI对话 ID 序列
+('AIC', 0, 1),  -- AI对话 ID 序列
+('BAT', 0, 1),  -- 对局记录 ID 序列
+('NOTE', 0, 1);  -- 用户笔记 ID 序列
 
 -- ==========================================
 -- 2. 用户账户表 (ha_user)
 -- ==========================================
 DROP TABLE IF EXISTS `ha_user`;
 CREATE TABLE `ha_user` (
-  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '用户ID（主键）',
-  `username` VARCHAR(50) NOT NULL COMMENT '用户名',
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '用户ID（主键/uid）',
+  `username` VARCHAR(50) NOT NULL COMMENT '内部登录名',
+  `email` VARCHAR(100) COMMENT '邮箱',
   `phone` VARCHAR(20) COMMENT '手机号',
   `password_hash` VARCHAR(255) NOT NULL COMMENT '密码哈希',
   `nickname` VARCHAR(50) COMMENT '昵称',
@@ -42,8 +45,11 @@ CREATE TABLE `ha_user` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   UNIQUE KEY `uk_username` (`username`),
+  UNIQUE KEY `uk_email` (`email`),
+  UNIQUE KEY `uk_nickname` (`nickname`),
   UNIQUE KEY `uk_phone` (`phone`),
   KEY `idx_username` (`username`),
+  KEY `idx_email` (`email`),
   KEY `idx_phone` (`phone`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户账户表';
@@ -107,3 +113,39 @@ CREATE TABLE `ha_ai_conversation` (
   KEY `idx_created_at` (`created_at`),
   KEY `idx_user_session` (`user_id`, `session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI对话内容表';
+
+-- ==========================================
+-- 6. 对局记录表 (ha_battle_record)
+-- ==========================================
+DROP TABLE IF EXISTS `ha_battle_record`;
+CREATE TABLE `ha_battle_record` (
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '对局ID（主键）',
+  `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
+  `battle_type` VARCHAR(50) NOT NULL COMMENT '对局类型：battle/philosophy/dilemma/roundtable',
+  `topic` VARCHAR(500) NOT NULL COMMENT '辩题/主题',
+  `user_choice` VARCHAR(200) COMMENT '用户选择/立场',
+  `judge_summary` TEXT COMMENT 'Judge总结/追问',
+  `changed_stance` TINYINT DEFAULT 0 COMMENT '是否改变立场：0-否，1-是',
+  `messages` JSON COMMENT '对话历史（JSON数组）',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_battle_type` (`battle_type`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='对局记录表';
+
+-- ==========================================
+-- 7. 用户辩论笔记表 (ha_user_note)
+-- ==========================================
+DROP TABLE IF EXISTS `ha_user_note`;
+CREATE TABLE `ha_user_note` (
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '笔记ID',
+  `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
+  `source_type` VARCHAR(50) NOT NULL COMMENT '来源类型：debate/dilemma/roundtable 等',
+  `source_key` VARCHAR(255) NOT NULL COMMENT '同一辩题下的唯一键',
+  `topic` VARCHAR(500) COMMENT '辩题摘要',
+  `content` MEDIUMTEXT NOT NULL COMMENT '笔记正文',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_user_source` (`user_id`, `source_type`, `source_key`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户辩论笔记';

@@ -6,12 +6,16 @@ server:
 spring:
   application:
     name: hackAstone-backend
+  servlet:
+    multipart:
+      max-file-size: 3MB
+      max-request-size: 3MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # 确保你的数据库 hackastone 已经存在
-    url: jdbc:mysql://localhost:3306/hackastone?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    # createDatabaseIfNotExist=true：首次连接时自动创建 hackastone 库
+    url: jdbc:mysql://localhost:3306/hackastone?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: 36591126
+    password: ${MYSQL_PASSWORD:}
 
 mybatis:
   mapper-locations: classpath:mappers/*.xml
@@ -23,15 +27,30 @@ logging:
   level:
     org.hackastone: debug
 
+# 启动时自动建库 + 幂等建表（classpath:db/init-tables.sql）
+hackastone:
+  db:
+    auto-init: true
+    auto-create-database: true
+  upload:
+    dir: ${UPLOAD_DIR:./data/uploads}
+    max-avatar-bytes: 2097152
+
 bailian:
-  # 建议通过环境变量注入，不要把 key 写入仓库
-  api-key: sk-edd5db6b07ad4c8880067b2250b8f79a
-  endpoint: https://dashscope.aliyuncs.com/api/v1/apps
-  timeout-ms: 7000
+  # API Key：优先环境变量 DASHSCOPE_API_KEY 或 BAILIAN_API_KEY（勿把生产密钥提交到仓库）
+  api-key: ${DASHSCOPE_API_KEY:${BAILIAN_API_KEY:}}
+  # 中国大陆：https://dashscope.aliyuncs.com/api/v1/apps
+  # 国际（新加坡）：export BAILIAN_ENDPOINT=https://dashscope-intl.aliyuncs.com/api/v1/apps
+  endpoint: ${BAILIAN_ENDPOINT:https://dashscope.aliyuncs.com/api/v1/apps}
+  # 大模型首包较慢，7s 易超时；可按需再调大
+  timeout-ms: 120000
   cache-ttl-ms: 60000
-  atlas-app-id: abc36d9955e84ea3a823badc126820da
-  nova-app-id: 0eda7ecd8ce1420087fd627ccd293a0d
-  forge-app-id: a96f850a5df24ef89e209b94c832ee1e
-  ledger-app-id: 4415d8e9131e43ef953e259cdb8f0e35
-  echo-app-id: d2756fe8a8c1491c8103a5fc50505c8d
-  sentinel-app-id: 074a4934f6714fb2a303a5bda14e8b7b
+  atlas-app-id:
+  nova-app-id:
+  forge-app-id:
+  ledger-app-id:
+  # 哲学辩论等走 echo：须与 api-key 同一阿里云账号下百炼「应用」的 APP_ID；若报 AppId invalid 请改为你自己的应用 ID
+  echo-app-id: ${BAILIAN_ECHO_APP_ID:}
+  sentinel-app-id:
+  # 子业务空间：HTTP 头 X-DashScope-WorkSpace；可用环境变量 BAILIAN_WORKSPACE_ID 覆盖
+  workspace-id: ${BAILIAN_WORKSPACE_ID:}

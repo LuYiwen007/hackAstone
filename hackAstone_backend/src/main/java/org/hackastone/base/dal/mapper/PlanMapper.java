@@ -10,4 +10,6 @@ public interface PlanMapper {
     int insert(PlanEntity plan);
 
     PlanEntity selectById(@Param("id") String id);
+
+    PlanEntity selectByIdAndUserId(@Param("id") String id, @Param("userId") String userId);
 }
