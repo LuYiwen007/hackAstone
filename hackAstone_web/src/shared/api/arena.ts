@@ -187,12 +187,14 @@ export function streamDisciplineDebateSummary(
 export function generateTopic(
   philosopherName: string,
   philosopherSchool: string,
-  keyIdeas: string[]
+  keyIdeas: string[],
+  locale = "en"
 ) {
   return apiPost<AgentRunResponse>("/arena/agent/topic", {
     philosopherName,
     philosopherSchool,
     keyIdeas: keyIdeas.join("。"),
+    locale,
   });
 }
 
@@ -201,6 +203,7 @@ export function generateTopicStream(
   philosopherName: string,
   philosopherSchool: string,
   keyIdeas: string[],
+  locale = "en",
   handlers: AgentStreamHandlers<AgentRunResponse> = {}
 ) {
   return apiPostStream<AgentRunResponse>(
@@ -209,6 +212,7 @@ export function generateTopicStream(
       philosopherName,
       philosopherSchool,
       keyIdeas: keyIdeas.join("。"),
+      locale,
     },
     handlers
   );

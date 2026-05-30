@@ -61,7 +61,8 @@ public class ArenaAgentStreamController {
         String philosopherName = String.valueOf(request.getOrDefault("philosopherName", "某位思想家"));
         String philosopherSchool = String.valueOf(request.getOrDefault("philosopherSchool", "哲学"));
         String keyIdeas = String.valueOf(request.getOrDefault("keyIdeas", ""));
-        String prompt = ArenaEchoPrompts.debateTopic(philosopherName, philosopherSchool, keyIdeas);
+        String locale = String.valueOf(request.getOrDefault("locale", "zh"));
+        String prompt = ArenaEchoPrompts.debateTopic(philosopherName, philosopherSchool, keyIdeas, locale);
         long timeout = bailianAgentConfig.getTimeoutMs() + 30_000L;
         SseEmitter emitter = new SseEmitter(timeout);
         STREAM_EXECUTOR.execute(() -> {

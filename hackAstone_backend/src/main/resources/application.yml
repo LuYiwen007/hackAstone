@@ -43,14 +43,14 @@ bailian:
   # 国际（新加坡）：export BAILIAN_ENDPOINT=https://dashscope-intl.aliyuncs.com/api/v1/apps
   endpoint: ${BAILIAN_ENDPOINT:https://dashscope.aliyuncs.com/api/v1/apps}
   # 大模型首包较慢，7s 易超时；可按需再调大
-  timeout-ms: 120000
-  cache-ttl-ms: 60000
-  atlas-app-id:
-  nova-app-id:
-  forge-app-id:
-  ledger-app-id:
+  timeout-ms: ${BAILIAN_TIMEOUT_MS:120000}
+  cache-ttl-ms: ${BAILIAN_CACHE_TTL_MS:60000}
+  atlas-app-id: ${BAILIAN_ATLAS_APP_ID:}
+  nova-app-id: ${BAILIAN_NOVA_APP_ID:}
+  forge-app-id: ${BAILIAN_FORGE_APP_ID:}
+  ledger-app-id: ${BAILIAN_LEDGER_APP_ID:}
   # 哲学辩论等走 echo：须与 api-key 同一阿里云账号下百炼「应用」的 APP_ID；若报 AppId invalid 请改为你自己的应用 ID
   echo-app-id: ${BAILIAN_ECHO_APP_ID:}
-  sentinel-app-id:
+  sentinel-app-id: ${BAILIAN_SENTINEL_APP_ID:}
   # 子业务空间：HTTP 头 X-DashScope-WorkSpace；可用环境变量 BAILIAN_WORKSPACE_ID 覆盖
   workspace-id: ${BAILIAN_WORKSPACE_ID:}
