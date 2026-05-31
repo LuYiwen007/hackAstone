@@ -41,9 +41,7 @@ export function PhilosophyBattle() {
   useEffect(() => {
     let cancelled = false;
     setTopicStreamPreview("");
-    generateTopic(philosopher.nameCN, philosopher.school, philosopher.keyIdeas, {
-      onDelta: (_d, acc) => setTopicStreamPreview(acc),
-    })
+    generateTopic(philosopher.nameCN, philosopher.school, philosopher.keyIdeas, "zh")
       .then((resp) => {
         const parsed = parseJsonPayload<DebateTopicContent>(resp.text);
         if (!cancelled && parsed?.question && parsed?.judgeQuestions?.length) {

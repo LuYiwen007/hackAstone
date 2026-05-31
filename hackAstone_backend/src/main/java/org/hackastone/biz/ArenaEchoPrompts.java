@@ -130,12 +130,24 @@ public final class ArenaEchoPrompts {
     }
 
     public static String debateTopic(String philosopherName, String school, String keyIdeas) {
-        return header(
-                "生成一场哲学辩论的辩题、双方立场、裁判追问与背景说明。",
-                "必须包含且仅使用字段：question, philosopherView, oppositeView, judgeQuestions（至少3条）, fullExplanation",
-                "中文；judgeQuestions 为字符串数组；字段名必须与 schema 完全一致",
-                DEBATE_TOPIC_JSON_SCHEMA
-        ) + "上下文：思想家=" + philosopherName + "；学派=" + school + "；关键思想=" + keyIdeas;
+        return debateTopic(philosopherName, school, keyIdeas, "zh");
+    }
+
+    public static String debateTopic(String philosopherName, String school, String keyIdeas, String locale) {
+        boolean en = locale != null && locale.toLowerCase(Locale.ROOT).startsWith("en");
+        String task = en
+                ? "Generate a philosophy debate topic, both sides' positions, judge follow-up questions, and a background explanation."
+                : "生成一场哲学辩论的辩题、双方立场、裁判追问与背景说明。";
+        String acceptance = en
+                ? "Must contain only these fields: question, philosopherView, oppositeView, judgeQuestions (at least 3), fullExplanation"
+                : "必须包含且仅使用字段：question, philosopherView, oppositeView, judgeQuestions（至少3条）, fullExplanation";
+        String constraints = en
+                ? "English only; every string value must be natural English; judgeQuestions is a string array; field names must exactly match the schema; do not include Chinese characters"
+                : "中文；judgeQuestions 为字符串数组；字段名必须与 schema 完全一致";
+        String context = en
+                ? "Context: philosopher=" + philosopherName + "; school=" + school + "; keyIdeas=" + keyIdeas
+                : "上下文：思想家=" + philosopherName + "；学派=" + school + "；关键思想=" + keyIdeas;
+        return header(task, acceptance, constraints, DEBATE_TOPIC_JSON_SCHEMA) + context;
     }
 
     public static String debateTurn(String debateQuestion, String philosopherName, String school,
