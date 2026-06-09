@@ -116,7 +116,8 @@ export function PhilosophyBattleLive() {
     let cancelled = false;
     setTopicLoading(true);
     setTopicLoadError(null);
-    generateTopic(displayName, philosopher.school, philosopher.keyIdeas)
+    const loc = philosopherForLocale(philosopher, locale);
+    generateTopic(displayName, loc.school, loc.keyIdeas ?? philosopher.keyIdeas, locale)
       .then((resp) => {
         if (cancelled) return;
         const parsed =
@@ -149,7 +150,7 @@ export function PhilosophyBattleLive() {
     return () => {
       cancelled = true;
     };
-  }, [philosopher?.id, topicReloadToken, displayName, t]);
+  }, [philosopher?.id, topicReloadToken, displayName, locale, t]);
 
   if (!philosopher) {
     return (

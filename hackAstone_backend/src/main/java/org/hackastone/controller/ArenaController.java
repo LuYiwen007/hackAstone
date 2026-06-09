@@ -5,6 +5,7 @@ import org.hackastone.base.util.auth.UserContext;
 import org.hackastone.biz.ArenaDataService;
 import org.hackastone.biz.ArenaEchoPrompts;
 import org.hackastone.biz.BailianAgentService;
+import org.hackastone.biz.DebateTopicParser;
 import org.hackastone.biz.DisciplineBattleParser;
 import org.hackastone.biz.DilemmaAiParser;
 import org.hackastone.biz.RoundtableMessagesParser;
@@ -249,8 +250,14 @@ public class ArenaController {
         String philosopherName = String.valueOf(request.getOrDefault("philosopherName", "某位思想家"));
         String philosopherSchool = String.valueOf(request.getOrDefault("philosopherSchool", "哲学"));
         String keyIdeas = String.valueOf(request.getOrDefault("keyIdeas", ""));
-        return Result.success(bailianAgentService.runEcho(
-                ArenaEchoPrompts.debateTopic(philosopherName, philosopherSchool, keyIdeas)));
+        String locale = String.valueOf(request.getOrDefault("locale", "zh"));
+        Map<String, Object> agentOut = bailianAgentService.runEcho(
+                ArenaEchoPrompts.debateTopic(philosopherName, philosopherSchool, keyIdeas, locale), false);
+        Map<String, Object> debateTopic = DebateTopicParser.parse(String.valueOf(agentOut.getOrDefault("text", "")));
+        if (debateTopic != null) {
+            agentOut.put("debateTopic", debateTopic);
+        }
+        return Result.success(agentOut);
     }
 
     /**
