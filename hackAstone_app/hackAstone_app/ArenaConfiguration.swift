@@ -6,20 +6,12 @@ enum ArenaConfiguration {
     private static let apiKey = "arena_api_base_url"
     private static let assetsKey = "arena_assets_base_url"
 
-    /// 云主机公网 IP；模拟器 Debug 默认本机后端，真机/Release 用云地址
-    private static var defaultApiBase: String {
-        #if DEBUG
-        #if targetEnvironment(simulator)
-        return "http://127.0.0.1:8080/api"
-        #else
-        return "http://47.107.253.140:8080/api"
-        #endif
-        #else
-        return "http://47.107.253.140:8080/api"
-        #endif
-    }
+    /// 与 Web 生产环境 `VITE_API_BASE_URL` 对齐的远端 API（nginx 80 端口，模拟器/真机/Release 统一）
+    private static let remoteApiBase = "http://47.107.253.140/api"
 
-    /// 例如 `http://47.107.253.140:8080/api`（不要末尾 `/`）
+    private static var defaultApiBase: String { remoteApiBase }
+
+    /// 例如 `http://47.107.253.140/api`（不要末尾 `/`；本机调试可用 `http://127.0.0.1:8080/api`）
     static var apiBaseURLString: String {
         get {
             let raw = UserDefaults.standard.string(forKey: apiKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
