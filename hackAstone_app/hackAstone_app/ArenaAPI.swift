@@ -24,7 +24,9 @@ enum ArenaAPIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .badURL: return "无效的接口地址"
-        case .httpStatus(let c): return "HTTP \(c)"
+        case .httpStatus(let c):
+            if c == 504 { return "服务器生成超时（HTTP 504），请稍后重试" }
+            return "HTTP \(c)"
         case .serverMessage(let m): return m
         case .serverBiz(_, let m): return m
         case .decode: return "数据解析失败"
@@ -37,6 +39,8 @@ enum ArenaAPIError: LocalizedError {
                     return "网络不可用，请检查网络连接"
                 case .cannotConnectToHost, .cannotFindHost:
                     return "无法连接服务器，请确认 API 地址是否正确"
+                case .cannotParseResponse:
+                    return "服务器响应格式异常，请稍后重试"
                 default:
                     break
                 }
@@ -58,9 +62,16 @@ struct AgentRunResponse {
     let disciplineDual: DisciplineDualReplyParsed?
     let disciplineSummary: DisciplineSummaryBilingualParsed?
     let philosophyJudge: PhilosophyJudgeStepParsed?
+    let debateTopic: DebateTopicContent?
 
     static func fromDictionary(_ o: [String: Any]) -> AgentRunResponse {
         let text = o["text"] as? String ?? ""
+        var topic: DebateTopicContent?
+        if let dt = o["debateTopic"] as? [String: Any],
+           let data = try? JSONSerialization.data(withJSONObject: dt),
+           let parsed = try? JSONDecoder().decode(DebateTopicContent.self, from: data) {
+            topic = parsed
+        }
         return AgentRunResponse(
             agent: o["agent"] as? String ?? "echo",
             appId: o["appId"] as? String ?? "",
@@ -72,7 +83,8 @@ struct AgentRunResponse {
             disciplineBattle: ArenaBilingualParsing.parseDisciplineBattle(from: text, structured: o["battle"]),
             disciplineDual: ArenaBilingualParsing.parseDisciplineDual(from: text, structured: o["disciplineDual"]),
             disciplineSummary: ArenaBilingualParsing.parseDisciplineSummary(from: text, structured: o["disciplineSummary"]),
-            philosophyJudge: PhilosophyJudgeStepParsed.from(structured: o["philosophyJudge"], fallbackText: text)
+            philosophyJudge: PhilosophyJudgeStepParsed.from(structured: o["philosophyJudge"], fallbackText: text),
+            debateTopic: topic
         )
     }
 }
@@ -163,12 +175,27 @@ enum ArenaAPI {
         return URLSession(configuration: config)
     }()
 
+    /// 大模型非流式 REST（经 nginx 比 SSE 更稳；学科 AI 出题等）
+    private static let agentSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 120
+        config.timeoutIntervalForResource = 150
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+
     /// 大模型流式 SSE（通义千问 incremental_output）
     private static let streamSession: URLSession = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 120
         config.timeoutIntervalForResource = 180
         config.waitsForConnectivity = false
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.urlCache = nil
+        config.httpAdditionalHeaders = [
+            "Accept-Encoding": "identity",
+            "Connection": "keep-alive",
+        ]
         return URLSession(configuration: config)
     }()
 
@@ -203,6 +230,31 @@ enum ArenaAPI {
         let resp: URLResponse
         do {
             (data, resp) = try await session.data(for: req)
+        } catch {
+            throw ArenaAPIError.network(error)
+        }
+        guard let http = resp as? HTTPURLResponse else { throw ArenaAPIError.decode }
+        guard (200 ... 299).contains(http.statusCode) else { throw ArenaAPIError.httpStatus(http.statusCode) }
+        return data
+    }
+
+    /// 大模型等非流式 Agent 调用（较长超时）
+    private static func agentRequest(path: String, jsonBody: [String: Any]) async throws -> Data {
+        let base = ArenaConfiguration.apiBaseURLString
+        let p = path.hasPrefix("/") ? path : "/\(path)"
+        guard let url = URL(string: "\(base)\(p)") else { throw ArenaAPIError.badURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = AuthStore.bearerToken, !token.isEmpty {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
+        let data: Data
+        let resp: URLResponse
+        do {
+            (data, resp) = try await agentSession.data(for: req)
         } catch {
             throw ArenaAPIError.network(error)
         }
@@ -392,6 +444,43 @@ enum ArenaAPI {
 
     // MARK: - Agents（流式 SSE）
 
+    private static func consumeSseBlocks(
+        _ buffer: inout String,
+        onDelta: StreamDeltaHandler?,
+        donePayload: inout [String: Any]?,
+        lastAccumulated: inout String
+    ) {
+        while let range = buffer.range(of: "\n\n") {
+            let block = String(buffer[..<range.lowerBound])
+            buffer = String(buffer[range.upperBound...])
+            for row in block.split(separator: "\n", omittingEmptySubsequences: false) {
+                let trimmed = row.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard trimmed.hasPrefix("data:") else { continue }
+                let json = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
+                if json.isEmpty || json == "[DONE]" { continue }
+                guard let rowData = json.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: rowData) as? [String: Any],
+                      let type = obj["type"] as? String
+                else { continue }
+                if type == "delta" {
+                    let delta = obj["text"] as? String ?? ""
+                    let acc = obj["accumulated"] as? String ?? (lastAccumulated + delta)
+                    if !acc.isEmpty { lastAccumulated = acc }
+                    if !delta.isEmpty { onDelta?(delta, lastAccumulated) }
+                } else if type == "error" {
+                    // 由调用方处理；此处仅标记，避免在 inout 闭包内 throw
+                    donePayload = ["type": "error", "message": obj["message"] as? String ?? "流式请求失败"]
+                } else if type == "done" {
+                    var done = obj
+                    if (done["text"] as? String)?.isEmpty != false, !lastAccumulated.isEmpty {
+                        done["text"] = lastAccumulated
+                    }
+                    donePayload = done
+                }
+            }
+        }
+    }
+
     private static func requestAgentStream(
         path: String,
         jsonBody: [String: Any],
@@ -404,6 +493,8 @@ enum ArenaAPI {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        req.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
+        req.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         if let token = AuthStore.bearerToken, !token.isEmpty {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -422,31 +513,34 @@ enum ArenaAPI {
 
         var buffer = ""
         var donePayload: [String: Any]?
-        for try await line in bytes.lines {
-            buffer += line + "\n"
-            while let range = buffer.range(of: "\n\n") {
-                let block = String(buffer[..<range.lowerBound])
-                buffer = String(buffer[range.upperBound...])
-                for row in block.split(separator: "\n", omittingEmptySubsequences: false) {
-                    let trimmed = row.trimmingCharacters(in: .whitespaces)
-                    guard trimmed.hasPrefix("data:") else { continue }
-                    let json = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-                    if json.isEmpty || json == "[DONE]" { continue }
-                    guard let rowData = json.data(using: .utf8),
-                          let obj = try? JSONSerialization.jsonObject(with: rowData) as? [String: Any],
-                          let type = obj["type"] as? String
-                    else { continue }
-                    if type == "delta" {
-                        let delta = obj["text"] as? String ?? ""
-                        let acc = obj["accumulated"] as? String ?? delta
-                        if !delta.isEmpty { onDelta?(delta, acc) }
-                    } else if type == "error" {
-                        throw ArenaAPIError.serverMessage(obj["message"] as? String ?? "流式请求失败")
-                    } else if type == "done" {
-                        donePayload = obj
+        var lastAccumulated = ""
+        var pendingBytes = Data()
+        for try await byte in bytes {
+            pendingBytes.append(byte)
+            if byte == 0x0A || byte == 0x0D || pendingBytes.count >= 4096 {
+                if let chunk = String(data: pendingBytes, encoding: .utf8) {
+                    buffer += chunk
+                    pendingBytes.removeAll(keepingCapacity: true)
+                    consumeSseBlocks(&buffer, onDelta: onDelta, donePayload: &donePayload, lastAccumulated: &lastAccumulated)
+                    if let donePayload, donePayload["type"] as? String == "error" {
+                        throw ArenaAPIError.serverMessage(donePayload["message"] as? String ?? "流式请求失败")
                     }
                 }
             }
+        }
+        if !pendingBytes.isEmpty, let tail = String(data: pendingBytes, encoding: .utf8) {
+            buffer += tail
+        }
+        // 与 Web stream.ts 一致：流结束时 flush 末包（nginx/URLSession 可能缺结尾空行）
+        if !buffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            buffer += "\n"
+            consumeSseBlocks(&buffer, onDelta: onDelta, donePayload: &donePayload, lastAccumulated: &lastAccumulated)
+        }
+        if donePayload?["type"] as? String == "error" {
+            throw ArenaAPIError.serverMessage(donePayload?["message"] as? String ?? "流式请求失败")
+        }
+        if donePayload == nil, !lastAccumulated.isEmpty {
+            donePayload = ["type": "done", "text": lastAccumulated, "agent": "echo", "cached": false]
         }
         guard let donePayload else { throw ArenaAPIError.serverMessage("流式响应未收到完成事件") }
         return donePayload
@@ -456,19 +550,20 @@ enum ArenaAPI {
         try await runAgent(agent: "echo", query: query, imageList: [], onDelta: onDelta)
     }
 
-    /// 辩题生成：无 onDelta 时走非流式 `/arena/agent/topic`（辩论桌准备页）
-    static func generateTopic(philosopherName: String, philosopherSchool: String, keyIdeas: [String], onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
+    /// 辩题生成（始终走 SSE 流式；非流式 `/topic` 会受 15s 短超时限制，大模型易超时）
+    static func generateTopic(
+        philosopherName: String,
+        philosopherSchool: String,
+        keyIdeas: [String],
+        locale: String = "en",
+        onDelta: StreamDeltaHandler? = nil
+    ) async throws -> AgentRunResponse {
         let body: [String: Any] = [
             "philosopherName": philosopherName,
             "philosopherSchool": philosopherSchool,
             "keyIdeas": keyIdeas.joined(separator: "。"),
+            "locale": locale,
         ]
-        if onDelta == nil {
-            let data = try await request(path: "/arena/agent/topic", method: "POST", jsonBody: body)
-            let inner = try envelopeData(data) as? [String: Any]
-            guard let inner else { throw ArenaAPIError.decode }
-            return AgentRunResponse.fromDictionary(inner)
-        }
         let inner = try await requestAgentStream(
             path: "/arena/agent/topic/stream",
             jsonBody: body,
@@ -478,9 +573,11 @@ enum ArenaAPI {
     }
 
     static func generateDisciplineBattle(categoryEn: String, categoryZh: String, onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
+        let body: [String: Any] = ["categoryEn": categoryEn, "categoryZh": categoryZh]
+        // 经 nginx 时非流式 REST 易触发 60s 网关 504；SSE delta 可保活连接
         let inner = try await requestAgentStream(
             path: "/arena/agent/discipline/battle/stream",
-            jsonBody: ["categoryEn": categoryEn, "categoryZh": categoryZh],
+            jsonBody: body,
             onDelta: onDelta
         )
         return AgentRunResponse.fromDictionary(inner)
@@ -570,12 +667,6 @@ enum ArenaAPI {
 
     static func generateRoundtableOpenings(topic: String, participants: [[String: Any]], onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
         let body: [String: Any] = ["topic": topic, "participants": participants]
-        if onDelta == nil {
-            let data = try await request(path: "/arena/agent/roundtable/openings", method: "POST", jsonBody: body)
-            let inner = try envelopeData(data) as? [String: Any]
-            guard let inner else { throw ArenaAPIError.decode }
-            return AgentRunResponse.fromDictionary(inner)
-        }
         let inner = try await requestAgentStream(
             path: "/arena/agent/roundtable/openings/stream",
             jsonBody: body,
@@ -728,12 +819,6 @@ enum ArenaAPI {
 
     static func generateRoundtableReply(topic: String, userInput: String, participants: [[String: Any]], onDelta: StreamDeltaHandler? = nil) async throws -> AgentRunResponse {
         let body: [String: Any] = ["topic": topic, "userInput": userInput, "participants": participants]
-        if onDelta == nil {
-            let data = try await request(path: "/arena/agent/roundtable/reply", method: "POST", jsonBody: body)
-            let inner = try envelopeData(data) as? [String: Any]
-            guard let inner else { throw ArenaAPIError.decode }
-            return AgentRunResponse.fromDictionary(inner)
-        }
         let inner = try await requestAgentStream(
             path: "/arena/agent/roundtable/reply/stream",
             jsonBody: body,

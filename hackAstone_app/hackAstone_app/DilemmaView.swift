@@ -53,6 +53,7 @@ struct DilemmaView: View {
     @State private var fullExplanation = ""
     @State private var isGeneratingSummary = false
     @State private var errorAlert: String?
+    @FocusState private var dilemmaInputFocused: Bool
     /// 「全部哲学家」默认展示数量；每次展开 +5，全部展开后显示收起
     @State private var otherPhilosophersVisible = 2
 
@@ -114,6 +115,7 @@ struct DilemmaView: View {
             .padding(16)
             .padding(.bottom, 32)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(ArenaTheme.background)
         .alert(L.apiRequestFailedTitle, isPresented: Binding(
             get: { errorAlert != nil },
@@ -428,6 +430,8 @@ struct DilemmaView: View {
                 TextField(L.dilemmaInputPlaceholder(name: philosopher.displayName(isEnglish: en)), text: $userInput)
                     .arenaInputTextStyle()
                     .textFieldStyle(.roundedBorder)
+                    .focused($dilemmaInputFocused)
+                    .disabled(isThinking)
                 Button {
                     Task { await handleUserTurn(dilemma: dilemma, option: option, philosopher: philosopher) }
                 } label: {
@@ -437,6 +441,7 @@ struct DilemmaView: View {
             }
 
             Button(L.goToSummary) {
+                dilemmaInputFocused = false
                 Task { await handleReveal(dilemma: dilemma, option: option, philosopher: philosopher) }
             }
             .font(.headline)
@@ -446,6 +451,9 @@ struct DilemmaView: View {
             .foregroundStyle(.black)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .disabled((!canReveal && messages.count < 4))
+        }
+        .onChange(of: isThinking) { _, thinking in
+            if thinking { dilemmaInputFocused = false }
         }
     }
 
@@ -555,6 +563,7 @@ struct DilemmaView: View {
 
     private func choosePhilosopher(_ p: Philosopher) {
         guard let opt = selectedOption else { return }
+        dilemmaInputFocused = false
         selectedPhilosopherId = p.id
         messages = [
             DMMessage(id: "judge-open-\(UUID().uuidString)", role: .judge, content: L.dilemmaJudgeOpening(optionLabel: opt.label(en))),
@@ -578,6 +587,7 @@ struct DilemmaView: View {
         let content = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty, !isThinking else { return }
         await MainActor.run {
+            dilemmaInputFocused = false
             userInput = ""
             isThinking = true
             thinkingRole = nil

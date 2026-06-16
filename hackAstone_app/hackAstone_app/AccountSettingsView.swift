@@ -43,6 +43,9 @@ struct AccountSettingsView: View {
 
     private var L: ArenaL10n { locale.L }
 
+    /// 侧栏宽度：贴近最长导航文案（中/英）
+    private var sidebarWidth: CGFloat { L.prefersEnglish ? 162 : 148 }
+
     private var displayName: String {
         let n = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         if !n.isEmpty { return n }
@@ -128,11 +131,11 @@ struct AccountSettingsView: View {
     private var sidebar: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 12) {
-                    avatarThumb(size: 36)
+                HStack(spacing: 10) {
+                    avatarThumb(size: 32)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(displayName)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(ArenaTheme.textPrimary)
                             .lineLimit(1)
                         Text(L.settingsPlanFree)
@@ -140,8 +143,8 @@ struct AccountSettingsView: View {
                             .foregroundStyle(ArenaTheme.textMuted)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 18)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 14)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(ArenaTheme.background)
@@ -149,7 +152,7 @@ struct AccountSettingsView: View {
 
             settingsNavList
         }
-        .frame(width: 200)
+        .frame(width: sidebarWidth)
         .background(Color(red: 0.02, green: 0.02, blue: 0.03))
         .overlay(alignment: .trailing) {
             Rectangle().fill(ArenaTheme.border).frame(width: 1)
@@ -173,21 +176,21 @@ struct AccountSettingsView: View {
         return Button {
             section = item
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: iconName(item))
-                    .font(.system(size: 14))
-                    .frame(width: 18)
+                    .font(.system(size: 13))
+                    .frame(width: 16)
                 Text(navLabel(item))
                     .font(.caption.weight(.medium))
-                Spacer(minLength: 0)
+                    .lineLimit(1)
                 if active {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(ArenaTheme.textMuted)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 9)
             .foregroundStyle(active ? ArenaTheme.textPrimary : ArenaTheme.textMuted)
             .background(active ? ArenaTheme.surface : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 8))

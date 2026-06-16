@@ -100,6 +100,7 @@ struct PhilosophyBattleView: View {
     @State private var fullExplanation = ""
     @State private var isGeneratingSummary = false
     @State private var errorAlert: String?
+    @FocusState private var debateInputFocused: Bool
 
     private var philosopher: Philosopher? { catalog.philosophers.first { $0.id == philosopherId } }
 
@@ -114,6 +115,7 @@ struct PhilosophyBattleView: View {
                     .padding(16)
                     .padding(.bottom, 32)
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .background(ArenaTheme.background)
                 .task(id: "\(philosopherId)-\(topicRetryNonce)") { await loadTopic(philosopher: p) }
                 .alert(L.apiRequestFailedTitle, isPresented: Binding(
@@ -197,11 +199,15 @@ struct PhilosophyBattleView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else if let t = topic {
-                VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text(L.currentDebateTopic)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(ArenaTheme.purpleAccent.opacity(0.9))
                     Text(t.question)
-                        .font(.title.weight(.bold))
-                        .multilineTextAlignment(.center)
+                        .font(.headline.weight(.semibold))
+                        .multilineTextAlignment(.leading)
                         .foregroundStyle(ArenaTheme.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(L.agentDisclaimer)
                         .font(.caption)
                         .foregroundStyle(ArenaTheme.textMuted)
@@ -307,6 +313,7 @@ struct PhilosophyBattleView: View {
                     }
                     .padding(12)
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .frame(maxHeight: 420)
                 .onChange(of: messages.count) { _, _ in
                     withAnimation(.easeOut(duration: 0.2)) {
@@ -330,6 +337,8 @@ struct PhilosophyBattleView: View {
                     TextField(L.continueYourThought, text: $userInput)
                         .arenaInputTextStyle()
                         .textFieldStyle(.roundedBorder)
+                        .focused($debateInputFocused)
+                        .disabled(isThinking)
                     Button {
                         Task { await handleUserTurn(philosopher: philosopher) }
                     } label: {
@@ -338,6 +347,7 @@ struct PhilosophyBattleView: View {
                     .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isThinking || choice == nil)
                 }
                 Button(L.goToSummary) {
+                    debateInputFocused = false
                     Task { await handleReveal(philosopher: philosopher) }
                 }
                 .frame(maxWidth: .infinity)
@@ -354,6 +364,9 @@ struct PhilosophyBattleView: View {
         .background(ArenaTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
+        .onChange(of: isThinking) { _, thinking in
+            if thinking { debateInputFocused = false }
+        }
     }
 
     private func messageBubble(m: PBMessage, philosopher: Philosopher) -> some View {
@@ -435,6 +448,7 @@ struct PhilosophyBattleView: View {
     }
 
     private func handleChoose(_ c: PhilosophyChoice) {
+        debateInputFocused = false
         choice = c
         stage = .debate
         canReveal = false
@@ -453,9 +467,11 @@ struct PhilosophyBattleView: View {
             let resp = try await ArenaAPI.generateTopic(
                 philosopherName: philosopher.nameCN,
                 philosopherSchool: philosopher.school,
-                keyIdeas: philosopher.keyIdeas
+                keyIdeas: philosopher.keyIdeas,
+                locale: L.prefersEnglish ? "en" : "zh"
             )
-            if let parsed = JsonPayload.parse(resp.text, as: DebateTopicContent.self),
+            let parsed = resp.debateTopic ?? JsonPayload.parse(resp.text, as: DebateTopicContent.self)
+            if let parsed,
                parsed.question.isEmpty == false,
                parsed.philosopherView.isEmpty == false,
                parsed.oppositeView.isEmpty == false
@@ -481,6 +497,7 @@ struct PhilosophyBattleView: View {
         let content = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty, let choice, let top = topic else { return }
         guard !isThinking else { return }
+        debateInputFocused = false
         let userRowId = UUID().uuidString
         userInput = ""
         isThinking = true

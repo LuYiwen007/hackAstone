@@ -114,11 +114,16 @@ struct BattleView: View {
     }
 
     private func questionBlock(battle: Battle) -> some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L.currentDebateTopic)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(ArenaTheme.orangeAccent.opacity(0.9))
             Text(battle.question)
-                .font(.system(size: 28, weight: .bold))
-                .multilineTextAlignment(.center)
+                .font(.headline.weight(.semibold))
+                .multilineTextAlignment(.leading)
                 .foregroundStyle(ArenaTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 6) {
                 Circle().fill(ArenaTheme.orangeAccent).frame(width: 6, height: 6)
                 Text(L.battleInProgress)
@@ -126,7 +131,7 @@ struct BattleView: View {
                     .foregroundStyle(ArenaTheme.textMuted)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func builderBreaker(battle: Battle) -> some View {
@@ -239,9 +244,10 @@ struct BattleView: View {
             .background(ArenaTheme.surface)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(ArenaTheme.border))
 
-            HStack(spacing: 10) {
+            HStack(alignment: .bottom, spacing: 10) {
                 TextField(L.dialoguePlaceholder, text: $userInput, axis: .vertical)
                     .arenaInputTextStyle()
+                    .textFieldStyle(.roundedBorder)
                     .lineLimit(3...6)
                     .disabled(isThinking)
                 Button(L.send) { Task { await sendUserTurn(battle: battle) } }
