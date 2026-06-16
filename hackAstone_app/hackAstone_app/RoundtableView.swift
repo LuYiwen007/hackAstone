@@ -36,6 +36,7 @@ struct RoundtableView: View {
     @State private var errorAlert: String?
     @State private var showAllPhilosophers = false
     @State private var activeSpeakerId: String?
+    @FocusState private var roundtableInputFocused: Bool
 
     private let presetTopicIds: [String] = ["ai-free-will", "utopia", "truth", "education"]
 
@@ -49,6 +50,7 @@ struct RoundtableView: View {
             .padding(16)
             .padding(.bottom, 28)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(ArenaTheme.background)
         .alert(L.apiRequestFailedTitle, isPresented: Binding(
             get: { errorAlert != nil },
@@ -233,6 +235,7 @@ struct RoundtableView: View {
                 }
                 .padding(.vertical, 8)
             }
+            .scrollDismissesKeyboard(.interactively)
             .frame(minHeight: 320)
             .padding(12)
             .background(ArenaTheme.surface)
@@ -242,6 +245,8 @@ struct RoundtableView: View {
                 TextField(L.roundtableInputPlaceholder, text: $userInput)
                     .arenaInputTextStyle()
                     .textFieldStyle(.roundedBorder)
+                    .focused($roundtableInputFocused)
+                    .disabled(isThinking)
                 Button(L.send) { sendUser() }
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
@@ -251,12 +256,16 @@ struct RoundtableView: View {
             .background(ArenaTheme.surface)
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(ArenaTheme.border))
         }
+        .onChange(of: isThinking) { _, thinking in
+            if thinking { roundtableInputFocused = false }
+        }
     }
 
     @ViewBuilder
     private func messageRow(_ msg: RTMessage) -> some View {
         let isUser = msg.speaker == "user"
         let p = catalog.philosophers.first { $0.id == msg.speaker }
+        let userBubbleMaxWidth: CGFloat = 280
         HStack(alignment: .top, spacing: 10) {
             if !isUser, let p {
                 ZStack {
@@ -265,15 +274,18 @@ struct RoundtableView: View {
                 }
                 .frame(width: 40, height: 40)
             }
+            if isUser { Spacer(minLength: 48) }
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
-                HStack {
-                    if isUser {
-                        Text(L.you).font(.caption.weight(.semibold)).foregroundStyle(ArenaTheme.orangeAccent)
-                    } else if let p {
+                if isUser {
+                    Text(L.you)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(ArenaTheme.orangeAccent)
+                } else if let p {
+                    HStack {
                         Text(p.displayName(isEnglish: L.prefersEnglish)).font(.caption.weight(.semibold))
                         Text(p.school).font(.caption2).foregroundStyle(ArenaTheme.textMuted)
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
                 }
                 Group {
                     if !isUser, msg.content.isEmpty, activeSpeakerId == msg.speaker, isThinking, let p {
@@ -286,11 +298,11 @@ struct RoundtableView: View {
                     }
                 }
                 .font(.subheadline)
-                .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
                 .multilineTextAlignment(isUser ? .trailing : .leading)
                 .padding(12)
                 .background(isUser ? Color.orange.opacity(0.18) : ArenaTheme.background)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(isUser ? Color.orange.opacity(0.45) : ArenaTheme.border))
+                .frame(maxWidth: isUser ? userBubbleMaxWidth : .infinity, alignment: isUser ? .trailing : .leading)
             }
             if isUser {
                 ZStack {
@@ -394,6 +406,7 @@ struct RoundtableView: View {
     }
 
     private func startDebate() {
+        roundtableInputFocused = false
         stage = .debate
         messages = []
         isThinking = true
@@ -421,6 +434,7 @@ struct RoundtableView: View {
     private func sendUser() {
         let text = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isThinking else { return }
+        roundtableInputFocused = false
         let userRowId = "u-\(UUID().uuidString)"
         userInput = ""
         let userRow = RTMessage(id: userRowId, speaker: "user", content: text)
