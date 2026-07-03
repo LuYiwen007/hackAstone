@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Cognitive Arena HarmonyOS entry module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Cognitive Arena"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Cognitive Arena"
+    },
+    {
+      "name": "internet_permission_reason",
+      "value": "Connect to Cognitive Arena backend API"
+    }
+  ]
+}

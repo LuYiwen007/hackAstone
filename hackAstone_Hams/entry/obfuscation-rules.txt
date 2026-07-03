@@ -1,0 +1,4 @@
+# Enable property propagate
+-enable-property-propagate
+# Enable top-level obfuscation
+-enable-toplevel-obfuscation

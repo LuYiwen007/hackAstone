@@ -1,0 +1,50 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/luyiwen/.ohos/config/default_hackAstone_Hams_rcdYJN_Qe3XnFf3QyW0GQcjBQNWHIjAuwcvDp97sjuQ=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001A5EB27A647D22807970BDD39C35F4ADF170D932DF45007B61245AA9F2A477A5A656E26BC9A2C4",
+          "profile": "/Users/luyiwen/.ohos/config/default_hackAstone_Hams_rcdYJN_Qe3XnFf3QyW0GQcjBQNWHIjAuwcvDp97sjuQ=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/luyiwen/.ohos/config/default_hackAstone_Hams_rcdYJN_Qe3XnFf3QyW0GQcjBQNWHIjAuwcvDp97sjuQ=.p12",
+          "storePassword": "0000001ACB2900059A02B2F2FC61B400201F7BDCA5EC60ADD2DE25A71963F1A75A96EA31F284289E278B"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "targetSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS"
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}
