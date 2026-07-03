@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "ohos-module-entry": {
+    "SELECT_TARGET": "default",
+    "MODULE_BUILD_DIR": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build",
+    "TARGETS": {
+      "default": {
+        "SOURCE_ROOT": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/src/main",
+        "RESOURCES_PATH": [
+          "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/src/main/resources"
+        ],
+        "BUILD_PATH": {
+          "OUTPUT_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/outputs/default",
+          "INTERMEDIA_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates",
+          "JS_ASSETS_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates/loader_out/default",
+          "JS_LITE_ASSETS_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates/loader_out_lite/default",
+          "RES_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates/res/default",
+          "RES_PROFILE_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates/res/default/resources/base/profile",
+          "ETS_SUPER_VISUAL_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/cache/default/default@CompileArkTS/esmodule",
+          "JS_SUPER_VISUAL_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/cache/default/default@CompileJS/jsbundle",
+          "WORKER_LOADER": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates/loader/default/loader.json",
+          "MANIFEST_JSON": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates/manifest/default",
+          "OUTPUT_METADATA_JSON": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates/hap_metadata/default/output_metadata.json",
+          "SOURCE_MAP_DIR": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/build/default/intermediates/source_map/default"
+        },
+        "BUILD_OPTION": {
+          "debuggable": true
+        }
+      }
+    },
+    "BUILD_OPTION": {
+      "default-default": {
+        "debuggable": true,
+        "copyFrom": "default",
+        "resOptions": {
+          "copyCodeResource": {
+            "enable": false
+          }
+        },
+        "name": "debug",
+        "arkOptions": {
+          "obfuscation": {
+            "ruleOptions": {
+              "enable": false
+            }
+          }
+        }
+      }
+    },
+    "BUILD_PROFILE_OPT": {
+      "apiType": "stageMode",
+      "buildOption": {
+        "resOptions": {
+          "copyCodeResource": {
+            "enable": false
+          }
+        }
+      },
+      "buildOptionSet": [
+        {
+          "name": "release",
+          "arkOptions": {
+            "obfuscation": {
+              "ruleOptions": {
+                "enable": false,
+                "files": [
+                  "./obfuscation-rules.txt"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "debug",
+          "arkOptions": {
+            "obfuscation": {
+              "ruleOptions": {
+                "enable": false
+              }
+            }
+          }
+        },
+        {
+          "name": "default"
+        }
+      ],
+      "targets": [
+        {
+          "name": "default",
+          "runtimeOS": "HarmonyOS"
+        }
+      ]
+    },
+    "BUILD_CACHE_DIR": ""
+  },
+  "ohos-project": {
+    "SELECT_PRODUCT_NAME": "default",
+    "MODULE_BUILD_DIR": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/build",
+    "BUNDLE_NAME": "com.hackastone.arena",
+    "VERSION_CODE": 1000000,
+    "VERSION_NAME": "1.0.0",
+    "BUILD_PATH": {
+      "OUTPUT_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/build/outputs/default"
+    },
+    "MODULES": [
+      {
+        "name": "entry",
+        "srcPath": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry",
+        "targets": [
+          {
+            "name": "default",
+            "applyToProducts": [
+              "default"
+            ]
+          }
+        ],
+        "belongProjectPath": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams"
+      }
+    ],
+    "PROFILE_OPT": {
+      "app": {
+        "signingConfigs": [
+          {
+            "name": "default",
+            "type": "HarmonyOS",
+            "material": {
+              "certpath": "/Users/luyiwen/.ohos/config/default_hackAstone_Hams_rcdYJN_Qe3XnFf3QyW0GQcjBQNWHIjAuwcvDp97sjuQ=.cer",
+              "keyAlias": "debugKey",
+              "keyPassword": "0000001A5EB27A647D22807970BDD39C35F4ADF170D932DF45007B61245AA9F2A477A5A656E26BC9A2C4",
+              "profile": "/Users/luyiwen/.ohos/config/default_hackAstone_Hams_rcdYJN_Qe3XnFf3QyW0GQcjBQNWHIjAuwcvDp97sjuQ=.p7b",
+              "signAlg": "SHA256withECDSA",
+              "storeFile": "/Users/luyiwen/.ohos/config/default_hackAstone_Hams_rcdYJN_Qe3XnFf3QyW0GQcjBQNWHIjAuwcvDp97sjuQ=.p12",
+              "storePassword": "0000001ACB2900059A02B2F2FC61B400201F7BDCA5EC60ADD2DE25A71963F1A75A96EA31F284289E278B"
+            }
+          }
+        ],
+        "products": [
+          {
+            "name": "default",
+            "signingConfig": "default",
+            "compatibleSdkVersion": "5.0.0(12)",
+            "targetSdkVersion": "5.0.0(12)",
+            "runtimeOS": "HarmonyOS"
+          }
+        ],
+        "buildModeSet": [
+          {
+            "name": "debug"
+          },
+          {
+            "name": "release"
+          }
+        ]
+      },
+      "modules": [
+        {
+          "name": "entry",
+          "srcPath": "./entry",
+          "targets": [
+            {
+              "name": "default",
+              "applyToProducts": [
+                "default"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "CONFIG_PROPERTIES": {
+      "enableSignTask": true,
+      "skipNativeIncremental": false,
+      "hvigor.keepDependency": true
+    },
+    "OVERALL_PROJECT_PATHS": [
+      "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams"
+    ],
+    "BUILD_CACHE_DIR": ""
+  }
+}

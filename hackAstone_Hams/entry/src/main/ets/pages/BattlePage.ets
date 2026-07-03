@@ -1,0 +1,580 @@
+import { ArenaTheme } from '../common/ArenaTheme';
+import { Battle } from '../common/ArenaModels';
+import { ArenaAPI } from '../api/ArenaAPI';
+import { ArenaBilingualParsing } from '../common/ArenaBilingualParsing';
+import { AppRoutes } from '../route/AppRoutes';
+import { catalogStore, arenaL10n } from '../route/GlobalStores';
+import { AuthStore } from '../store/AuthStore';
+
+type BattleChoice = 'builder' | 'breaker' | 'uncertain';
+type BattleStage = 'choose' | 'debate' | 'summary';
+type DisciplineSpeaker = 'user' | 'builder' | 'breaker';
+
+class DisciplineChatMessage {
+  id: string = '';
+  speaker: DisciplineSpeaker = 'user';
+  content: string = '';
+  timestamp: number = 0;
+
+  constructor(id: string, speaker: DisciplineSpeaker, content: string, timestamp: number) {
+    this.id = id;
+    this.speaker = speaker;
+    this.content = content;
+    this.timestamp = timestamp;
+  }
+
+  withContent(nextContent: string): DisciplineChatMessage {
+    return new DisciplineChatMessage(this.id, this.speaker, nextContent, this.timestamp);
+  }
+}
+
+@Component
+export struct BattlePage {
+  @Prop pageStack: NavPathStack = new NavPathStack();
+  @Prop battleId: string = '';
+
+  @State stage: BattleStage = 'choose';
+  @State choice: BattleChoice | null = null;
+  @State messages: DisciplineChatMessage[] = [];
+  @State userInput: string = '';
+  @State isThinking: boolean = false;
+  @State summaryText: string = '';
+  @State isGeneratingSummary: boolean = false;
+  @State errorMessage: string = '';
+
+  private get battle(): Battle | undefined {
+    return catalogStore.battleForDisplay(this.battleId, arenaL10n().prefersEnglish)
+      ?? catalogStore.allBattles(arenaL10n().prefersEnglish).find((b: Battle) => b.id === this.battleId);
+  }
+
+  private get dialogueRounds(): number {
+    return this.messages.filter((m: DisciplineChatMessage) => m.speaker === 'user').length;
+  }
+
+  private get canEndDebate(): boolean {
+    return this.dialogueRounds >= 1 && !this.isThinking;
+  }
+
+  build() {
+    Column() {
+      if (this.battle) {
+        Scroll() {
+          Column({ space: 24 }) {
+            this.header(this.battle);
+            this.questionBlock(this.battle);
+            this.builderBreaker(this.battle);
+            this.stageContent(this.battle);
+          }
+          .padding({ left: 16, right: 16, bottom: 32, top: 16 })
+          .width('100%')
+        }
+        .layoutWeight(1)
+      } else {
+        this.missingBattle();
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(ArenaTheme.background)
+  }
+
+  @Builder
+  missingBattle() {
+    Column({ space: 16 }) {
+      Text(arenaL10n().battleMissing)
+        .fontSize(22)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(ArenaTheme.textPrimary)
+      Button(arenaL10n().backToDisciplines)
+        .backgroundColor(ArenaTheme.orangeAccent)
+        .fontColor(Color.White)
+        .onClick(() => {
+          this.pageStack.clear();
+          this.pageStack.pushPath({ name: AppRoutes.disciplines() });
+        })
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+  }
+
+  @Builder
+  header(battle: Battle) {
+    Row() {
+      Button({ type: ButtonType.Normal }) {
+        Row({ space: 4 }) {
+          Text('‹').fontColor(ArenaTheme.textMuted)
+          Text(arenaL10n().backToDisciplines).fontColor(ArenaTheme.textMuted)
+        }
+      }
+      .backgroundColor(Color.Transparent)
+      .onClick(() => {
+        this.pageStack.clear();
+        this.pageStack.pushPath({ name: AppRoutes.disciplines() });
+      })
+      Blank()
+      Text(battle.category)
+        .fontSize(12)
+        .fontColor(ArenaTheme.textMuted)
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Center)
+  }
+
+  @Builder
+  questionBlock(battle: Battle) {
+    Column({ space: 8 }) {
+      Text(arenaL10n().currentDebateTopic)
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#F97316E6')
+      Text(battle.question)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(ArenaTheme.textPrimary)
+      Row({ space: 6 }) {
+        Column().width(6).height(6).borderRadius(3).backgroundColor(ArenaTheme.orangeAccent)
+        Text(arenaL10n().battleInProgress).fontSize(12).fontColor(ArenaTheme.textMuted)
+      }
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+  }
+
+  @Builder
+  builderBreaker(battle: Battle) {
+    Row({ space: 14 }) {
+      this.stanceCard('Builder', arenaL10n().builderSubtitle, 'B', battle.builderView, '#3B82F6',
+        this.choice === 'builder')
+      this.stanceCard('Breaker', arenaL10n().breakerSubtitle, 'B', battle.breakerView, '#EF4444',
+        this.choice === 'breaker')
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Top)
+  }
+
+  @Builder
+  stanceCard(title: string, subtitle: string, letter: string, text: string, color: string, selected: boolean) {
+    Column({ space: 12 }) {
+      Row({ space: 10 }) {
+        Stack() {
+          Column()
+            .width(40)
+            .height(40)
+            .borderRadius(20)
+            .backgroundColor(`${color}D9`)
+          Text(letter)
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Color.White)
+        }
+        Column({ space: 2 }) {
+          Text(title).fontSize(16).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
+          Text(subtitle).fontSize(12).fontColor(ArenaTheme.textMuted)
+        }
+        .alignItems(HorizontalAlign.Start)
+      }
+      Text(text).fontSize(14).fontColor('#D1D5DB')
+    }
+    .padding(16)
+    .layoutWeight(1)
+    .alignItems(HorizontalAlign.Start)
+    .backgroundColor(selected ? `${color}1F` : ArenaTheme.surface)
+    .border({
+      width: 2,
+      color: selected ? color : ArenaTheme.border,
+      radius: 14
+    })
+    .borderRadius(14)
+  }
+
+  @Builder
+  stageContent(battle: Battle) {
+    if (this.stage === 'choose') {
+      this.choosePanel();
+    } else if (this.stage === 'debate') {
+      this.debatePanel(battle);
+    } else {
+      this.summaryPanel(battle);
+    }
+  }
+
+  @Builder
+  choosePanel() {
+    Column({ space: 14 }) {
+      Text(arenaL10n().yourStance)
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .textAlign(TextAlign.Center)
+      this.choiceButton(arenaL10n().supportBuilderTitle('Builder'), arenaL10n().supportBuilderSubtitle('Builder'),
+        this.choice === 'builder', () => { this.choice = 'builder'; })
+      this.choiceButton(arenaL10n().supportBreakerTitle('Breaker'), arenaL10n().supportBreakerSubtitle('Breaker'),
+        this.choice === 'breaker', () => { this.choice = 'breaker'; })
+      this.choiceButton(arenaL10n().uncertainChoiceTitle, arenaL10n().uncertainChoiceSubtitle,
+        this.choice === 'uncertain', () => { this.choice = 'uncertain'; })
+      if (this.choice !== null) {
+        Button(arenaL10n().startDialogue)
+          .width('100%')
+          .height(48)
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Color.White)
+          .backgroundColor(ArenaTheme.orangeAccent)
+          .borderRadius(12)
+          .onClick(() => {
+            this.stage = 'debate';
+            this.messages = [];
+            this.userInput = '';
+            this.summaryText = '';
+            this.errorMessage = '';
+          })
+      }
+    }
+    .padding(20)
+    .width('100%')
+    .backgroundColor(ArenaTheme.surface)
+    .border({ width: 1, color: ArenaTheme.border, radius: 14 })
+  }
+
+  @Builder
+  choiceButton(title: string, subtitle: string, picked: boolean, action: () => void) {
+    Column({ space: 4 }) {
+      Text(title).fontSize(16).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
+      Text(subtitle).fontSize(12).fontColor(ArenaTheme.textMuted)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+    .padding(14)
+    .backgroundColor(picked ? '#F973161F' : ArenaTheme.background)
+    .border({
+      width: 2,
+      color: picked ? ArenaTheme.orangeAccent : ArenaTheme.border,
+      radius: 10
+    })
+    .onClick(action)
+  }
+
+  @Builder
+  debatePanel(battle: Battle) {
+    Column({ space: 14 }) {
+      Text(arenaL10n().dialogueHint)
+        .fontSize(12)
+        .fontColor(ArenaTheme.textMuted)
+        .width('100%')
+        .textAlign(TextAlign.Center)
+
+      Column({ space: 12 }) {
+        if (this.messages.length === 0) {
+          Text(arenaL10n().dialogueEmpty)
+            .fontSize(12)
+            .fontColor(ArenaTheme.textMuted)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+            .padding({ top: 24, bottom: 24 })
+        }
+        ForEach(this.messages, (msg: DisciplineChatMessage) => {
+          this.chatBubble(msg);
+        }, (msg: DisciplineChatMessage) => msg.id)
+      }
+      .padding(14)
+      .width('100%')
+      .constraintSize({ minHeight: 240 })
+      .backgroundColor(ArenaTheme.surface)
+      .border({ width: 1, color: ArenaTheme.border, radius: 12 })
+
+      Row({ space: 10 }) {
+        TextInput({ placeholder: arenaL10n().dialoguePlaceholder, text: this.userInput })
+          .layoutWeight(1)
+          .fontColor(ArenaTheme.textPrimary)
+          .enabled(!this.isThinking)
+          .onChange((v: string) => { this.userInput = v; })
+        Button(arenaL10n().send)
+          .backgroundColor(ArenaTheme.orangeAccent)
+          .fontColor(Color.White)
+          .enabled(this.userInput.trim().length > 0 && !this.isThinking)
+          .onClick(() => { this.sendUserTurn(battle); })
+      }
+      .alignItems(VerticalAlign.Bottom)
+      .width('100%')
+
+      if (this.errorMessage) {
+        Text(this.errorMessage).fontSize(12).fontColor(Color.Red)
+      }
+
+      Row({ space: 12 }) {
+        Button(arenaL10n().back)
+          .layoutWeight(1)
+          .onClick(() => {
+            this.stage = 'choose';
+            this.messages = [];
+          })
+        Button(arenaL10n().endDebate)
+          .layoutWeight(1)
+          .backgroundColor(ArenaTheme.orangeAccent)
+          .fontColor(Color.White)
+          .enabled(this.canEndDebate && !this.isGeneratingSummary)
+          .onClick(() => { this.endDebate(battle); })
+      }
+      .width('100%')
+
+      if (!this.canEndDebate && this.dialogueRounds === 0) {
+        Text(arenaL10n().endDebateHint).fontSize(11).fontColor(ArenaTheme.textMuted)
+      }
+    }
+    .width('100%')
+  }
+
+  @Builder
+  chatBubble(msg: DisciplineChatMessage) {
+    Row() {
+      if (msg.speaker === 'user') {
+        Blank().constraintSize({ minWidth: 40 })
+      }
+      Column({ space: 4 }) {
+        Text(this.speakerLabel(msg.speaker))
+          .fontSize(11)
+          .fontColor(ArenaTheme.textMuted)
+        Text(msg.content.length === 0 && this.isThinking ? '…' : msg.content)
+          .fontSize(14)
+          .fontColor('#D1D5DB')
+          .textAlign(msg.speaker === 'user' ? TextAlign.End : TextAlign.Start)
+      }
+      .padding(12)
+      .backgroundColor(this.bubbleBg(msg.speaker))
+      .border({
+        width: 1,
+        color: this.bubbleBorder(msg.speaker),
+        radius: 10
+      })
+      .alignItems(msg.speaker === 'user' ? HorizontalAlign.End : HorizontalAlign.Start)
+      if (msg.speaker !== 'user') {
+        Blank().constraintSize({ minWidth: 40 })
+      }
+    }
+    .width('100%')
+    .justifyContent(msg.speaker === 'user' ? FlexAlign.End : FlexAlign.Start)
+  }
+
+  @Builder
+  summaryPanel(battle: Battle) {
+    Column({ space: 20 }) {
+      Text('💡').fontSize(44)
+      Text(arenaL10n().fullPerspective)
+        .fontSize(22)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(ArenaTheme.textPrimary)
+      Text(arenaL10n().fullPerspectiveSubtitle)
+        .fontSize(14)
+        .fontColor(ArenaTheme.textMuted)
+      if (this.isGeneratingSummary) {
+        LoadingProgress().color(ArenaTheme.orangeAccent)
+        Text(arenaL10n().summaryGenerating).fontSize(14)
+      }
+      Text(this.summaryText || battle.reveal)
+        .fontSize(16)
+        .fontColor('#D1D5DB')
+        .width('100%')
+      Row({ space: 12 }) {
+        Button(arenaL10n().backHome)
+          .layoutWeight(1)
+          .height(48)
+          .border({ width: 1, color: ArenaTheme.border, radius: 10 })
+          .onClick(() => this.pageStack.clear())
+        Button(arenaL10n().viewMindProfile)
+          .layoutWeight(1)
+          .height(48)
+          .fontColor(Color.White)
+          .backgroundColor(ArenaTheme.orangeAccent)
+          .borderRadius(10)
+          .onClick(() => {
+            this.pageStack.clear();
+            this.pageStack.pushPath({ name: AppRoutes.profile() });
+          })
+      }
+      .width('100%')
+    }
+    .padding(22)
+    .width('100%')
+    .linearGradient({
+      angle: 180,
+      colors: [[ArenaTheme.surface, 0], [ArenaTheme.background, 1]]
+    })
+    .border({ width: 2, color: '#F9731659', radius: 16 })
+    .borderRadius(16)
+  }
+
+  private speakerLabel(speaker: DisciplineSpeaker): string {
+    if (speaker === 'user') {
+      return arenaL10n().you;
+    }
+    return speaker === 'builder' ? 'Builder' : 'Breaker';
+  }
+
+  private bubbleBg(speaker: DisciplineSpeaker): ResourceColor {
+    if (speaker === 'user') {
+      return '#F9731626';
+    }
+    return speaker === 'builder' ? '#3B82F61F' : '#EF44441F';
+  }
+
+  private bubbleBorder(speaker: DisciplineSpeaker): ResourceColor {
+    if (speaker === 'user') {
+      return '#F9731666';
+    }
+    return speaker === 'builder' ? '#3B82F659' : '#EF444459';
+  }
+
+  private buildHistory(): string {
+    return this.messages.map((msg: DisciplineChatMessage) => {
+      let who = arenaL10n().prefersEnglish ? 'User' : '用户';
+      if (msg.speaker === 'builder') {
+        who = 'Builder';
+      } else if (msg.speaker === 'breaker') {
+        who = 'Breaker';
+      }
+      return `${who}: ${msg.content}`;
+    }).join('\n');
+  }
+
+  private replaceMessageContent(msgs: DisciplineChatMessage[], id: string, content: string): DisciplineChatMessage[] {
+    const next = msgs.slice();
+    const idx = next.findIndex((m: DisciplineChatMessage) => m.id === id);
+    if (idx >= 0) {
+      next[idx] = next[idx].withContent(content);
+    }
+    return next;
+  }
+
+  private async sendUserTurn(battle: Battle): Promise<void> {
+    if (!this.choice) {
+      return;
+    }
+    const content = this.userInput.trim();
+    if (!content || this.isThinking) {
+      return;
+    }
+
+    const userMsg = new DisciplineChatMessage(`user-${Date.now()}`, 'user', content, Date.now());
+    const prior = this.messages.slice();
+    this.messages = prior.concat([userMsg]);
+    this.userInput = '';
+    this.isThinking = true;
+    this.errorMessage = '';
+    const history = this.buildHistory();
+    const locale = arenaL10n().prefersEnglish ? 'en' : 'zh';
+
+    try {
+      if (this.choice === 'uncertain') {
+        const builderId = `builder-${Date.now()}`;
+        this.messages = this.messages.concat([
+          new DisciplineChatMessage(builderId, 'builder', '', Date.now())
+        ]);
+
+        const resp = await ArenaAPI.streamDisciplineDebateDual(
+          battle.question,
+          battle.builderView,
+          battle.breakerView,
+          content,
+          history,
+          locale,
+          (_delta: string, acc: string) => {
+            const preview = ArenaBilingualParsing.finalizeStreamSpeech(acc);
+            const dual = ArenaBilingualParsing.parseDisciplineDual(acc, null);
+            this.messages = this.replaceMessageContent(
+              this.messages,
+              builderId,
+              dual?.builder ?? preview
+            );
+          }
+        );
+        const dual = resp.disciplineDual ?? ArenaBilingualParsing.parseDisciplineDual(resp.text, null);
+        if (!dual) {
+          throw new Error(arenaL10n().disciplineTurnFailed);
+        }
+        const ts = Date.now();
+        this.messages = prior.concat([
+          userMsg,
+          new DisciplineChatMessage(builderId, 'builder', dual.builder, ts),
+          new DisciplineChatMessage(`breaker-${ts}`, 'breaker', dual.breaker, ts + 1),
+        ]);
+      } else {
+        const role: DisciplineSpeaker = this.choice === 'builder' ? 'breaker' : 'builder';
+        const oppId = `${role}-${Date.now()}`;
+        this.messages = this.messages.concat([
+          new DisciplineChatMessage(oppId, role, '', Date.now())
+        ]);
+
+        const resp = await ArenaAPI.streamDisciplineDebateOpponent(
+          battle.question,
+          battle.builderView,
+          battle.breakerView,
+          this.choice,
+          content,
+          history,
+          locale,
+          (_delta: string, acc: string) => {
+            const preview = ArenaBilingualParsing.finalizeStreamSpeech(acc);
+            this.messages = this.replaceMessageContent(this.messages, oppId, preview);
+          }
+        );
+        const finalText = ArenaBilingualParsing.finalizeStreamSpeech(resp.text);
+        if (!finalText) {
+          throw new Error(arenaL10n().disciplineTurnFailed);
+        }
+        this.messages = prior.concat([
+          userMsg,
+          new DisciplineChatMessage(oppId, role, finalText, Date.now()),
+        ]);
+      }
+    } catch (e) {
+      this.messages = prior;
+      this.userInput = content;
+      this.errorMessage = (e as Error).message ?? arenaL10n().disciplineTurnFailed;
+    }
+    this.isThinking = false;
+  }
+
+  private async endDebate(battle: Battle): Promise<void> {
+    if (!this.choice || !this.canEndDebate) {
+      return;
+    }
+    this.stage = 'summary';
+    this.isGeneratingSummary = true;
+    this.summaryText = '';
+    const history = this.buildHistory();
+
+    try {
+      const resp = await ArenaAPI.streamDisciplineDebateSummary(
+        battle.question,
+        battle.builderView,
+        battle.breakerView,
+        this.choice,
+        history
+      );
+      if (resp.disciplineSummary) {
+        this.summaryText = arenaL10n().prefersEnglish ? resp.disciplineSummary.en : resp.disciplineSummary.zh;
+      } else {
+        const parsed = ArenaBilingualParsing.parseDisciplineSummary(resp.text, null);
+        if (parsed) {
+          this.summaryText = arenaL10n().prefersEnglish ? parsed.en : parsed.zh;
+        } else {
+          throw new Error(arenaL10n().disciplineSummaryFailed);
+        }
+      }
+      if (AuthStore.bearerToken) {
+        ArenaAPI.saveBattleRecord(
+          'battle',
+          battle.question,
+          this.choice,
+          this.summaryText || battle.reveal,
+          false
+        ).catch(() => {});
+      }
+    } catch (e) {
+      this.errorMessage = (e as Error).message ?? arenaL10n().disciplineSummaryFailed;
+      this.stage = 'debate';
+    }
+    this.isGeneratingSummary = false;
+  }
+}
