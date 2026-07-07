@@ -150,7 +150,7 @@ export struct PhilosophyBattlePage {
             this.battleHeader(this.resolvePhilosopher()!);
             this.content(this.resolvePhilosopher()!);
           }
-          .padding({ left: 16, right: 16, bottom: 32, top: 16 })
+          .padding({ left: 12, right: 12, bottom: 32, top: 16 })
           .width('100%')
         }
         .layoutWeight(1)
@@ -267,7 +267,7 @@ export struct PhilosophyBattlePage {
           .fontWeight(FontWeight.Medium)
           .fontColor(ArenaTheme.textPrimary)
         Text(arenaL10n().agentDisclaimer).fontSize(12).fontColor(ArenaTheme.textMuted)
-        Row({ space: 14 }) {
+        Column({ space: 14 }) {
           this.topicCard(
             arenaL10n().philosopherStanceTitle(philosopherDisplayName(philosopher, arenaL10n().prefersEnglish)),
             this.topic.philosopherView,
@@ -276,7 +276,7 @@ export struct PhilosophyBattlePage {
           this.topicCard(arenaL10n().oppositeStance, this.topic.oppositeView, false)
         }
         .width('100%')
-        .alignItems(VerticalAlign.Top)
+        .alignItems(HorizontalAlign.Start)
         Button(arenaL10n().startDebate)
           .width('100%')
           .height(48)
@@ -302,7 +302,7 @@ export struct PhilosophyBattlePage {
       Text(text).fontSize(14).fontColor('#D1D5DB')
     }
     .padding(16)
-    .layoutWeight(1)
+    .width('100%')
     .alignItems(HorizontalAlign.Start)
     .backgroundColor(ArenaTheme.surface)
     .border({
