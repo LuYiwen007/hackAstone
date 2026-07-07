@@ -1,5 +1,6 @@
 import { ArenaTheme } from '../common/ArenaTheme';
-import { catalogStore, arenaL10n } from '../route/GlobalStores';
+import { catalogStore, arenaL10n, arenaNavPush } from '../route/GlobalStores';
+import { disciplineAiCoordinator } from '../common/DisciplineAiCoordinator';
 import { AppRoutes } from '../route/AppRoutes';
 import { Battle } from '../common/ArenaModels';
 import { ArenaAPI } from '../api/ArenaAPI';
@@ -63,11 +64,21 @@ const ALL_CATEGORIES: DisciplineCategory[] = [
 /** 学科辩论主体（列表与推荐），对齐 iOS `DisciplinesContentView`。 */
 @Component
 export struct DisciplinesContent {
-  @Prop pageStack: NavPathStack = new NavPathStack();
-
   @State selectedCategory: DisciplineCategory = DisciplineCategory.ALL;
   @State aiLoading: boolean = false;
   @State aiError: string = '';
+  @State aiOwnerId: string = '';
+
+  aboutToAppear(): void {
+    this.aiOwnerId = `disc-ai-${Date.now()}`;
+  }
+
+  aboutToDisappear(): void {
+    if (this.aiOwnerId.length > 0) {
+      disciplineAiCoordinator.cancel(this.aiOwnerId);
+    }
+    this.aiLoading = false;
+  }
 
   private filteredBattles(): Battle[] {
     return catalogStore.allBattles(arenaL10n().prefersEnglish)
@@ -75,6 +86,9 @@ export struct DisciplinesContent {
   }
 
   private async handleAiGenerate(): Promise<void> {
+    const ownerId = this.aiOwnerId.length > 0 ? this.aiOwnerId : `disc-ai-${Date.now()}`;
+    this.aiOwnerId = ownerId;
+    disciplineAiCoordinator.begin(ownerId);
     this.aiLoading = true;
     this.aiError = '';
     try {
@@ -82,13 +96,19 @@ export struct DisciplinesContent {
         categoryApiEn(this.selectedCategory),
         categoryApiZh(this.selectedCategory)
       );
+      if (!disciplineAiCoordinator.finish(ownerId)) {
+        return;
+      }
       if (!resp.disciplineBattle) {
         throw new Error(arenaL10n().topicBadJson);
       }
       const id = catalogStore.addGeneratedBattle(resp.disciplineBattle);
-      this.pageStack.pushPath({ name: AppRoutes.battle(id) });
+      this.aiLoading = false;
+      arenaNavPush({ name: AppRoutes.battle(id) });
     } catch (e) {
-      this.aiError = e instanceof Error ? e.message : String(e);
+      if (disciplineAiCoordinator.shouldAccept(ownerId)) {
+        this.aiError = e instanceof Error ? e.message : String(e);
+      }
     } finally {
       this.aiLoading = false;
     }
@@ -212,7 +232,7 @@ export struct DisciplinesContent {
       .borderRadius(14)
       .border({ width: 2, color: '#EA580C59' })
       .onClick(() => {
-        this.pageStack.pushPath({ name: AppRoutes.battle(battle.id) });
+        arenaNavPush({ name: AppRoutes.battle(battle.id) });
       })
     }
     .alignItems(HorizontalAlign.Start)
@@ -240,7 +260,7 @@ export struct DisciplinesContent {
     .borderRadius(12)
     .border({ width: 1, color: ArenaTheme.border })
     .onClick(() => {
-      this.pageStack.pushPath({ name: AppRoutes.battle(b.id) });
+      arenaNavPush({ name: AppRoutes.battle(b.id) });
     })
   }
 

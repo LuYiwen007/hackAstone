@@ -1,4 +1,5 @@
 import { preferences } from '@kit.ArkData';
+import { bumpAuthVersion } from '../common/AuthEvents';
 
 /** 与 Web `hackastone_auth` 对齐的登录会话。 */
 export interface AuthSession {
@@ -23,6 +24,7 @@ export function authSessionDisplayName(session: AuthSession): string {
 }
 
 const PREF_FILE = 'hackastone_auth_store';
+const AVATAR_URI_KEY = 'user_avatar_local_uri';
 
 let appContext: Context | null = null;
 
@@ -76,11 +78,32 @@ export class AuthStore {
     this.session = newSession;
     AuthStore.prefs().putSync(AuthStore.storageKey, JSON.stringify(newSession));
     AuthStore.prefs().flushSync();
+    bumpAuthVersion();
   }
 
   clear(): void {
     this.session = null;
     AuthStore.prefs().deleteSync(AuthStore.storageKey);
+    AuthStore.prefs().deleteSync(AVATAR_URI_KEY);
+    AuthStore.prefs().flushSync();
+    bumpAuthVersion();
+  }
+
+  get localAvatarUri(): string {
+    try {
+      return AuthStore.prefs().getSync(AVATAR_URI_KEY, '') as string;
+    } catch (_e) {
+      return '';
+    }
+  }
+
+  saveLocalAvatarUri(uri: string): void {
+    AuthStore.prefs().putSync(AVATAR_URI_KEY, uri);
+    AuthStore.prefs().flushSync();
+  }
+
+  clearLocalAvatar(): void {
+    AuthStore.prefs().deleteSync(AVATAR_URI_KEY);
     AuthStore.prefs().flushSync();
   }
 

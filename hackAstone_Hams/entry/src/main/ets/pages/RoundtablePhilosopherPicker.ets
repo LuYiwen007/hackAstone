@@ -1,11 +1,10 @@
 import { ArenaTheme } from '../common/ArenaTheme';
 import { Philosopher } from '../common/ArenaModels';
 import { philosopherDisplayName } from '../l10n/ArenaL10n';
-import { catalogStore, arenaL10n } from '../route/GlobalStores';
+import { catalogStore, arenaL10n, arenaNavPush, arenaNavPop, arenaNavClear } from '../route/GlobalStores';
 
 @Component
 export struct RoundtablePhilosopherPicker {
-  @Prop pageStack: NavPathStack = new NavPathStack();
   @Link selected: Philosopher[];
 
   @State draftIds: Set<string> = new Set();
@@ -62,7 +61,7 @@ export struct RoundtablePhilosopherPicker {
       }
     });
     this.selected = picked;
-    this.pageStack.pop();
+    arenaNavPop();
   }
 
   build() {

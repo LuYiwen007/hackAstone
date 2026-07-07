@@ -1,6 +1,9 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { ArenaTheme } from '../common/ArenaTheme';
-import { authStore, catalogStore, arenaL10n } from '../route/GlobalStores';
+import { authStore, catalogStore, arenaL10n, arenaNavPush } from '../route/GlobalStores';
+import { AUTH_VERSION_KEY } from '../common/AuthEvents';
+import { CATALOG_VERSION_KEY } from '../common/CatalogEvents';
+import { authSessionDisplayName } from '../store/AuthStore';
 import { AppRoutes } from '../route/AppRoutes';
 import { Philosopher, CatalogTimePeriodMeta, philosopherDisplayName } from '../common/ArenaModels';
 import { CatalogMeta } from '../data/CatalogMeta';
@@ -8,7 +11,6 @@ import { PhilosopherAvatar } from '../components/PhilosopherAvatar';
 import { WorldMapSection } from '../components/WorldMapSection';
 import { DisciplinesContent } from './DisciplinesContent';
 import { PhilosopherDetailSheet } from './PhilosopherDetailSheet';
-import { AccountSettingsPage } from './AccountSettingsPage';
 
 const LOG_DOMAIN = 0x0000;
 
@@ -20,15 +22,13 @@ enum HomeMainTab {
 /** 首页：哲学地图 + 学科辩论 Tab，对齐 iOS `HomeView`。 */
 @Component
 export struct HomePage {
-  @Prop pageStack: NavPathStack = new NavPathStack();
-
+  @StorageLink(AUTH_VERSION_KEY) authVersion: number = 0;
+  @StorageLink(CATALOG_VERSION_KEY) catalogVersion: number = 0;
   @State homeMainTab: HomeMainTab = HomeMainTab.PHILOSOPHY;
   @State selectedPeriodId: string = CatalogMeta.timePeriods[0].id;
   @State selectedRegion: string | null = null;
   @State selectedPhilosopher: Philosopher | null = null;
-  @State showAccountSettings: boolean = false;
   @State timelineSliderValue: number = 0;
-  @State isLoggedIn: boolean = false;
 
   private philosopherDialogController: CustomDialogController | null = null;
 
@@ -47,8 +47,7 @@ export struct HomePage {
   }
 
   aboutToAppear(): void {
-    hilog.info(LOG_DOMAIN, 'hackAstone', 'HomePage aboutToAppear v1.0.3');
-    this.isLoggedIn = authStore.isLoggedIn;
+    hilog.info(LOG_DOMAIN, 'hackAstone', 'HomePage aboutToAppear v1.1.3');
     const idx = CatalogMeta.timePeriods.findIndex((p: CatalogTimePeriodMeta) => p.id === this.selectedPeriodId);
     this.timelineSliderValue = idx >= 0 ? idx : 0;
   }
@@ -59,7 +58,7 @@ export struct HomePage {
     this.timelineSection();
     WorldMapSection({
       selectedRegion: $selectedRegion,
-      currentPeriod: this.currentPeriod(),
+      selectedPeriodId: this.selectedPeriodId,
       philosophers: catalogStore.philosophers
     });
     this.regionPhilosophersSection();
@@ -76,7 +75,7 @@ export struct HomePage {
           this.selectedPhilosopher = null;
         },
         onStartDebate: () => {
-          this.pageStack.pushPath({ name: AppRoutes.philosophyBattle(p.id) });
+          arenaNavPush({ name: AppRoutes.philosophyBattle(p.id) });
           this.selectedPhilosopher = null;
         }
       }),
@@ -88,31 +87,83 @@ export struct HomePage {
   }
 
   @Builder
+  headerAccountChip() {
+    if (authStore.isLoggedIn) {
+      Row({ space: 8 }) {
+        Stack() {
+          Column()
+            .width(28)
+            .height(28)
+            .borderRadius(14)
+            .linearGradient({
+              angle: 135,
+              colors: [[ArenaTheme.orangeAccent, 0], ['#DC2626D9', 1]]
+            })
+          if (authStore.localAvatarUri.length > 0) {
+            Image(authStore.localAvatarUri)
+              .width(28)
+              .height(28)
+              .borderRadius(14)
+              .objectFit(ImageFit.Cover)
+          } else if (authStore.session !== null) {
+            Text(this.headerAvatarInitial())
+              .fontSize(12)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Color.White)
+          }
+        }
+        Text(this.headerDisplayName())
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(ArenaTheme.textPrimary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .constraintSize({ maxWidth: 120 })
+      }
+      .padding({ left: 8, right: 10, top: 4, bottom: 4 })
+      .backgroundColor(ArenaTheme.surface)
+      .borderRadius(20)
+      .border({ width: 1, color: ArenaTheme.border })
+      .onClick(() => {
+        arenaNavPush({ name: AppRoutes.settings() });
+      })
+    } else {
+      Row({ space: 4 }) {
+        Text('👤')
+          .fontSize(14)
+        Text(arenaL10n().loginTitle)
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(ArenaTheme.orangeAccent)
+      }
+      .onClick(() => {
+        arenaNavPush({ name: AppRoutes.login() });
+      })
+    }
+  }
+
+  private headerDisplayName(): string {
+    const session = authStore.session;
+    if (session === null) {
+      return arenaL10n().loginTitle;
+    }
+    return authSessionDisplayName(session);
+  }
+
+  private headerAvatarInitial(): string {
+    const name = this.headerDisplayName().trim();
+    if (name.length === 0) {
+      return '?';
+    }
+    return name.substring(0, 1).toUpperCase();
+  }
+
+  @Builder
   headerSection() {
     Column({ space: 10 }) {
       Row() {
         Blank()
-        if (this.isLoggedIn) {
-          Text('⚙')
-            .fontSize(14)
-            .fontColor(ArenaTheme.textMuted)
-            .padding({ left: 4, right: 4, top: 6, bottom: 6 })
-            .onClick(() => {
-              this.showAccountSettings = true;
-            })
-        } else {
-          Row({ space: 4 }) {
-            Text('👤')
-              .fontSize(14)
-            Text(arenaL10n().loginTitle)
-              .fontSize(12)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(ArenaTheme.orangeAccent)
-          }
-          .onClick(() => {
-            this.pageStack.pushPath({ name: AppRoutes.login() });
-          })
-        }
+        this.headerAccountChip()
       }
       .width('100%')
 
@@ -131,7 +182,7 @@ export struct HomePage {
         .padding({ left: 6, right: 6, top: 10, bottom: 10 })
         .linearGradient({ angle: 90, colors: [['#FF8C00', 0], ['#EF4444D9', 1]] })
         .borderRadius(10)
-        .onClick(() => { this.pageStack.pushPath({ name: AppRoutes.roundtable() }); })
+        .onClick(() => { arenaNavPush({ name: AppRoutes.roundtable() }); })
 
         Row({ space: 4 }) {
           Text('⚠').fontSize(12)
@@ -147,7 +198,7 @@ export struct HomePage {
         .padding({ left: 6, right: 6, top: 10, bottom: 10 })
         .linearGradient({ angle: 90, colors: [['#22D3EEE6', 0], ['#3B82F6BF', 1]] })
         .borderRadius(10)
-        .onClick(() => { this.pageStack.pushPath({ name: AppRoutes.dilemma() }); })
+        .onClick(() => { arenaNavPush({ name: AppRoutes.dilemma() }); })
 
         Row({ space: 4 }) {
           Text('👤').fontSize(12)
@@ -164,7 +215,7 @@ export struct HomePage {
         .backgroundColor(ArenaTheme.surface)
         .borderRadius(10)
         .border({ width: 1, color: ArenaTheme.border })
-        .onClick(() => { this.pageStack.pushPath({ name: AppRoutes.profile() }); })
+        .onClick(() => { arenaNavPush({ name: AppRoutes.profile() }); })
       }
       .width('100%')
 
@@ -283,12 +334,14 @@ export struct HomePage {
         .blockColor(ArenaTheme.cyanAccent)
         .trackColor(ArenaTheme.border)
         .selectedColor(ArenaTheme.cyanAccent)
-        .onChange((value: number) => {
+        .onChange((value: number, mode: SliderChangeMode) => {
           const i = Math.round(value);
           if (i >= 0 && i < CatalogMeta.timePeriods.length) {
             this.timelineSliderValue = i;
             this.selectedPeriodId = CatalogMeta.timePeriods[i].id;
-            this.selectedRegion = null;
+            if (mode === SliderChangeMode.End || mode === SliderChangeMode.Click) {
+              this.selectedRegion = null;
+            }
           }
         })
 
@@ -409,13 +462,6 @@ export struct HomePage {
       .padding({ top: 24 })
   }
 
-  @Builder
-  accountSettingsSheetContent() {
-    AccountSettingsPage({
-      onDismiss: () => { this.showAccountSettings = false; }
-    })
-  }
-
   build() {
     Column() {
       Scroll() {
@@ -425,7 +471,7 @@ export struct HomePage {
           if (this.homeMainTab === HomeMainTab.PHILOSOPHY) {
             this.philosophyTabContent();
           } else {
-            DisciplinesContent({ pageStack: this.pageStack });
+            DisciplinesContent();
           }
         }
         .width('100%')
@@ -439,10 +485,5 @@ export struct HomePage {
     .height('100%')
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     .backgroundColor(ArenaTheme.background)
-    .bindSheet(this.showAccountSettings, this.accountSettingsSheetContent(), {
-      height: SheetSize.LARGE,
-      dragBar: true,
-      onDisappear: () => { this.showAccountSettings = false; }
-    })
   }
 }

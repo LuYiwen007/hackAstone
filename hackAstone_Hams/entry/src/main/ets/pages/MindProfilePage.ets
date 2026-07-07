@@ -8,19 +8,19 @@ import {
 import { ArenaConfiguration } from '../common/ArenaConfiguration';
 import { ArenaAPI } from '../api/ArenaAPI';
 import { AppRoutes } from '../route/AppRoutes';
-import { authStore, localeStore, arenaL10n } from '../route/GlobalStores';
+import { authStore, localeStore, arenaL10n, arenaNavPush, arenaNavClear } from '../route/GlobalStores';
 import { authSessionDisplayName } from '../store/AuthStore';
+import { AUTH_VERSION_KEY } from '../common/AuthEvents';
 
 @Component
 export struct MindProfilePage {
-  @Prop pageStack: NavPathStack = new NavPathStack();
-
+  @StorageLink(AUTH_VERSION_KEY) @Watch('onAuthVersionChange') authVersion: number = 0;
   @State data: MindProfilePayload = MindProfilePage.FALLBACK;
   @State loadError: string = '';
   @State loading: boolean = true;
   @State serverAvatarURL: string = '';
 
-  private get profileDisplayName(): string {
+  private profileDisplayNameValue(): string {
     const session = authStore.session;
     if (session === null) {
       return arenaL10n().mindProfileTitle;
@@ -29,11 +29,30 @@ export struct MindProfilePage {
     return name.length > 0 ? name : arenaL10n().mindProfileTitle;
   }
 
+  private avatarInitial(): string {
+    const name = this.profileDisplayNameValue();
+    if (name.length === 0) {
+      return '?';
+    }
+    return name.substring(0, 1).toUpperCase();
+  }
+
+  private onAuthVersionChange(): void {
+    this.refreshForAuth();
+  }
+
   aboutToAppear(): void {
+    this.refreshForAuth();
+  }
+
+  private refreshForAuth(): void {
     if (authStore.isLoggedIn) {
       this.load();
     } else {
       this.loading = false;
+      this.serverAvatarURL = '';
+      this.data = MindProfilePage.FALLBACK;
+      this.loadError = '';
     }
   }
 
@@ -102,7 +121,7 @@ export struct MindProfilePage {
       .backgroundColor(Color.Transparent)
       .alignSelf(ItemAlign.Start)
       .margin({ left: 16, top: 16 })
-      .onClick(() => this.pageStack.clear())
+      .onClick(() => arenaNavClear())
 
       Blank()
       this.profileAvatar(80)
@@ -124,7 +143,7 @@ export struct MindProfilePage {
         .backgroundColor(ArenaTheme.orangeAccent)
         .borderRadius(12)
         .onClick(() => {
-          this.pageStack.pushPath({ name: AppRoutes.login() });
+          arenaNavPush({ name: AppRoutes.login() });
         })
       Blank()
     }
@@ -145,7 +164,7 @@ export struct MindProfilePage {
           }
           .backgroundColor(Color.Transparent)
           .alignSelf(ItemAlign.Start)
-          .onClick(() => this.pageStack.clear())
+          .onClick(() => arenaNavClear())
 
           this.profileAvatar(72)
           Text(arenaL10n().mindProfileTitle)
@@ -205,8 +224,14 @@ export struct MindProfilePage {
           .height(size)
           .borderRadius(size / 2)
           .objectFit(ImageFit.Cover)
+      } else if (authStore.localAvatarUri.length > 0) {
+        Image(authStore.localAvatarUri)
+          .width(size)
+          .height(size)
+          .borderRadius(size / 2)
+          .objectFit(ImageFit.Cover)
       } else {
-        Text(this.profileDisplayName.substring(0, 1).toUpperCase())
+        Text(this.avatarInitial())
           .fontSize(size * 0.38)
           .fontWeight(FontWeight.Bold)
           .fontColor(Color.White)
@@ -380,7 +405,7 @@ export struct MindProfilePage {
           .fontColor(Color.White)
           .backgroundColor(ArenaTheme.purpleAccent)
           .borderRadius(12)
-          .onClick(() => this.pageStack.clear())
+          .onClick(() => arenaNavClear())
         Button(arenaL10n().disciplinesDebate)
           .layoutWeight(1)
           .height(48)
@@ -388,8 +413,8 @@ export struct MindProfilePage {
           .backgroundColor(ArenaTheme.orangeAccent)
           .borderRadius(12)
           .onClick(() => {
-            this.pageStack.clear();
-            this.pageStack.pushPath({ name: AppRoutes.disciplines() });
+            arenaNavClear();
+            arenaNavPush({ name: AppRoutes.disciplines() });
           })
       }
       .width('100%')

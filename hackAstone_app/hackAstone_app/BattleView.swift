@@ -312,7 +312,10 @@ struct BattleView: View {
                 .font(.subheadline)
                 .foregroundStyle(ArenaTheme.textMuted)
             if isGeneratingSummary {
-                ProgressView(L.summaryGenerating)
+                PerspectiveSummaryLoader()
+                Text(L.summaryGenerating)
+                    .font(.subheadline)
+                    .foregroundStyle(ArenaTheme.textMuted)
             }
             Text(summaryText ?? battle.reveal)
                 .font(.body)
@@ -377,7 +380,7 @@ struct BattleView: View {
                     history: history,
                     locale: L.prefersEnglish ? "en" : "zh",
                     onDelta: { _, acc in
-                        let preview = ArenaBilingualParsing.finalizeStreamSpeech(acc)
+                        let preview = ArenaBilingualParsing.streamSpeechDisplay(acc)
                         let dual = ArenaBilingualParsing.parseDisciplineDual(from: acc, structured: nil)
                         Task { @MainActor in
                             if let i = messages.firstIndex(where: { $0.id == builderId }) {
@@ -409,7 +412,7 @@ struct BattleView: View {
                     history: history,
                     locale: L.prefersEnglish ? "en" : "zh",
                     onDelta: { _, acc in
-                        let preview = ArenaBilingualParsing.finalizeStreamSpeech(acc)
+                        let preview = ArenaBilingualParsing.streamSpeechDisplay(acc)
                         Task { @MainActor in
                             if let i = messages.firstIndex(where: { $0.id == oppId }) {
                                 messages[i].content = preview
@@ -441,7 +444,16 @@ struct BattleView: View {
                 builderView: battle.builderView,
                 breakerView: battle.breakerView,
                 userChoice: choice.rawValue,
-                history: history
+                history: history,
+                onDelta: { _, acc in
+                    Task { @MainActor in
+                        if let parsed = ArenaBilingualParsing.parseDisciplineSummary(from: acc, structured: nil) {
+                            summaryText = L.prefersEnglish ? parsed.en : parsed.zh
+                        } else {
+                            summaryText = ArenaBilingualParsing.streamSpeechDisplay(acc)
+                        }
+                    }
+                }
             )
             if let sum = resp.disciplineSummary {
                 summaryText = L.prefersEnglish ? sum.en : sum.zh

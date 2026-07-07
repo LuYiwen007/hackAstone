@@ -1,11 +1,11 @@
 import { ArenaTheme } from '../common/ArenaTheme';
+import { appPageStack, arenaNavPop } from '../route/GlobalStores';
 
 /** 导航栈内推入页面：应用内「‹ 返回」按钮，对齐 iOS `arenaPushedScreenChrome`。 */
 @Component
 export struct BackButton {
   @Prop label: string = '';
   onBack?: () => void;
-  @Prop pageStack: NavPathStack = new NavPathStack();
 
   build() {
     Row({ space: 4 }) {
@@ -23,8 +23,8 @@ export struct BackButton {
     .onClick(() => {
       if (this.onBack) {
         this.onBack();
-      } else if (this.pageStack.size() > 0) {
-        this.pageStack.pop();
+      } else if (appPageStack.size() > 0) {
+        arenaNavPop();
       }
     })
   }

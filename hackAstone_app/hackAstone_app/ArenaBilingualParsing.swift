@@ -272,6 +272,28 @@ enum ArenaBilingualParsing {
         return c
     }
 
+    static func streamSpeechDisplay(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("{") else { return trimmed }
+        if let data = trimmed.data(using: .utf8),
+           let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let c = o["content"] as? String,
+           !c.isEmpty {
+            return c
+        }
+        if let match = trimmed.range(of: #""content"\s*:\s*""#, options: .regularExpression) {
+            var tail = String(trimmed[match.upperBound...])
+            if let end = tail.firstIndex(of: "\"") {
+                tail = String(tail[..<end])
+            }
+            return tail
+                .replacingOccurrences(of: "\\n", with: "\n")
+                .replacingOccurrences(of: "\\\"", with: "\"")
+                .replacingOccurrences(of: "\\\\", with: "\\")
+        }
+        return finalizeStreamSpeech(trimmed)
+    }
+
     private static func parseDisciplineDualMarkers(from text: String) -> DisciplineDualReplyParsed? {
         let patternBuilder = #"(?m)^\s*(?:\[Builder\]|【建构者】|建构者[:：])\s*"#
         let patternBreaker = #"(?m)^\s*(?:\[Breaker\]|【破坏者】|破坏者[:：])\s*"#

@@ -1,8 +1,14 @@
 import { ArenaTheme } from '../common/ArenaTheme';
 import { ArenaConfiguration } from '../common/ArenaConfiguration';
 import { ArenaAPI } from '../api/ArenaAPI';
+import { AppRoutes } from '../route/AppRoutes';
 import { JsonBody } from '../common/JsonPayload';
-import { authStore, localeStore, arenaL10n } from '../route/GlobalStores';
+import { authStore, localeStore, arenaL10n, applyUserPreferencesFromServer, applyUserSettingsTheme, arenaNavPush } from '../route/GlobalStores';
+import { AUTH_VERSION_KEY } from '../common/AuthEvents';
+import { authSessionDisplayName } from '../store/AuthStore';
+import { setArenaPreferencesSnapshot } from '../common/ArenaPreferences';
+import { picker } from '@kit.CoreFileKit';
+import { fileIo } from '@kit.CoreFileKit';
 
 type SettingsSection = 'general' | 'subscription' | 'language' | 'appearance' | 'notifications';
 
@@ -138,12 +144,13 @@ export struct AccountSettingsPage {
   @State notifications: NotificationPrefs = new NotificationPrefs();
   @State prefs: PreferencePrefs = new PreferencePrefs();
   @State theme: AppearanceTheme = 'dark';
+  @State avatarUploading: boolean = false;
 
-  private get sidebarWidth(): number {
+  private sidebarWidthValue(): number {
     return arenaL10n().prefersEnglish ? 162 : 148;
   }
 
-  private get displayName(): string {
+  private displayNameValue(): string {
     const n = this.nickname.trim();
     return n.length > 0 ? n : arenaL10n().settingsDefaultUser;
   }
@@ -198,8 +205,8 @@ export struct AccountSettingsPage {
           .backgroundColor(ArenaTheme.orangeAccent)
           .borderRadius(10)
           .onClick(() => {
-            // Login navigation handled by parent via onDismiss + route
             this.onDismiss();
+            arenaNavPush({ name: AppRoutes.login() });
           })
         Blank()
       }
@@ -215,7 +222,7 @@ export struct AccountSettingsPage {
       Row({ space: 10 }) {
         this.avatarThumb(32)
         Column({ space: 2 }) {
-          Text(this.displayName).fontSize(12).fontWeight(FontWeight.Medium).fontColor(ArenaTheme.textPrimary).maxLines(1)
+          Text(this.displayNameValue()).fontSize(12).fontWeight(FontWeight.Medium).fontColor(ArenaTheme.textPrimary).maxLines(1)
           Text(arenaL10n().settingsPlanFree).fontSize(11).fontColor(ArenaTheme.textMuted)
         }
         .alignItems(HorizontalAlign.Start)
@@ -236,7 +243,7 @@ export struct AccountSettingsPage {
       }
       .layoutWeight(1)
     }
-    .width(this.sidebarWidth)
+    .width(this.sidebarWidthValue())
     .height('100%')
     .backgroundColor('#050508')
     .border({ width: { right: 1 }, color: ArenaTheme.border })
@@ -308,11 +315,32 @@ export struct AccountSettingsPage {
     Column({ space: 20 }) {
       if (authStore.isLoggedIn) {
         Column({ space: 12 }) {
-          this.avatarThumb(88)
+          Stack() {
+            this.avatarThumb(88)
+            if (this.avatarUploading) {
+              Column()
+                .width(88)
+                .height(88)
+                .borderRadius(44)
+                .backgroundColor('#00000080')
+              Text(arenaL10n().uploadingAvatar)
+                .fontSize(10)
+                .fontColor(Color.White)
+            }
+          }
+          .onClick(() => { this.pickAndUploadAvatar(); })
+          Button(arenaL10n().uploadAvatar)
+            .fontSize(12)
+            .fontColor(ArenaTheme.orangeAccent)
+            .backgroundColor(Color.Transparent)
           Button(arenaL10n().removeAvatar)
             .fontSize(12)
             .fontColor(ArenaTheme.textMuted)
             .backgroundColor(Color.Transparent)
+            .onClick(() => {
+              authStore.clearLocalAvatar();
+              this.serverAvatarURL = '';
+            })
         }
         .width('100%')
         .alignItems(HorizontalAlign.Center)
@@ -506,7 +534,7 @@ export struct AccountSettingsPage {
     Column({ space: 12 }) {
       this.sectionHeader(arenaL10n().settingsInterfaceLanguage)
       this.languageCard()
-      Text(arenaL10n().settingsSystemLanguageNote).fontSize(11).fontColor(ArenaTheme.textMuted)
+      Text(arenaL10n().settingsManualLanguageNote).fontSize(11).fontColor(ArenaTheme.textMuted)
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
@@ -514,28 +542,36 @@ export struct AccountSettingsPage {
 
   @Builder
   languageCard() {
-    Column() {
-      Row() {
-        Column({ space: 4 }) {
-          Text(localeStore.prefersEnglish ? arenaL10n().english : arenaL10n().simplifiedChinese)
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(ArenaTheme.textPrimary)
-          Text(localeStore.prefersEnglish ? arenaL10n().simplifiedChinese : arenaL10n().english)
-            .fontSize(12)
-            .fontColor(ArenaTheme.textMuted)
-        }
-        .alignItems(HorizontalAlign.Start)
-        Blank()
-        Text('✓').fontColor(ArenaTheme.orangeAccent)
-      }
-      .padding({ top: 8, bottom: 8 })
-      .width('100%')
+    Column({ space: 0 }) {
+      this.languageOptionRow('zh', arenaL10n().simplifiedChinese, !localeStore.prefersEnglish)
+      Divider().color(ArenaTheme.border)
+      this.languageOptionRow('en', arenaL10n().english, localeStore.prefersEnglish)
     }
     .padding({ left: 14, right: 14 })
     .width('100%')
     .backgroundColor('#1C1C1E8C')
     .borderRadius(12)
+  }
+
+  @Builder
+  languageOptionRow(code: 'zh' | 'en', label: string, active: boolean) {
+    Row() {
+      Text(label)
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(ArenaTheme.textPrimary)
+      Blank()
+      if (active) {
+        Text('✓').fontColor(ArenaTheme.orangeAccent)
+      }
+    }
+    .padding({ top: 12, bottom: 12 })
+    .width('100%')
+    .onClick(() => {
+      localeStore.setLocale(code);
+      const body = new JsonBody().put('locale', code).build();
+      ArenaAPI.updateSettings(body).catch(() => {});
+    })
   }
 
   @Builder
@@ -686,8 +722,14 @@ export struct AccountSettingsPage {
           .height(size)
           .borderRadius(size / 2)
           .objectFit(ImageFit.Cover)
+      } else if (authStore.localAvatarUri.length > 0) {
+        Image(authStore.localAvatarUri)
+          .width(size)
+          .height(size)
+          .borderRadius(size / 2)
+          .objectFit(ImageFit.Cover)
       } else {
-        Text(this.displayName.substring(0, 1).toUpperCase())
+        Text(this.displayNameValue().substring(0, 1).toUpperCase())
           .fontSize(size * 0.38)
           .fontWeight(FontWeight.Bold)
           .fontColor(Color.White)
@@ -774,6 +816,7 @@ export struct AccountSettingsPage {
     })
     .onClick(() => {
       this.theme = item;
+      ArenaTheme.applyTheme(item);
       const appearance = new JsonBody().put('theme', item).build();
       const body = new JsonBody().put('appearance', appearance).build();
       ArenaAPI.updateSettings(body).catch(() => {});
@@ -942,7 +985,49 @@ export struct AccountSettingsPage {
       const themeVal = appearance['theme'];
       if (themeVal !== undefined) {
         this.theme = String(themeVal) as AppearanceTheme;
+        applyUserSettingsTheme(this.theme);
       }
+    }
+    applyUserPreferencesFromServer(s['preferences'] as Record<string, Object>);
+    setArenaPreferencesSnapshot({
+      autoSave: this.prefs.autoSave,
+      sound: this.prefs.sound,
+      timer: this.prefs.timer,
+      compact: this.prefs.compact,
+      animations: this.prefs.animations,
+    });
+  }
+
+  private async pickAndUploadAvatar(): Promise<void> {
+    if (!authStore.isLoggedIn || this.avatarUploading) {
+      return;
+    }
+    try {
+      const options = new picker.PhotoSelectOptions();
+      options.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE;
+      options.maxSelectNumber = 1;
+      const photoPicker = new picker.PhotoViewPicker();
+      const result = await photoPicker.select(options);
+      if (!result || !result.photoUris || result.photoUris.length === 0) {
+        return;
+      }
+      const uri = result.photoUris[0];
+      this.avatarUploading = true;
+      const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY);
+      const stat = fileIo.statSync(uri);
+      const buf = new ArrayBuffer(stat.size);
+      fileIo.readSync(file.fd, buf);
+      fileIo.closeSync(file);
+      const profile = await ArenaAPI.uploadAvatar(buf);
+      authStore.saveLocalAvatarUri(uri);
+      if (profile.avatarUrl) {
+        this.serverAvatarURL = AccountSettingsPage.resolveAvatarURL(profile.avatarUrl);
+      }
+      this.profileMessage = arenaL10n().profileSaved;
+    } catch (e) {
+      this.profileMessage = (e as Error).message ?? String(e);
+    } finally {
+      this.avatarUploading = false;
     }
   }
 
@@ -955,6 +1040,13 @@ export struct AccountSettingsPage {
       .put('animations', this.prefs.animations)
       .build();
     const body = new JsonBody().put('preferences', prefs).build();
+    setArenaPreferencesSnapshot({
+      autoSave: this.prefs.autoSave,
+      sound: this.prefs.sound,
+      timer: this.prefs.timer,
+      compact: this.prefs.compact,
+      animations: this.prefs.animations,
+    });
     ArenaAPI.updateSettings(body).catch(() => {});
   }
 

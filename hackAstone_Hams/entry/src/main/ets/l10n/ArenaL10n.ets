@@ -922,4 +922,54 @@ export class ArenaL10n {
   get dilemmaContinueWithPhilosopher(): string {
     return this.en ? 'Discuss with another philosopher' : '继续换哲学家讨论';
   }
+
+  // MARK: - Modern application / concept cards / export / timer
+
+  get modernApplicationTitle(): string { return this.en ? 'Modern scenarios' : '现代应用场景挑战'; }
+  modernApplicationSubtitle(name: string): string {
+    return this.en ? `Pick a 2026 issue for ${name} to analyze:` : `选择一个当代议题，看看${name}会如何分析：`;
+  }
+  modernApplicationThinking(name: string): string {
+    return this.en ? `${name} is thinking…` : `${name}正在思考中...`;
+  }
+  modernApplicationPerspective(name: string): string {
+    return this.en ? `${name}'s 2026 lens` : `${name}的2026视角`;
+  }
+  get modernApplicationChangeScene(): string { return this.en ? 'Another scenario' : '换个场景'; }
+  get modernApplicationCustomLabel(): string {
+    return this.en ? 'Enter a real-world issue for 2026:' : '输入你想探讨的2026年现实问题：';
+  }
+  get modernApplicationCustomPlaceholder(): string {
+    return this.en ? 'e.g. Impact of the metaverse on relationships…' : '例如：元宇宙对人际关系的影响...';
+  }
+  get modernApplicationGenerate(): string { return this.en ? 'Generate analysis' : '生成分析'; }
+  get modernApplicationCustomCta(): string { return this.en ? 'Or enter your own topic' : '或者，输入你自己的议题'; }
+  get conceptCardsTitle(): string { return this.en ? 'Concept cards' : '概念闪卡'; }
+  get conceptCardsFlashcards(): string { return this.en ? 'Flashcards' : '生成闪卡'; }
+  get conceptCardsQuiz(): string { return this.en ? 'Quiz' : '小测验'; }
+  get conceptCardsGenerating(): string { return this.en ? 'Generating…' : '正在生成...'; }
+  get conceptCardsBadJson(): string { return this.en ? 'Invalid card data from model' : '模型未返回有效闪卡数据'; }
+  get conceptCardsTapReveal(): string { return this.en ? 'Tap to reveal' : '点击翻转查看'; }
+  get conceptCardsPrev(): string { return this.en ? 'Prev' : '上一张'; }
+  get conceptCardsNext(): string { return this.en ? 'Next' : '下一张'; }
+  get conceptCardsExport(): string { return this.en ? 'Export' : '导出'; }
+  conceptCardsQuizScore(correct: number, total: number): string {
+    return this.en ? `Score: ${correct}/${total}` : `得分：${correct}/${total}`;
+  }
+  get exportDebateRecord(): string { return this.en ? 'Export record' : '导出记录'; }
+  get exportDebateSuccess(): string { return this.en ? 'Record exported' : '记录已导出'; }
+  get exportDebateFailed(): string { return this.en ? 'Export failed' : '导出失败'; }
+  get insightStreamGenerating(): string {
+    return this.en ? 'Generating AI summary…' : '正在通过后端生成智能总结…';
+  }
+  thinkingTimerLabel(seconds: number): string {
+    return this.en ? `Thinking time: ${seconds}s` : `思考时间：${seconds}秒`;
+  }
+  get uploadAvatar(): string { return this.en ? 'Change avatar' : '更换头像'; }
+  get uploadingAvatar(): string { return this.en ? 'Uploading avatar…' : '正在上传头像…'; }
+  get settingsManualLanguageNote(): string {
+    return this.en ? 'Choose interface language for this app.' : '选择应用界面语言。';
+  }
+  get cancel(): string { return this.en ? 'Cancel' : '取消'; }
+  get aiStreamPreviewLabel(): string { return this.en ? 'AI preview' : 'AI 生成预览'; }
 }

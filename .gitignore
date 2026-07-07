@@ -45,3 +45,6 @@ dist/
 # IDE（根目录与各子项目通用）
 .idea/
 .vscode/
+
+# --- HarmonyOS / hvigor 构建产物 ---
+**/.hvigor/

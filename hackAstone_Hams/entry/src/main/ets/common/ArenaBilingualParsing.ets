@@ -1,4 +1,9 @@
 import { Battle } from './ArenaModels';
+import { JsonPayload } from './JsonPayload';
+
+interface StreamContentPayload {
+  content?: string;
+}
 
 export interface BattleLocaleSliceInit {
   question?: string;
@@ -464,6 +469,28 @@ export class ArenaBilingualParsing {
       // fall through
     }
     return trimmed;
+  }
+
+  /** 流式阶段展示：支持未闭合 JSON 的 content 字段增量提取。 */
+  static streamSpeechDisplay(raw: string): string {
+    const trimmed = raw.trim();
+    if (!trimmed.startsWith('{')) {
+      return trimmed;
+    }
+    const parsed = JsonPayload.parse<StreamContentPayload>(trimmed);
+    if (parsed?.content && parsed.content.length > 0) {
+      return parsed.content;
+    }
+    const match = trimmed.match(/"content"\s*:\s*"/);
+    if (match && match.index !== undefined) {
+      let tail = trimmed.substring(match.index + match[0].length);
+      const end = tail.indexOf('"');
+      if (end >= 0) {
+        tail = tail.substring(0, end);
+      }
+      return tail.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+    return ArenaBilingualParsing.finalizeStreamSpeech(trimmed);
   }
 
   private static parseDisciplineDualMarkers(sourceText: string): DisciplineDualReplyParsed | null {
