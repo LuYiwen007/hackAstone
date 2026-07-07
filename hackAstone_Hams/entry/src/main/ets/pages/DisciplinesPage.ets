@@ -1,12 +1,10 @@
 import { ArenaTheme } from '../common/ArenaTheme';
 import { Battle } from '../common/ArenaModels';
-import { arenaL10n } from '../route/GlobalStores';
+import { arenaL10n, arenaNavClear } from '../route/GlobalStores';
 import { DisciplinesContent } from './DisciplinesContent';
 
 @Component
 export struct DisciplinesPage {
-  @Prop pageStack: NavPathStack = new NavPathStack();
-
   build() {
     Scroll() {
       Column({ space: 20 }) {
@@ -23,14 +21,14 @@ export struct DisciplinesPage {
           }
           .backgroundColor(Color.Transparent)
           .onClick(() => {
-            this.pageStack.clear();
+            arenaNavClear();
           })
           Blank()
         }
         .width('100%')
         .padding({ top: 4, bottom: 4 })
 
-        DisciplinesContent({ pageStack: this.pageStack })
+        DisciplinesContent()
       }
       .padding({ left: 16, right: 16, bottom: 28 })
       .width('100%')

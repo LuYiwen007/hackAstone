@@ -97,8 +97,8 @@
     "SELECT_PRODUCT_NAME": "default",
     "MODULE_BUILD_DIR": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/build",
     "BUNDLE_NAME": "com.hackastone.arena",
-    "VERSION_CODE": 1000000,
-    "VERSION_NAME": "1.0.0",
+    "VERSION_CODE": 1000101,
+    "VERSION_NAME": "1.1.1",
     "BUILD_PATH": {
       "OUTPUT_PATH": "/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/build/outputs/default"
     },

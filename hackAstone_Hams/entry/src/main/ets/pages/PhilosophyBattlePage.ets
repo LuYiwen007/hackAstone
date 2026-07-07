@@ -4,9 +4,12 @@ import { PhilosophyChoice, philosopherDisplayName } from '../l10n/ArenaL10n';
 import { JsonPayload } from '../common/JsonPayload';
 import { ArenaAPI } from '../api/ArenaAPI';
 import { AppRoutes } from '../route/AppRoutes';
-import { catalogStore, arenaL10n } from '../route/GlobalStores';
+import { catalogStore, arenaL10n, arenaNavClear, arenaNavPush } from '../route/GlobalStores';
+import { CATALOG_VERSION_KEY } from '../common/CatalogEvents';
 import { AuthStore } from '../store/AuthStore';
 import { DebateSummarySection } from '../components/DebateSummarySection';
+import { playArenaInteractionSound } from '../common/ArenaPreferences';
+import { ThinkingTimerBar } from '../components/ThinkingTimerBar';
 
 type PBStage = 'topic' | 'choose' | 'debate' | 'reveal';
 type PBMessageRole = 'user' | 'philosopher' | 'judge';
@@ -100,7 +103,7 @@ function judgeStreamDisplay(acc: string): string {
 
 @Component
 export struct PhilosophyBattlePage {
-  @Prop pageStack: NavPathStack = new NavPathStack();
+  @StorageLink(CATALOG_VERSION_KEY) @Watch('onCatalogVersionChange') catalogVersion: number = 0;
   @Prop philosopherId: string = '';
 
   @State stage: PBStage = 'topic';
@@ -120,24 +123,32 @@ export struct PhilosophyBattlePage {
   @State showErrorDialog: boolean = false;
   scroller: Scroller = new Scroller();
 
-  private get philosopher(): Philosopher | undefined {
+  private resolvePhilosopher(): Philosopher | undefined {
     return catalogStore.philosophers.find((p: Philosopher) => p.id === this.philosopherId);
   }
 
   aboutToAppear(): void {
-    const p = this.philosopher;
-    if (p) {
+    this.tryLoadPhilosopherTopic();
+  }
+
+  private onCatalogVersionChange(): void {
+    this.tryLoadPhilosopherTopic();
+  }
+
+  private tryLoadPhilosopherTopic(): void {
+    const p = this.resolvePhilosopher();
+    if (p && this.topic === null && !this.isTopicLoading) {
       this.loadTopic(p);
     }
   }
 
   build() {
     Column() {
-      if (this.philosopher) {
+      if (this.resolvePhilosopher() !== undefined) {
         Scroll(this.scroller) {
           Column({ space: 20 }) {
-            this.battleHeader(this.philosopher!);
-            this.content(this.philosopher!);
+            this.battleHeader(this.resolvePhilosopher()!);
+            this.content(this.resolvePhilosopher()!);
           }
           .padding({ left: 16, right: 16, bottom: 32, top: 16 })
           .width('100%')
@@ -179,7 +190,7 @@ export struct PhilosophyBattlePage {
       Button(arenaL10n().backToPhilosophyHome)
         .backgroundColor(ArenaTheme.purpleAccent)
         .fontColor(Color.White)
-        .onClick(() => this.pageStack.clear())
+        .onClick(() => arenaNavClear())
     }
     .width('100%')
     .height('100%')
@@ -196,7 +207,7 @@ export struct PhilosophyBattlePage {
         }
       }
       .backgroundColor(Color.Transparent)
-      .onClick(() => this.pageStack.clear())
+      .onClick(() => arenaNavClear())
       Blank()
       Column({ space: 2 }) {
         Text(philosopherDisplayName(philosopher, arenaL10n().prefersEnglish))
@@ -375,6 +386,13 @@ export struct PhilosophyBattlePage {
         .width('100%')
       }
       .constraintSize({ maxHeight: 420 })
+      .onClick(() => { focusControl.requestFocus(''); })
+
+      ThinkingTimerBar({
+        active: true,
+        paused: this.isThinking,
+        resetNonce: this.messages.length
+      })
 
       Column({ space: 10 }) {
         Row({ space: 10 }) {
@@ -451,7 +469,7 @@ export struct PhilosophyBattlePage {
           .layoutWeight(1)
           .height(44)
           .border({ width: 1, color: ArenaTheme.border, radius: 10 })
-          .onClick(() => this.pageStack.clear())
+          .onClick(() => arenaNavClear())
         Button(arenaL10n().viewMindProfile)
           .layoutWeight(1)
           .height(44)
@@ -459,8 +477,8 @@ export struct PhilosophyBattlePage {
           .backgroundColor(ArenaTheme.purpleAccent)
           .borderRadius(10)
           .onClick(() => {
-            this.pageStack.clear();
-            this.pageStack.pushPath({ name: AppRoutes.profile() });
+            arenaNavClear();
+            arenaNavPush({ name: AppRoutes.profile() });
           })
       }
       .width('100%')
@@ -612,6 +630,7 @@ export struct PhilosophyBattlePage {
       }
       const done = new PBMessage(msgId, 'philosopher', final);
       this.messages = prior.concat([done]);
+      playArenaInteractionSound();
       return done;
     };
 
@@ -642,6 +661,7 @@ export struct PhilosophyBattlePage {
         const final = judgeStreamDisplay(resp.text).length === 0 ? judge.judgeMessage : judgeStreamDisplay(resp.text);
         const done = new PBMessage(msgId, 'judge', final);
         this.messages = prior.concat([done]);
+        playArenaInteractionSound();
         return new JudgeStreamOutcome(judge, done);
       }
       this.messages = prior;

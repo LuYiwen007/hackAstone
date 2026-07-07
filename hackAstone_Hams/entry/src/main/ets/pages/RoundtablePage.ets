@@ -3,7 +3,8 @@ import { Philosopher } from '../common/ArenaModels';
 import { philosopherDisplayName } from '../l10n/ArenaL10n';
 import { JsonPayload } from '../common/JsonPayload';
 import { ArenaAPI } from '../api/ArenaAPI';
-import { catalogStore, arenaL10n } from '../route/GlobalStores';
+import { catalogStore, arenaL10n, arenaNavPush, arenaNavPop, arenaNavClear } from '../route/GlobalStores';
+import { playArenaInteractionSound } from '../common/ArenaPreferences';
 import { RoundtablePhilosopherPicker } from './RoundtablePhilosopherPicker';
 
 type RTStage = 'setup' | 'debate';
@@ -48,8 +49,6 @@ function rtStreamDisplay(acc: string): string {
 
 @Component
 export struct RoundtablePage {
-  @Prop pageStack: NavPathStack = new NavPathStack();
-
   @State stage: RTStage = 'setup';
   @State selected: Philosopher[] = [];
   @State debateTopic: string = '';
@@ -125,7 +124,7 @@ export struct RoundtablePage {
   @Builder
   pickerCover() {
     Column() {
-      RoundtablePhilosopherPicker({ pageStack: this.pageStack, selected: $selected })
+      RoundtablePhilosopherPicker({ selected: $selected })
     }
     .width('100%')
     .height('100%')
@@ -142,7 +141,7 @@ export struct RoundtablePage {
         }
       }
       .backgroundColor(Color.Transparent)
-      .onClick(() => this.pageStack.clear())
+      .onClick(() => arenaNavClear())
       Blank()
       Row({ space: 8 }) {
         Text('👥').fontColor(ArenaTheme.orangeAccent)
@@ -504,6 +503,7 @@ export struct RoundtablePage {
     }
     const done = new RTMessage(msgId, philosopher.id, final);
     this.messages = prior.concat([done]);
+    playArenaInteractionSound();
     return done;
   }
 

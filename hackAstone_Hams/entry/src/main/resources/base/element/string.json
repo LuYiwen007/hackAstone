@@ -15,6 +15,10 @@
     {
       "name": "internet_permission_reason",
       "value": "Connect to Cognitive Arena backend API"
+    },
+    {
+      "name": "vibrate_permission_reason",
+      "value": "Provide interaction feedback during debates"
     }
   ]
 }

@@ -1,19 +1,16 @@
 import { ArenaTheme } from '../common/ArenaTheme';
-import { authStore, arenaL10n } from '../route/GlobalStores';
+import { authStore, arenaL10n, arenaNavPush, arenaNavClear } from '../route/GlobalStores';
 import { AppRoutes } from '../route/AppRoutes';
 import { ArenaAPI } from '../api/ArenaAPI';
 
 /** 登录 / 注册页，对齐 iOS `LoginView`。 */
 @Component
 export struct LoginPage {
-  @Prop pageStack: NavPathStack = new NavPathStack();
-
   @State isRegister: boolean = false;
   @State email: string = '';
   @State account: string = '';
   @State password: string = '';
   @State nickname: string = '';
-  @State showPassword: boolean = false;
   @State loading: boolean = false;
   @State error: string = '';
 
@@ -51,8 +48,8 @@ export struct LoginPage {
         const session = await ArenaAPI.login(this.account.trim(), this.password);
         authStore.save(session);
       }
-      this.pageStack.clear();
-      this.pageStack.pushPath({ name: AppRoutes.profile() });
+      arenaNavClear();
+      arenaNavPush({ name: AppRoutes.profile() });
     } catch (e) {
       this.error = this.localizedLoginError(e instanceof Error ? e : new Error(String(e)));
     } finally {
@@ -143,31 +140,14 @@ export struct LoginPage {
               .fontSize(12)
               .fontWeight(FontWeight.Medium)
               .fontColor(ArenaTheme.textMuted)
-            Row() {
-              if (this.showPassword) {
-                TextInput({ placeholder: arenaL10n().passwordPlaceholder, text: this.password })
-                  .layoutWeight(1)
-                  .fontColor(ArenaTheme.textPrimary)
-                  .type(InputType.Normal)
-                  .onChange((v: string) => { this.password = v; })
-              } else {
-                TextInput({ placeholder: arenaL10n().passwordPlaceholder, text: this.password })
-                  .layoutWeight(1)
-                  .fontColor(ArenaTheme.textPrimary)
-                  .type(InputType.Password)
-                  .onChange((v: string) => { this.password = v; })
-              }
-              Text(this.showPassword ? '🙈' : '👁')
-                .fontSize(18)
-                .fontColor(ArenaTheme.textMuted)
-                .padding({ left: 8 })
-                .onClick(() => { this.showPassword = !this.showPassword; })
-            }
-            .width('100%')
-            .padding(12)
-            .backgroundColor(ArenaTheme.surface)
-            .borderRadius(10)
-            .border({ width: 1, color: ArenaTheme.border })
+            TextInput({ placeholder: arenaL10n().passwordPlaceholder, text: this.password })
+              .fontColor(ArenaTheme.textPrimary)
+              .backgroundColor(ArenaTheme.surface)
+              .padding(12)
+              .borderRadius(10)
+              .border({ width: 1, color: ArenaTheme.border })
+              .type(InputType.Password)
+              .onChange((v: string) => { this.password = v; })
           }
           .alignItems(HorizontalAlign.Start)
           .width('100%')
@@ -208,7 +188,7 @@ export struct LoginPage {
         }
         .margin({ top: 8 })
         .onClick(() => {
-          this.pageStack.clear();
+          arenaNavClear();
         })
       }
       .width('100%')

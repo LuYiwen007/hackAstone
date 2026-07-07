@@ -3,8 +3,10 @@ import { Battle } from '../common/ArenaModels';
 import { ArenaAPI } from '../api/ArenaAPI';
 import { ArenaBilingualParsing } from '../common/ArenaBilingualParsing';
 import { AppRoutes } from '../route/AppRoutes';
-import { catalogStore, arenaL10n } from '../route/GlobalStores';
+import { catalogStore, arenaL10n, appPageStack, arenaNavPush, arenaNavPop, arenaNavClear } from '../route/GlobalStores';
 import { AuthStore } from '../store/AuthStore';
+import { playArenaInteractionSound } from '../common/ArenaPreferences';
+import { PerspectiveSummaryLoader } from '../components/PerspectiveSummaryLoader';
 
 type BattleChoice = 'builder' | 'breaker' | 'uncertain';
 type BattleStage = 'choose' | 'debate' | 'summary';
@@ -30,7 +32,6 @@ class DisciplineChatMessage {
 
 @Component
 export struct BattlePage {
-  @Prop pageStack: NavPathStack = new NavPathStack();
   @Prop battleId: string = '';
 
   @State stage: BattleStage = 'choose';
@@ -42,33 +43,46 @@ export struct BattlePage {
   @State isGeneratingSummary: boolean = false;
   @State errorMessage: string = '';
 
-  private get battle(): Battle | undefined {
+  private resolveBattle(): Battle | undefined {
     return catalogStore.battleForDisplay(this.battleId, arenaL10n().prefersEnglish)
       ?? catalogStore.allBattles(arenaL10n().prefersEnglish).find((b: Battle) => b.id === this.battleId);
   }
 
-  private get dialogueRounds(): number {
+  private resolveDialogueRounds(): number {
     return this.messages.filter((m: DisciplineChatMessage) => m.speaker === 'user').length;
   }
 
-  private get canEndDebate(): boolean {
-    return this.dialogueRounds >= 1 && !this.isThinking;
+  private resolveCanEndDebate(): boolean {
+    return this.resolveDialogueRounds() >= 1 && !this.isThinking;
+  }
+
+  private popBattlePage(): void {
+    if (appPageStack.size() > 0) {
+      arenaNavPop();
+    } else {
+      arenaNavClear();
+    }
+  }
+
+  @Builder
+  battleBody(battle: Battle) {
+    Scroll() {
+      Column({ space: 24 }) {
+        this.header(battle);
+        this.questionBlock(battle);
+        this.builderBreaker(battle);
+        this.stageContent(battle);
+      }
+      .padding({ left: 12, right: 12, bottom: 32, top: 16 })
+      .width('100%')
+    }
+    .layoutWeight(1)
   }
 
   build() {
     Column() {
-      if (this.battle) {
-        Scroll() {
-          Column({ space: 24 }) {
-            this.header(this.battle);
-            this.questionBlock(this.battle);
-            this.builderBreaker(this.battle);
-            this.stageContent(this.battle);
-          }
-          .padding({ left: 16, right: 16, bottom: 32, top: 16 })
-          .width('100%')
-        }
-        .layoutWeight(1)
+      if (this.resolveBattle() !== undefined) {
+        this.battleBody(this.resolveBattle()!);
       } else {
         this.missingBattle();
       }
@@ -76,6 +90,7 @@ export struct BattlePage {
     .width('100%')
     .height('100%')
     .backgroundColor(ArenaTheme.background)
+    .hitTestBehavior(HitTestMode.Default)
   }
 
   @Builder
@@ -89,8 +104,7 @@ export struct BattlePage {
         .backgroundColor(ArenaTheme.orangeAccent)
         .fontColor(Color.White)
         .onClick(() => {
-          this.pageStack.clear();
-          this.pageStack.pushPath({ name: AppRoutes.disciplines() });
+          this.popBattlePage();
         })
     }
     .width('100%')
@@ -109,8 +123,7 @@ export struct BattlePage {
       }
       .backgroundColor(Color.Transparent)
       .onClick(() => {
-        this.pageStack.clear();
-        this.pageStack.pushPath({ name: AppRoutes.disciplines() });
+        this.popBattlePage();
       })
       Blank()
       Text(battle.category)
@@ -143,14 +156,14 @@ export struct BattlePage {
 
   @Builder
   builderBreaker(battle: Battle) {
-    Row({ space: 14 }) {
+    Column({ space: 14 }) {
       this.stanceCard('Builder', arenaL10n().builderSubtitle, 'B', battle.builderView, '#3B82F6',
         this.choice === 'builder')
       this.stanceCard('Breaker', arenaL10n().breakerSubtitle, 'B', battle.breakerView, '#EF4444',
         this.choice === 'breaker')
     }
     .width('100%')
-    .alignItems(VerticalAlign.Top)
+    .alignItems(HorizontalAlign.Start)
   }
 
   @Builder
@@ -177,7 +190,7 @@ export struct BattlePage {
       Text(text).fontSize(14).fontColor('#D1D5DB')
     }
     .padding(16)
-    .layoutWeight(1)
+    .width('100%')
     .alignItems(HorizontalAlign.Start)
     .backgroundColor(selected ? `${color}1F` : ArenaTheme.surface)
     .border({
@@ -208,11 +221,11 @@ export struct BattlePage {
         .width('100%')
         .textAlign(TextAlign.Center)
       this.choiceButton(arenaL10n().supportBuilderTitle('Builder'), arenaL10n().supportBuilderSubtitle('Builder'),
-        this.choice === 'builder', () => { this.choice = 'builder'; })
+        'builder', () => { this.choice = 'builder'; })
       this.choiceButton(arenaL10n().supportBreakerTitle('Breaker'), arenaL10n().supportBreakerSubtitle('Breaker'),
-        this.choice === 'breaker', () => { this.choice = 'breaker'; })
+        'breaker', () => { this.choice = 'breaker'; })
       this.choiceButton(arenaL10n().uncertainChoiceTitle, arenaL10n().uncertainChoiceSubtitle,
-        this.choice === 'uncertain', () => { this.choice = 'uncertain'; })
+        'uncertain', () => { this.choice = 'uncertain'; })
       if (this.choice !== null) {
         Button(arenaL10n().startDialogue)
           .width('100%')
@@ -238,18 +251,28 @@ export struct BattlePage {
   }
 
   @Builder
-  choiceButton(title: string, subtitle: string, picked: boolean, action: () => void) {
-    Column({ space: 4 }) {
-      Text(title).fontSize(16).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
-      Text(subtitle).fontSize(12).fontColor(ArenaTheme.textMuted)
+  choiceButton(title: string, subtitle: string, choiceId: BattleChoice, action: () => void) {
+    Row({ space: 10 }) {
+      Column({ space: 4 }) {
+        Text(title).fontSize(16).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
+        Text(subtitle).fontSize(12).fontColor(ArenaTheme.textMuted)
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      if (this.choice === choiceId) {
+        Text('✓')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(ArenaTheme.orangeAccent)
+      }
     }
-    .alignItems(HorizontalAlign.Start)
+    .alignItems(VerticalAlign.Center)
     .width('100%')
     .padding(14)
-    .backgroundColor(picked ? '#F973161F' : ArenaTheme.background)
+    .backgroundColor(this.choice === choiceId ? '#F9731626' : ArenaTheme.background)
     .border({
-      width: 2,
-      color: picked ? ArenaTheme.orangeAccent : ArenaTheme.border,
+      width: this.choice === choiceId ? 2 : 1,
+      color: this.choice === choiceId ? ArenaTheme.orangeAccent : ArenaTheme.border,
       radius: 10
     })
     .onClick(action)
@@ -264,24 +287,29 @@ export struct BattlePage {
         .width('100%')
         .textAlign(TextAlign.Center)
 
-      Column({ space: 12 }) {
-        if (this.messages.length === 0) {
-          Text(arenaL10n().dialogueEmpty)
-            .fontSize(12)
-            .fontColor(ArenaTheme.textMuted)
-            .width('100%')
-            .textAlign(TextAlign.Center)
-            .padding({ top: 24, bottom: 24 })
+      Scroll() {
+        Column({ space: 12 }) {
+          if (this.messages.length === 0) {
+            Text(arenaL10n().dialogueEmpty)
+              .fontSize(12)
+              .fontColor(ArenaTheme.textMuted)
+              .width('100%')
+              .textAlign(TextAlign.Center)
+              .padding({ top: 24, bottom: 24 })
+          }
+          ForEach(this.messages, (msg: DisciplineChatMessage) => {
+            this.chatBubble(msg);
+          }, (msg: DisciplineChatMessage) => `${msg.id}-${msg.content.length}`)
         }
-        ForEach(this.messages, (msg: DisciplineChatMessage) => {
-          this.chatBubble(msg);
-        }, (msg: DisciplineChatMessage) => msg.id)
+        .width('100%')
+        .padding(14)
       }
-      .padding(14)
       .width('100%')
-      .constraintSize({ minHeight: 240 })
+      .height(280)
+      .scrollBar(BarState.Auto)
       .backgroundColor(ArenaTheme.surface)
       .border({ width: 1, color: ArenaTheme.border, radius: 12 })
+      .hitTestBehavior(HitTestMode.Default)
 
       Row({ space: 10 }) {
         TextInput({ placeholder: arenaL10n().dialoguePlaceholder, text: this.userInput })
@@ -313,12 +341,12 @@ export struct BattlePage {
           .layoutWeight(1)
           .backgroundColor(ArenaTheme.orangeAccent)
           .fontColor(Color.White)
-          .enabled(this.canEndDebate && !this.isGeneratingSummary)
+          .enabled(this.resolveCanEndDebate() && !this.isGeneratingSummary)
           .onClick(() => { this.endDebate(battle); })
       }
       .width('100%')
 
-      if (!this.canEndDebate && this.dialogueRounds === 0) {
+      if (!this.resolveCanEndDebate() && this.resolveDialogueRounds() === 0) {
         Text(arenaL10n().endDebateHint).fontSize(11).fontColor(ArenaTheme.textMuted)
       }
     }
@@ -335,7 +363,7 @@ export struct BattlePage {
         Text(this.speakerLabel(msg.speaker))
           .fontSize(11)
           .fontColor(ArenaTheme.textMuted)
-        Text(msg.content.length === 0 && this.isThinking ? '…' : msg.content)
+        Text(msg.content.length === 0 && this.isThinking && msg.speaker !== 'user' ? '…' : msg.content)
           .fontSize(14)
           .fontColor('#D1D5DB')
           .textAlign(msg.speaker === 'user' ? TextAlign.End : TextAlign.Start)
@@ -368,8 +396,10 @@ export struct BattlePage {
         .fontSize(14)
         .fontColor(ArenaTheme.textMuted)
       if (this.isGeneratingSummary) {
-        LoadingProgress().color(ArenaTheme.orangeAccent)
-        Text(arenaL10n().summaryGenerating).fontSize(14)
+        PerspectiveSummaryLoader()
+        Text(arenaL10n().summaryGenerating)
+          .fontSize(14)
+          .fontColor(ArenaTheme.textMuted)
       }
       Text(this.summaryText || battle.reveal)
         .fontSize(16)
@@ -380,7 +410,7 @@ export struct BattlePage {
           .layoutWeight(1)
           .height(48)
           .border({ width: 1, color: ArenaTheme.border, radius: 10 })
-          .onClick(() => this.pageStack.clear())
+          .onClick(() => arenaNavClear())
         Button(arenaL10n().viewMindProfile)
           .layoutWeight(1)
           .height(48)
@@ -388,8 +418,8 @@ export struct BattlePage {
           .backgroundColor(ArenaTheme.orangeAccent)
           .borderRadius(10)
           .onClick(() => {
-            this.pageStack.clear();
-            this.pageStack.pushPath({ name: AppRoutes.profile() });
+            arenaNavClear();
+            arenaNavPush({ name: AppRoutes.profile() });
           })
       }
       .width('100%')
@@ -446,6 +476,17 @@ export struct BattlePage {
     return next;
   }
 
+  private patchStreamingMessage(messageId: string, content: string): void {
+    const next = this.replaceMessageContent(this.messages, messageId, content);
+    this.messages = next.slice();
+  }
+
+  private scheduleStreamingPatch(messageId: string, content: string): void {
+    setTimeout(() => {
+      this.patchStreamingMessage(messageId, content);
+    }, 0);
+  }
+
   private async sendUserTurn(battle: Battle): Promise<void> {
     if (!this.choice) {
       return;
@@ -479,13 +520,9 @@ export struct BattlePage {
           history,
           locale,
           (_delta: string, acc: string) => {
-            const preview = ArenaBilingualParsing.finalizeStreamSpeech(acc);
+            const preview = ArenaBilingualParsing.streamSpeechDisplay(acc);
             const dual = ArenaBilingualParsing.parseDisciplineDual(acc, null);
-            this.messages = this.replaceMessageContent(
-              this.messages,
-              builderId,
-              dual?.builder ?? preview
-            );
+            this.scheduleStreamingPatch(builderId, dual?.builder ?? preview);
           }
         );
         const dual = resp.disciplineDual ?? ArenaBilingualParsing.parseDisciplineDual(resp.text, null);
@@ -498,6 +535,7 @@ export struct BattlePage {
           new DisciplineChatMessage(builderId, 'builder', dual.builder, ts),
           new DisciplineChatMessage(`breaker-${ts}`, 'breaker', dual.breaker, ts + 1),
         ]);
+        playArenaInteractionSound();
       } else {
         const role: DisciplineSpeaker = this.choice === 'builder' ? 'breaker' : 'builder';
         const oppId = `${role}-${Date.now()}`;
@@ -514,8 +552,8 @@ export struct BattlePage {
           history,
           locale,
           (_delta: string, acc: string) => {
-            const preview = ArenaBilingualParsing.finalizeStreamSpeech(acc);
-            this.messages = this.replaceMessageContent(this.messages, oppId, preview);
+            const preview = ArenaBilingualParsing.streamSpeechDisplay(acc);
+            this.scheduleStreamingPatch(oppId, preview);
           }
         );
         const finalText = ArenaBilingualParsing.finalizeStreamSpeech(resp.text);
@@ -526,6 +564,7 @@ export struct BattlePage {
           userMsg,
           new DisciplineChatMessage(oppId, role, finalText, Date.now()),
         ]);
+        playArenaInteractionSound();
       }
     } catch (e) {
       this.messages = prior;
@@ -536,7 +575,7 @@ export struct BattlePage {
   }
 
   private async endDebate(battle: Battle): Promise<void> {
-    if (!this.choice || !this.canEndDebate) {
+    if (!this.choice || !this.resolveCanEndDebate()) {
       return;
     }
     this.stage = 'summary';
@@ -550,7 +589,15 @@ export struct BattlePage {
         battle.builderView,
         battle.breakerView,
         this.choice,
-        history
+        history,
+        (_delta: string, acc: string) => {
+          const parsed = ArenaBilingualParsing.parseDisciplineSummary(acc, null);
+          if (parsed) {
+            this.summaryText = arenaL10n().prefersEnglish ? parsed.en : parsed.zh;
+          } else {
+            this.summaryText = ArenaBilingualParsing.streamSpeechDisplay(acc);
+          }
+        }
       );
       if (resp.disciplineSummary) {
         this.summaryText = arenaL10n().prefersEnglish ? resp.disciplineSummary.en : resp.disciplineSummary.zh;

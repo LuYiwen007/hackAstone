@@ -4,6 +4,10 @@ import { Philosopher, PhilosopherData, PhilosophyChoice, philosopherDisplayName 
 import { ArenaBilingualParsing } from '../common/ArenaBilingualParsing';
 import { JsonPayload } from '../common/JsonPayload';
 import { ArenaAPI } from '../api/ArenaAPI';
+import { ModernApplicationSection } from './ModernApplicationSection';
+import { ConceptCardsSection } from './ConceptCardsSection';
+import { exportMarkdownFile } from '../common/ExportUtil';
+import { common } from '@kit.AbilityKit';
 
 interface InsightComparison {
   philosopherStance: string;
@@ -33,6 +37,8 @@ export struct DebateSummarySection {
   @State showNotes: boolean = false;
   @State noteSaving: boolean = false;
   @State noteMessage: string = '';
+  @State insightStreamPreview: string = '';
+  @State exportMessage: string = '';
 
   private sourceKey(): string {
     return ArenaBilingualParsing.buildDebateNoteKey(this.philosopher.id, this.question);
@@ -85,7 +91,9 @@ CA-Echo-LLM
     this.loadError = '';
     this.insight = null;
     try {
-      const resp = await ArenaAPI.runEcho(this.buildInsightPrompt());
+      const resp = await ArenaAPI.runEcho(this.buildInsightPrompt(), (_d: string, acc: string) => {
+        this.insightStreamPreview = acc;
+      });
       const parsed = JsonPayload.parse<AiDebateInsight>(resp.text);
       if (!parsed || !parsed.corePoints || parsed.corePoints.length === 0 ||
         !parsed.deepQuestions || parsed.deepQuestions.length === 0) {
@@ -96,6 +104,60 @@ CA-Echo-LLM
       this.loadError = e instanceof Error ? e.message : String(e);
     } finally {
       this.isLoading = false;
+      this.insightStreamPreview = '';
+    }
+  }
+
+  private buildExportMarkdown(): string {
+    if (!this.insight) {
+      return '';
+    }
+    const s = this.insight;
+    const name = this.philosopher.nameCN;
+    const lines: string[] = [];
+    lines.push(`# 哲学辩论记录 - ${name}`);
+    lines.push('');
+    lines.push('## 辩论主题');
+    lines.push(this.question);
+    lines.push('');
+    lines.push('## 核心观点提炼');
+    for (let i = 0; i < s.corePoints.length; i++) {
+      lines.push(`${i + 1}. ${s.corePoints[i]}`);
+    }
+    lines.push('');
+    lines.push('## 立场对比');
+    lines.push(`### ${name}的立场`);
+    lines.push(s.comparison.philosopherStance);
+    lines.push('### 你的立场');
+    lines.push(s.comparison.userStance);
+    lines.push('### 一致性评估');
+    lines.push(s.comparison.alignment);
+    lines.push('');
+    lines.push('## 深度思考问题');
+    for (let i = 0; i < s.deepQuestions.length; i++) {
+      lines.push(`${i + 1}. ${s.deepQuestions[i]}`);
+    }
+    lines.push('');
+    lines.push('## 个人笔记');
+    lines.push(this.notes.length > 0 ? this.notes : '（暂无笔记）');
+    lines.push('');
+    lines.push('---');
+    lines.push('来源：Cognitive Arena - 认知竞技场');
+    return lines.join('\n');
+  }
+
+  private async exportRecord(): Promise<void> {
+    const content = this.buildExportMarkdown();
+    if (content.length === 0) {
+      this.exportMessage = arenaL10n().exportDebateFailed;
+      return;
+    }
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      const ok = await exportMarkdownFile(ctx, `辩论记录-${this.philosopher.nameCN}`, content);
+      this.exportMessage = ok ? arenaL10n().exportDebateSuccess : arenaL10n().exportDebateFailed;
+    } catch (_e) {
+      this.exportMessage = arenaL10n().exportDebateFailed;
     }
   }
 
@@ -209,9 +271,19 @@ CA-Echo-LLM
       }
 
       if (this.isLoading) {
-        Text(arenaL10n().topicGenerating)
-          .fontSize(12)
-          .fontColor(ArenaTheme.textMuted)
+        Column({ space: 8 }) {
+          Text(arenaL10n().insightStreamGenerating)
+            .fontSize(12)
+            .fontColor(ArenaTheme.textMuted)
+          if (this.insightStreamPreview.length > 0) {
+            Text(this.insightStreamPreview)
+              .fontSize(11)
+              .fontColor(ArenaTheme.textMuted)
+              .maxLines(6)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+        }
+        .alignItems(HorizontalAlign.Start)
       } else if (this.loadError.length > 0) {
         Text(this.loadError)
           .fontSize(12)
@@ -264,8 +336,24 @@ CA-Echo-LLM
               this.saveNote();
             })
 
+          if (this.insight) {
+            Button(arenaL10n().exportDebateRecord)
+              .width('100%')
+              .height(44)
+              .fontSize(14)
+              .fontColor(ArenaTheme.textPrimary)
+              .backgroundColor(ArenaTheme.background)
+              .border({ width: 1, color: ArenaTheme.border, radius: 10 })
+              .onClick(() => { this.exportRecord(); })
+          }
+
           if (this.noteMessage.length > 0) {
             Text(this.noteMessage)
+              .fontSize(12)
+              .fontColor(ArenaTheme.textMuted)
+          }
+          if (this.exportMessage.length > 0) {
+            Text(this.exportMessage)
               .fontSize(12)
               .fontColor(ArenaTheme.textMuted)
           }
@@ -273,6 +361,18 @@ CA-Echo-LLM
       }
       .alignItems(HorizontalAlign.Start)
       .width('100%')
+
+      if (this.insight) {
+        ModernApplicationSection({
+          philosopherName: this.philosopher.nameCN,
+          philosopherId: this.philosopher.id,
+          coreIdeas: this.philosopher.keyIdeas
+        })
+        ConceptCardsSection({
+          debateTopic: this.question,
+          philosopherName: this.philosopher.nameCN
+        })
+      }
     }
     .width('100%')
     .padding(16)

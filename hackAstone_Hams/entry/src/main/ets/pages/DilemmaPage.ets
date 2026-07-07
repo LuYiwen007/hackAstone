@@ -4,8 +4,9 @@ import { PhilosophyChoice, philosopherDisplayName } from '../l10n/ArenaL10n';
 import { JsonPayload } from '../common/JsonPayload';
 import { ArenaAPI } from '../api/ArenaAPI';
 import { AppRoutes } from '../route/AppRoutes';
-import { catalogStore, arenaL10n } from '../route/GlobalStores';
+import { catalogStore, arenaL10n, arenaNavPush, arenaNavPop, arenaNavClear } from '../route/GlobalStores';
 import { AuthStore } from '../store/AuthStore';
+import { playArenaInteractionSound } from '../common/ArenaPreferences';
 import { MoralDilemmaCatalog, MoralDilemma, MoralDilemmaOption } from '../data/DilemmaData';
 import { PhilosopherAvatar } from '../components/PhilosopherAvatar';
 import { DebateSummarySection } from '../components/DebateSummarySection';
@@ -102,8 +103,6 @@ function dmJudgeStreamDisplay(acc: string): string {
 
 @Component
 export struct DilemmaPage {
-  @Prop pageStack: NavPathStack = new NavPathStack();
-
   @State selectedDilemmaId: string = MoralDilemmaCatalog.all[0].id;
   @State selectedOptionId: string = '';
   @State selectedPhilosopherId: string = '';
@@ -122,42 +121,42 @@ export struct DilemmaPage {
   private static readonly OTHER_PEEK = 2;
   private static readonly OTHER_PAGE = 5;
 
-  private get en(): boolean {
+  private isEn(): boolean {
     return arenaL10n().prefersEnglish;
   }
 
-  private get currentDilemma(): MoralDilemma {
+  private resolveCurrentDilemma(): MoralDilemma {
     return MoralDilemmaCatalog.dilemma(this.selectedDilemmaId);
   }
 
-  private get selectedOption(): MoralDilemmaOption | undefined {
+  private resolveSelectedOption(): MoralDilemmaOption | undefined {
     if (!this.selectedOptionId) {
       return undefined;
     }
-    return this.currentDilemma.options.find((o: MoralDilemmaOption) => o.id === this.selectedOptionId);
+    return this.resolveCurrentDilemma().options.find((o: MoralDilemmaOption) => o.id === this.selectedOptionId);
   }
 
-  private get selectedPhilosopher(): Philosopher | undefined {
+  private resolveSelectedPhilosopher(): Philosopher | undefined {
     if (!this.selectedPhilosopherId) {
       return undefined;
     }
     return catalogStore.philosophers.find((p: Philosopher) => p.id === this.selectedPhilosopherId);
   }
 
-  private get recommendedPhilosophers(): Philosopher[] {
-    const preferred = new Set(this.currentDilemma.recommendedPhilosopherIds);
+  private resolveRecommendedPhilosophers(): Philosopher[] {
+    const preferred = new Set(this.resolveCurrentDilemma().recommendedPhilosopherIds);
     return catalogStore.philosophers.filter((p: Philosopher) => preferred.has(p.id));
   }
 
-  private get otherPhilosophers(): Philosopher[] {
-    const preferred = new Set(this.currentDilemma.recommendedPhilosopherIds);
+  private resolveOtherPhilosophers(): Philosopher[] {
+    const preferred = new Set(this.resolveCurrentDilemma().recommendedPhilosopherIds);
     const list = catalogStore.philosophers.filter((p: Philosopher) => !preferred.has(p.id));
     list.sort((a: Philosopher, b: Philosopher) => a.period - b.period);
     return list;
   }
 
-  private get visibleOtherPhilosophers(): Philosopher[] {
-    return this.otherPhilosophers.slice(0, this.otherPhilosophersVisible);
+  private resolveVisibleOtherPhilosophers(): Philosopher[] {
+    return this.resolveOtherPhilosophers().slice(0, this.otherPhilosophersVisible);
   }
 
   build() {
@@ -166,10 +165,20 @@ export struct DilemmaPage {
         this.backToHomeBar();
         if (this.stage === 'setup') {
           this.setupContent();
-        } else if (this.stage === 'debate' && this.selectedOption && this.selectedPhilosopher) {
-          this.debateContent(this.currentDilemma, this.selectedOption, this.selectedPhilosopher);
-        } else if (this.stage === 'reveal' && this.selectedOption && this.selectedPhilosopher) {
-          this.revealContent(this.currentDilemma, this.selectedOption, this.selectedPhilosopher);
+        } else if (this.stage === 'debate' && this.resolveSelectedOption() !== undefined
+          && this.resolveSelectedPhilosopher() !== undefined) {
+          this.debateContent(
+            this.resolveCurrentDilemma(),
+            this.resolveSelectedOption()!,
+            this.resolveSelectedPhilosopher()!
+          );
+        } else if (this.stage === 'reveal' && this.resolveSelectedOption() !== undefined
+          && this.resolveSelectedPhilosopher() !== undefined) {
+          this.revealContent(
+            this.resolveCurrentDilemma(),
+            this.resolveSelectedOption()!,
+            this.resolveSelectedPhilosopher()!
+          );
         }
       }
       .padding({ left: 16, right: 16, bottom: 32, top: 16 })
@@ -208,7 +217,7 @@ export struct DilemmaPage {
         }
       }
       .backgroundColor(Color.Transparent)
-      .onClick(() => this.pageStack.clear())
+      .onClick(() => arenaNavClear())
       Blank()
     }
     .width('100%')
@@ -237,16 +246,16 @@ export struct DilemmaPage {
       Scroll() {
         Row({ space: 10 }) {
           ForEach(MoralDilemmaCatalog.all, (d: MoralDilemma) => {
-            Text(d.title(this.en))
+            Text(d.title(this.isEn()))
               .fontSize(14)
-              .fontWeight(d.id === this.currentDilemma.id ? FontWeight.Bold : FontWeight.Normal)
+              .fontWeight(d.id === this.resolveCurrentDilemma().id ? FontWeight.Bold : FontWeight.Normal)
               .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-              .fontColor(d.id === this.currentDilemma.id ? '#06B6D4F2' : ArenaTheme.textMuted)
-              .backgroundColor(d.id === this.currentDilemma.id ? '#06B6D426' : ArenaTheme.surface)
+              .fontColor(d.id === this.resolveCurrentDilemma().id ? Color.White : ArenaTheme.textMuted)
+              .backgroundColor(d.id === this.resolveCurrentDilemma().id ? '#0891B2D9' : ArenaTheme.surface)
               .borderRadius(20)
               .border({
                 width: 1,
-                color: d.id === this.currentDilemma.id ? '#22D3EE99' : ArenaTheme.border
+                color: d.id === this.resolveCurrentDilemma().id ? '#22D3EEB3' : ArenaTheme.border
               })
               .onClick(() => this.changeDilemma(d.id))
           }, (d: MoralDilemma) => d.id)
@@ -255,20 +264,20 @@ export struct DilemmaPage {
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
 
-      this.dilemmaHeroCard(this.currentDilemma)
+      this.dilemmaHeroCard(this.resolveCurrentDilemma())
 
       Column({ space: 16 }) {
-        Text(this.currentDilemma.title(this.en))
+        Text(this.resolveCurrentDilemma().title(this.isEn()))
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor(ArenaTheme.textPrimary)
-        Text(this.currentDilemma.subtitle(this.en))
+        Text(this.resolveCurrentDilemma().subtitle(this.isEn()))
           .fontSize(14)
           .fontColor(ArenaTheme.textMuted)
 
         Column({ space: 8 }) {
           Text(arenaL10n().dilemmaCoreQuestionLabel).fontSize(12).fontColor(ArenaTheme.cyanAccent)
-          Text(this.currentDilemma.question(this.en))
+          Text(this.resolveCurrentDilemma().question(this.isEn()))
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
             .fontColor(ArenaTheme.textPrimary)
@@ -279,18 +288,18 @@ export struct DilemmaPage {
         .backgroundColor('#06B6D40F')
         .border({ width: 1, color: '#06B6D440', radius: 12 })
 
-        Flex({ wrap: FlexWrap.Wrap }) {
-          ForEach(this.currentDilemma.options, (opt: MoralDilemmaOption) => {
+        Column({ space: 12 }) {
+          ForEach(this.resolveCurrentDilemma().options, (opt: MoralDilemmaOption) => {
             this.optionCard(opt);
           }, (opt: MoralDilemmaOption) => opt.id)
         }
         .width('100%')
 
-        if (this.selectedOption) {
+        if (this.resolveSelectedOption() !== undefined) {
           Column({ space: 12 }) {
             Text(arenaL10n().dilemmaYourStanceSection).fontSize(12).fontColor('#F97316D9')
-            Text(this.selectedOption.label(this.en)).fontSize(16).fontWeight(FontWeight.Bold)
-            Text(this.selectedOption.summary(this.en)).fontSize(12).fontColor(ArenaTheme.textMuted)
+            Text(this.resolveSelectedOption()!.label(this.isEn())).fontSize(16).fontWeight(FontWeight.Bold)
+            Text(this.resolveSelectedOption()!.summary(this.isEn())).fontSize(12).fontColor(ArenaTheme.textMuted)
           }
           .padding(14)
           .width('100%')
@@ -304,10 +313,10 @@ export struct DilemmaPage {
             .fontColor(ArenaTheme.textPrimary)
           Text(arenaL10n().dilemmaChoosePhilosopherHint).fontSize(12).fontColor(ArenaTheme.textMuted)
 
-          if (this.recommendedPhilosophers.length > 0) {
+          if (this.resolveRecommendedPhilosophers().length > 0) {
             Text(arenaL10n().dilemmaRecommended).fontSize(12).fontColor(ArenaTheme.cyanAccent)
             Column({ space: 12 }) {
-              ForEach(this.recommendedPhilosophers, (p: Philosopher) => {
+              ForEach(this.resolveRecommendedPhilosophers(), (p: Philosopher) => {
                 this.philosopherChoiceCard(p, true);
               }, (p: Philosopher) => p.id)
             }
@@ -315,23 +324,23 @@ export struct DilemmaPage {
 
           Text(arenaL10n().dilemmaAllPhilosophers).fontSize(12).fontColor(ArenaTheme.textMuted)
           Column({ space: 12 }) {
-            ForEach(this.visibleOtherPhilosophers, (p: Philosopher) => {
+            ForEach(this.resolveVisibleOtherPhilosophers(), (p: Philosopher) => {
               this.philosopherChoiceCard(p, false);
             }, (p: Philosopher) => p.id)
           }
 
-          if (this.otherPhilosophers.length > DilemmaPage.OTHER_PEEK) {
-            Button(this.otherPhilosophersVisible >= this.otherPhilosophers.length
+          if (this.resolveOtherPhilosophers().length > DilemmaPage.OTHER_PEEK) {
+            Button(this.otherPhilosophersVisible >= this.resolveOtherPhilosophers().length
               ? arenaL10n().dilemmaCollapsePhilosophers
               : arenaL10n().dilemmaExpandPhilosophers)
               .width('100%')
               .onClick(() => {
-                if (this.otherPhilosophersVisible >= this.otherPhilosophers.length) {
+                if (this.otherPhilosophersVisible >= this.resolveOtherPhilosophers().length) {
                   this.otherPhilosophersVisible = DilemmaPage.OTHER_PEEK;
                 } else {
                   this.otherPhilosophersVisible = Math.min(
                     this.otherPhilosophersVisible + DilemmaPage.OTHER_PAGE,
-                    this.otherPhilosophers.length
+                    this.resolveOtherPhilosophers().length
                   );
                 }
               })
@@ -363,7 +372,7 @@ export struct DilemmaPage {
           .fontSize(80)
           .fontColor('#FFFFFF40')
       }
-      Text(dilemma.imageCaption(this.en))
+      Text(dilemma.imageCaption(this.isEn()))
         .fontSize(12)
         .fontColor(ArenaTheme.textMuted)
         .padding(12)
@@ -389,12 +398,11 @@ export struct DilemmaPage {
   @Builder
   optionCard(opt: MoralDilemmaOption) {
     Column({ space: 8 }) {
-      Text(opt.label(this.en)).fontSize(16).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
-      Text(opt.summary(this.en)).fontSize(12).fontColor(ArenaTheme.textMuted)
+      Text(opt.label(this.isEn())).fontSize(16).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
+      Text(opt.summary(this.isEn())).fontSize(12).fontColor(ArenaTheme.textMuted)
     }
     .padding(14)
-    .width('31%')
-    .margin({ right: 8, bottom: 12 })
+    .width('100%')
     .alignItems(HorizontalAlign.Start)
     .backgroundColor(this.selectedOptionId === opt.id ? '#06B6D41F' : ArenaTheme.background)
     .border({
@@ -412,7 +420,7 @@ export struct DilemmaPage {
         PhilosopherAvatar({ philosopher: p, avatarSize: 48 })
         Column({ space: 4 }) {
           Row() {
-            Text(philosopherDisplayName(p, this.en))
+            Text(philosopherDisplayName(p, this.isEn()))
               .fontSize(16)
               .fontWeight(FontWeight.Bold)
               .fontColor(ArenaTheme.textPrimary)
@@ -439,7 +447,7 @@ export struct DilemmaPage {
       }
       .alignItems(VerticalAlign.Top)
       .width('100%')
-      Text(p.keyIdeas.slice(0, 3).join(this.en ? ', ' : '、'))
+      Text(p.keyIdeas.slice(0, 3).join(this.isEn() ? ', ' : '、'))
         .fontSize(12)
         .fontColor(ArenaTheme.textMuted)
         .maxLines(2)
@@ -461,8 +469,8 @@ export struct DilemmaPage {
     Column({ space: 16 }) {
       Row() {
         Column({ space: 4 }) {
-          Text(dilemma.title(this.en)).fontSize(12).fontColor(ArenaTheme.cyanAccent)
-          Text(`${philosopherDisplayName(philosopher, this.en)} — ${arenaL10n().dilemmaNavTitle}`)
+          Text(dilemma.title(this.isEn())).fontSize(12).fontColor(ArenaTheme.cyanAccent)
+          Text(`${philosopherDisplayName(philosopher, this.isEn())} — ${arenaL10n().dilemmaNavTitle}`)
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
             .fontColor(ArenaTheme.textPrimary)
@@ -480,8 +488,8 @@ export struct DilemmaPage {
       Row({ space: 12 }) {
         Column({ space: 8 }) {
           Text(arenaL10n().dilemmaCurrentDilemmaLabel).fontSize(12).fontColor(ArenaTheme.textMuted)
-          Text(dilemma.question(this.en)).fontSize(16).fontWeight(FontWeight.Bold)
-          Text(dilemma.promptLead(this.en)).fontSize(12).fontColor(ArenaTheme.textMuted)
+          Text(dilemma.question(this.isEn())).fontSize(16).fontWeight(FontWeight.Bold)
+          Text(dilemma.promptLead(this.isEn())).fontSize(12).fontColor(ArenaTheme.textMuted)
         }
         .padding(12)
         .layoutWeight(1)
@@ -491,8 +499,8 @@ export struct DilemmaPage {
 
         Column({ space: 8 }) {
           Text(arenaL10n().yourPick).fontSize(12).fontColor(ArenaTheme.textMuted)
-          Text(option.label(this.en)).fontSize(16).fontWeight(FontWeight.Bold)
-          Text(option.summary(this.en)).fontSize(12).fontColor(ArenaTheme.textMuted)
+          Text(option.label(this.isEn())).fontSize(16).fontWeight(FontWeight.Bold)
+          Text(option.summary(this.isEn())).fontSize(12).fontColor(ArenaTheme.textMuted)
         }
         .padding(12)
         .layoutWeight(1)
@@ -514,7 +522,7 @@ export struct DilemmaPage {
 
       if (this.isThinking && this.thinkingRole) {
         Text(this.thinkingRole === 'philosopher'
-          ? arenaL10n().philosopherThinking(philosopherDisplayName(philosopher, this.en))
+          ? arenaL10n().philosopherThinking(philosopherDisplayName(philosopher, this.isEn()))
           : arenaL10n().judgeThinking)
           .fontSize(12)
           .fontColor(ArenaTheme.textMuted)
@@ -522,7 +530,7 @@ export struct DilemmaPage {
 
       Row({ space: 10 }) {
         TextInput({
-          placeholder: arenaL10n().dilemmaInputPlaceholder(philosopherDisplayName(philosopher, this.en)),
+          placeholder: arenaL10n().dilemmaInputPlaceholder(philosopherDisplayName(philosopher, this.isEn())),
           text: this.userInput
         })
           .layoutWeight(1)
@@ -550,7 +558,7 @@ export struct DilemmaPage {
   dmBubble(m: DMMessage, philosopher: Philosopher) {
     Column({ space: 6 }) {
       Text(m.role === 'user' ? arenaL10n().you
-        : m.role === 'philosopher' ? philosopherDisplayName(philosopher, this.en)
+        : m.role === 'philosopher' ? philosopherDisplayName(philosopher, this.isEn())
           : arenaL10n().judge)
         .fontSize(11)
         .fontColor(ArenaTheme.textMuted)
@@ -570,9 +578,9 @@ export struct DilemmaPage {
   @Builder
   revealContent(dilemma: MoralDilemma, option: MoralDilemmaOption, philosopher: Philosopher) {
     Column({ space: 16 }) {
-      Text(dilemma.title(this.en)).fontSize(12).fontColor(ArenaTheme.cyanAccent)
+      Text(dilemma.title(this.isEn())).fontSize(12).fontColor(ArenaTheme.cyanAccent)
       Text(arenaL10n().fullAnalysis).fontSize(22).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
-      Text(arenaL10n().dilemmaRevealLine(option.label(this.en), philosopherDisplayName(philosopher, this.en)))
+      Text(arenaL10n().dilemmaRevealLine(option.label(this.isEn()), philosopherDisplayName(philosopher, this.isEn())))
         .fontSize(14)
         .fontColor(ArenaTheme.textMuted)
       Text(this.isGeneratingSummary ? arenaL10n().agentGeneratingSummary
@@ -586,7 +594,7 @@ export struct DilemmaPage {
 
       DebateSummarySection({
         philosopher,
-        question: `${dilemma.title(this.en)}：${dilemma.question(this.en)}`,
+        question: `${dilemma.title(this.isEn())}：${dilemma.question(this.isEn())}`,
         userChoice: PhilosophyChoice.UNCERTAIN,
         userReason: this.messages.filter((m: DMMessage) => m.role === 'user').map((m: DMMessage) => m.content).join('\n'),
         sourceType: 'dilemma'
@@ -605,8 +613,8 @@ export struct DilemmaPage {
           .backgroundColor(ArenaTheme.cyanAccent)
           .borderRadius(10)
           .onClick(() => {
-            this.pageStack.clear();
-            this.pageStack.pushPath({ name: AppRoutes.profile() });
+            arenaNavClear();
+            arenaNavPush({ name: AppRoutes.profile() });
           })
       }
       .width('100%')
@@ -619,9 +627,9 @@ export struct DilemmaPage {
 
   private formatPeriod(period: number): string {
     if (period < 0) {
-      return this.en ? `BCE ${Math.abs(period)}` : `公元前 ${Math.abs(period)}`;
+      return this.isEn() ? `BCE ${Math.abs(period)}` : `公元前 ${Math.abs(period)}`;
     }
-    return this.en ? `CE ${period}` : `公元 ${period}`;
+    return this.isEn() ? `CE ${period}` : `公元 ${period}`;
   }
 
   private changeDilemma(id: string): void {
@@ -648,13 +656,13 @@ export struct DilemmaPage {
   }
 
   private choosePhilosopher(p: Philosopher): void {
-    const opt = this.selectedOption;
+    const opt = this.resolveSelectedOption();
     if (!opt) {
       return;
     }
     this.selectedPhilosopherId = p.id;
     this.messages = [
-      new DMMessage(`judge-open-${Date.now()}`, 'judge', arenaL10n().dilemmaJudgeOpening(opt.label(this.en)))
+      new DMMessage(`judge-open-${Date.now()}`, 'judge', arenaL10n().dilemmaJudgeOpening(opt.label(this.isEn())))
     ];
     this.userInput = '';
     this.canReveal = false;
@@ -696,11 +704,11 @@ export struct DilemmaPage {
     let next = this.messages.concat([userMsg]);
     this.messages = next;
 
-    const localeCode = this.en ? 'en' : 'zh';
-    const keyIdeas = philosopher.keyIdeas.join(this.en ? ', ' : '、');
+    const localeCode = this.isEn() ? 'en' : 'zh';
+    const keyIdeas = philosopher.keyIdeas.join(this.isEn() ? ', ' : '、');
     const summary = philosopher.summary ?? '';
-    const displayName = philosopherDisplayName(philosopher, this.en);
-    const userStance = option.stancePrompt(this.en);
+    const displayName = philosopherDisplayName(philosopher, this.isEn());
+    const userStance = option.stancePrompt(this.isEn());
 
     const streamPhilosopher = async (mode: string, prior: DMMessage[]): Promise<DMMessage> => {
       const msgId = `${mode}-${Date.now()}`;
@@ -725,6 +733,7 @@ export struct DilemmaPage {
       }
       const done = new DMMessage(msgId, 'philosopher', final);
       this.messages = prior.concat([done]);
+      playArenaInteractionSound();
       return done;
     };
 
@@ -754,6 +763,7 @@ export struct DilemmaPage {
         const final = dmJudgeStreamDisplay(resp.text).length === 0 ? judge.judgeMessage : dmJudgeStreamDisplay(resp.text);
         const done = new DMMessage(msgId, 'judge', final);
         this.messages = prior.concat([done]);
+        playArenaInteractionSound();
         return new JudgeStreamOutcome(judge, done);
       }
       this.messages = prior;
@@ -816,7 +826,7 @@ export struct DilemmaPage {
       if (m.role === 'judge') {
         speaker = arenaL10n().judge;
       } else if (m.role === 'philosopher') {
-        speaker = philosopherDisplayName(philosopher, this.en);
+        speaker = philosopherDisplayName(philosopher, this.isEn());
       }
       return `${speaker}：${m.content}`;
     }).join('\n');
@@ -831,15 +841,15 @@ export struct DilemmaPage {
         history,
         (_d: string, acc: string) => { this.fullExplanation = acc; }
       );
-      const summaryText = resp.dilemmaSummary?.pick(this.en)
+      const summaryText = resp.dilemmaSummary?.pick(this.isEn())
         ?? JsonPayload.parse<DilemmaSummaryDTO>(resp.text)?.fullExplanation;
       if (summaryText && summaryText.length > 0) {
         this.fullExplanation = summaryText;
         if (AuthStore.bearerToken) {
           ArenaAPI.saveBattleRecord(
             'dilemma',
-            dilemma.title(this.en),
-            option.label(this.en),
+            dilemma.title(this.isEn()),
+            option.label(this.isEn()),
             summaryText,
             false,
             undefined,

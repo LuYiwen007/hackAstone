@@ -7,6 +7,7 @@ export enum AppRouteName {
   DILEMMA = 'dilemma',
   BATTLE = 'battle',
   PHILOSOPHY_BATTLE = 'philosophyBattle',
+  SETTINGS = 'settings',
 }
 
 export interface BattleRouteParams {
@@ -36,6 +37,10 @@ export class AppRoutes {
 
   static dilemma(): string {
     return AppRouteName.DILEMMA;
+  }
+
+  static settings(): string {
+    return AppRouteName.SETTINGS;
   }
 
   static battle(id: string): string {

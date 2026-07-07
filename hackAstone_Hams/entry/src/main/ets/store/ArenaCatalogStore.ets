@@ -5,6 +5,7 @@ import { Battle, DebateTopicContent, Philosopher } from '../common/ArenaModels';
 import { ArenaConfiguration } from '../common/ArenaConfiguration';
 import { DisciplineBattleBilingualParsed } from '../common/ArenaBilingualParsing';
 import { AuthStore } from './AuthStore';
+import { bumpCatalogVersion } from '../common/CatalogEvents';
 import { AppLocaleStore } from './AppLocaleStore';
 
 interface StoredBattleSlice {
@@ -98,6 +99,7 @@ export class ArenaCatalogStore {
         this.debateTopics = fallback.debateTopics;
       }
     }
+    bumpCatalogVersion();
   }
 
   battleForDisplay(id: string, english: boolean): Battle | null {
