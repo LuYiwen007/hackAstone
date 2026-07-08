@@ -10,7 +10,6 @@ import { CatalogMeta } from '../data/CatalogMeta';
 import { PhilosopherAvatar } from '../components/PhilosopherAvatar';
 import { WorldMapSection } from '../components/WorldMapSection';
 import { DisciplinesContent } from './DisciplinesContent';
-import { PhilosopherDetailSheet } from './PhilosopherDetailSheet';
 
 const LOG_DOMAIN = 0x0000;
 
@@ -27,10 +26,7 @@ export struct HomePage {
   @State homeMainTab: HomeMainTab = HomeMainTab.PHILOSOPHY;
   @State selectedPeriodId: string = CatalogMeta.timePeriods[0].id;
   @State selectedRegion: string | null = null;
-  @State selectedPhilosopher: Philosopher | null = null;
   @State timelineSliderValue: number = 0;
-
-  private philosopherDialogController: CustomDialogController | null = null;
 
   private currentPeriod(): CatalogTimePeriodMeta {
     const found = CatalogMeta.timePeriods.find((p: CatalogTimePeriodMeta) => p.id === this.selectedPeriodId);
@@ -66,24 +62,7 @@ export struct HomePage {
   }
 
   private openPhilosopherSheet(p: Philosopher): void {
-    this.selectedPhilosopher = p;
-    this.philosopherDialogController = new CustomDialogController({
-      builder: PhilosopherDetailSheet({
-        philosopher: p,
-        allPhilosophers: catalogStore.philosophers,
-        onClose: () => {
-          this.selectedPhilosopher = null;
-        },
-        onStartDebate: () => {
-          arenaNavPush({ name: AppRoutes.philosophyBattle(p.id) });
-          this.selectedPhilosopher = null;
-        }
-      }),
-      autoCancel: true,
-      alignment: DialogAlignment.Bottom,
-      customStyle: true
-    });
-    this.philosopherDialogController.open();
+    arenaNavPush({ name: AppRoutes.philosopherDetail(p.id) });
   }
 
   @Builder

@@ -5,20 +5,41 @@ import { ArenaTheme } from '../common/ArenaTheme';
 export struct PerspectiveSummaryLoader {
   @State ringRotation: number = 0;
   @State trailShift: number = 0;
-  private timerId: number = -1;
+  private animStarted: boolean = false;
+
+  private startAnimation(): void {
+    if (this.animStarted) {
+      return;
+    }
+    this.animStarted = true;
+    this.ringRotation = 0;
+    this.trailShift = 0;
+    animateTo({
+      duration: 3000,
+      curve: Curve.Linear,
+      iterations: -1,
+      playMode: PlayMode.Normal
+    }, () => {
+      this.ringRotation = 360;
+    });
+    animateTo({
+      duration: 2400,
+      curve: Curve.Linear,
+      iterations: -1,
+      playMode: PlayMode.Normal
+    }, () => {
+      this.trailShift = 48;
+    });
+  }
 
   aboutToAppear(): void {
-    this.timerId = setInterval(() => {
-      this.ringRotation = (this.ringRotation + 5) % 360;
-      this.trailShift = (this.trailShift + 3) % 48;
-    }, 45) as number;
+    this.startAnimation();
   }
 
   aboutToDisappear(): void {
-    if (this.timerId >= 0) {
-      clearInterval(this.timerId);
-      this.timerId = -1;
-    }
+    this.animStarted = false;
+    this.ringRotation = 0;
+    this.trailShift = 0;
   }
 
   @Builder
@@ -54,5 +75,6 @@ export struct PerspectiveSummaryLoader {
     }
     .width('100%')
     .height(168)
+    .onAppear(() => { this.startAnimation(); })
   }
 }

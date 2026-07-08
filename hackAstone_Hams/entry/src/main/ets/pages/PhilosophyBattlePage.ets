@@ -9,7 +9,7 @@ import { CATALOG_VERSION_KEY } from '../common/CatalogEvents';
 import { AuthStore } from '../store/AuthStore';
 import { DebateSummarySection } from '../components/DebateSummarySection';
 import { playArenaInteractionSound } from '../common/ArenaPreferences';
-import { ThinkingTimerBar } from '../components/ThinkingTimerBar';
+import { PerspectiveSummaryLoader } from '../components/PerspectiveSummaryLoader';
 
 type PBStage = 'topic' | 'choose' | 'debate' | 'reveal';
 type PBMessageRole = 'user' | 'philosopher' | 'judge';
@@ -122,6 +122,23 @@ export struct PhilosophyBattlePage {
   @State errorAlert: string = '';
   @State showErrorDialog: boolean = false;
   scroller: Scroller = new Scroller();
+  chatScroller: Scroller = new Scroller();
+
+  private readonly pagePadH: number = 16;
+  private readonly pagePadTop: number = 12;
+  private readonly pagePadBottom: number = 24;
+  private readonly sectionGap: number = 16;
+  private chatScrollTick: number = 0;
+
+  private scheduleChatScroll(): void {
+    this.chatScrollTick++;
+    const tick = this.chatScrollTick;
+    setTimeout(() => {
+      if (tick === this.chatScrollTick) {
+        this.chatScroller.scrollEdge(Edge.Bottom);
+      }
+    }, 60);
+  }
 
   private resolvePhilosopher(): Philosopher | undefined {
     return catalogStore.philosophers.find((p: Philosopher) => p.id === this.philosopherId);
@@ -145,15 +162,7 @@ export struct PhilosophyBattlePage {
   build() {
     Column() {
       if (this.resolvePhilosopher() !== undefined) {
-        Scroll(this.scroller) {
-          Column({ space: 20 }) {
-            this.battleHeader(this.resolvePhilosopher()!);
-            this.content(this.resolvePhilosopher()!);
-          }
-          .padding({ left: 12, right: 12, bottom: 32, top: 16 })
-          .width('100%')
-        }
-        .layoutWeight(1)
+        this.pageBody(this.resolvePhilosopher()!);
       } else {
         this.missing();
       }
@@ -161,9 +170,65 @@ export struct PhilosophyBattlePage {
     .width('100%')
     .height('100%')
     .backgroundColor(ArenaTheme.background)
+    .hitTestBehavior(HitTestMode.Default)
     .bindContentCover(this.showErrorDialog, this.errorDialog(), {
       modalTransition: ModalTransition.DEFAULT,
       onDisappear: () => { this.showErrorDialog = false; }
+    })
+  }
+
+  @Builder
+  pageBody(philosopher: Philosopher) {
+    Column({ space: this.sectionGap }) {
+      this.battleHeader(philosopher)
+
+      if (this.stage === 'choose') {
+        Column() {
+          this.chooseStage()
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .justifyContent(FlexAlign.Start)
+        .alignItems(HorizontalAlign.Start)
+      } else if (this.stage === 'topic' && this.isTopicLoading) {
+        Column({ space: 16 }) {
+          PerspectiveSummaryLoader()
+          Text(arenaL10n().tablePreparing)
+            .fontSize(14)
+            .fontColor(ArenaTheme.textMuted)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+      } else if (this.stage === 'debate') {
+        Column() {
+          this.debateCard(philosopher)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .height('100%')
+      } else {
+        Scroll(this.scroller) {
+          Column({ space: 20 }) {
+            this.content(philosopher)
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .align(Alignment.Top)
+        .scrollBar(BarState.Off)
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .padding({
+      left: this.pagePadH,
+      right: this.pagePadH,
+      top: this.pagePadTop,
+      bottom: this.pagePadBottom
     })
   }
 
@@ -225,25 +290,62 @@ export struct PhilosophyBattlePage {
   content(philosopher: Philosopher) {
     if (this.stage === 'topic') {
       this.topicStage(philosopher);
-    } else if (this.stage === 'choose') {
-      this.chooseStage();
-    } else if (this.stage === 'debate') {
-      this.debateStage(philosopher);
     } else {
       this.revealStage(philosopher);
     }
   }
 
   @Builder
-  topicStage(philosopher: Philosopher) {
-    if (this.isTopicLoading) {
-      Column({ space: 12 }) {
-        LoadingProgress().color(ArenaTheme.purpleAccent)
-        Text(arenaL10n().tablePreparing).fontSize(12).fontColor(ArenaTheme.textMuted)
+  questionBlock() {
+    if (this.topic) {
+      Column({ space: 8 }) {
+        Text(arenaL10n().currentDebateTopic)
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#A855F7E6')
+        Text(this.topic!.question)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(ArenaTheme.textPrimary)
+        Row({ space: 6 }) {
+          Column().width(6).height(6).borderRadius(3).backgroundColor(ArenaTheme.purpleAccent)
+          Text(arenaL10n().battleInProgress).fontSize(12).fontColor(ArenaTheme.textMuted)
+        }
+      }
+      .alignItems(HorizontalAlign.Start)
+      .width('100%')
+    }
+  }
+
+  @Builder
+  topicCardsSection(philosopher: Philosopher) {
+    if (this.topic) {
+      Column({ space: 14 }) {
+        this.topicCard(
+          philosopherDisplayName(philosopher, arenaL10n().prefersEnglish),
+          philosopher.school,
+          'P',
+          this.topic!.philosopherView,
+          '#7C5CBAD9',
+          true
+        )
+        this.topicCard(
+          arenaL10n().oppositeStance,
+          arenaL10n().prefersEnglish ? 'Counter position' : '对立观点',
+          'C',
+          this.topic!.oppositeView,
+          '#52525BD9',
+          false
+        )
       }
       .width('100%')
-      .padding({ top: 40, bottom: 40 })
-    } else if (this.topicLoadError) {
+      .alignItems(HorizontalAlign.Start)
+    }
+  }
+
+  @Builder
+  topicStage(philosopher: Philosopher) {
+    if (this.topicLoadError) {
       Column({ space: 16 }) {
         Text(this.topicLoadError).fontSize(14).fontColor('#EF4444E6').textAlign(TextAlign.Center)
         Button(arenaL10n().topicRetry)
@@ -258,25 +360,9 @@ export struct PhilosophyBattlePage {
       .padding({ top: 24, bottom: 24 })
     } else if (this.topic) {
       Column({ space: 20 }) {
-        Text(arenaL10n().currentDebateTopic)
-          .fontSize(12)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#A855F7E6')
-        Text(this.topic.question)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(ArenaTheme.textPrimary)
+        this.questionBlock();
         Text(arenaL10n().agentDisclaimer).fontSize(12).fontColor(ArenaTheme.textMuted)
-        Column({ space: 14 }) {
-          this.topicCard(
-            arenaL10n().philosopherStanceTitle(philosopherDisplayName(philosopher, arenaL10n().prefersEnglish)),
-            this.topic.philosopherView,
-            true
-          )
-          this.topicCard(arenaL10n().oppositeStance, this.topic.oppositeView, false)
-        }
-        .width('100%')
-        .alignItems(HorizontalAlign.Start)
+        this.topicCardsSection(philosopher);
         Button(arenaL10n().startDebate)
           .width('100%')
           .height(48)
@@ -293,70 +379,98 @@ export struct PhilosophyBattlePage {
   }
 
   @Builder
-  topicCard(title: string, text: string, accent: boolean) {
-    Column({ space: 10 }) {
-      Text(title)
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(accent ? ArenaTheme.purpleAccent : ArenaTheme.textPrimary)
+  topicCard(title: string, subtitle: string, letter: string, text: string, letterColor: string, accent: boolean) {
+    Column({ space: 12 }) {
+      Row({ space: 10 }) {
+        Stack() {
+          Column()
+            .width(40)
+            .height(40)
+            .borderRadius(20)
+            .backgroundColor(letterColor)
+          Text(letter)
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Color.White)
+        }
+        Column({ space: 2 }) {
+          Text(title)
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(ArenaTheme.textPrimary)
+          Text(subtitle)
+            .fontSize(12)
+            .fontColor(ArenaTheme.textMuted)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+      }
       Text(text).fontSize(14).fontColor('#D1D5DB')
     }
     .padding(16)
     .width('100%')
     .alignItems(HorizontalAlign.Start)
-    .backgroundColor(ArenaTheme.surface)
     .border({
       width: 2,
       color: accent ? '#A855F773' : ArenaTheme.border,
       radius: 14
     })
+    .borderRadius(14)
   }
 
   @Builder
   chooseStage() {
-    Column({ space: 18 }) {
-      Text(arenaL10n().yourStanceQuestion).fontSize(22).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
-      Text(arenaL10n().debateFlowHint).fontSize(12).fontColor(ArenaTheme.textMuted)
-      Row({ space: 12 }) {
-        this.chooseButton(arenaL10n().agree, true, () => this.handleChoose(PhilosophyChoice.AGREE))
-        this.chooseButton(arenaL10n().disagree, false, () => this.handleChoose(PhilosophyChoice.DISAGREE))
-        this.chooseButton(arenaL10n().uncertain, false, () => this.handleChoose(PhilosophyChoice.UNCERTAIN))
-      }
-      .width('100%')
+    Column({ space: 20 }) {
+      Text(arenaL10n().yourStanceQuestion)
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(ArenaTheme.textPrimary)
+        .width('100%')
+        .textAlign(TextAlign.Center)
+      Text(arenaL10n().debateFlowHint)
+        .fontSize(13)
+        .fontColor(ArenaTheme.textMuted)
+        .width('100%')
+        .textAlign(TextAlign.Center)
+      this.philosophyChoiceButton(arenaL10n().agree, PhilosophyChoice.AGREE)
+      this.philosophyChoiceButton(arenaL10n().disagree, PhilosophyChoice.DISAGREE)
+      this.philosophyChoiceButton(arenaL10n().uncertain, PhilosophyChoice.UNCERTAIN)
     }
+    .width('100%')
   }
 
   @Builder
-  chooseButton(label: string, accent: boolean, action: () => void) {
-    Text(label)
-      .padding(24)
-      .layoutWeight(1)
-      .textAlign(TextAlign.Center)
+  philosophyChoiceButton(title: string, choice: PhilosophyChoice) {
+    Text(title)
+      .fontSize(17)
+      .fontWeight(FontWeight.Bold)
       .fontColor(ArenaTheme.textPrimary)
-      .backgroundColor(accent ? '#A855F726' : ArenaTheme.surface)
+      .width('100%')
+      .textAlign(TextAlign.Center)
+      .padding({ top: 22, bottom: 22 })
+      .backgroundColor(Color.Transparent)
       .border({
         width: 2,
-        color: accent ? ArenaTheme.purpleAccent : ArenaTheme.border,
+        color: ArenaTheme.border,
         radius: 14
       })
-      .onClick(action)
+      .borderRadius(14)
+      .onClick(() => { this.handleChoose(choice); })
   }
 
   @Builder
-  debateStage(philosopher: Philosopher) {
+  debateCard(philosopher: Philosopher) {
     if (!this.topic) {
-      Text(arenaL10n().topicGenerating).fontColor(ArenaTheme.textMuted)
+      Text(arenaL10n().topicGenerating).fontSize(12).fontColor(ArenaTheme.textMuted)
     } else {
-      this.debateStageContent(philosopher);
-    }
-  }
-
-  @Builder
-  debateStageContent(philosopher: Philosopher) {
-    Column({ space: 0 }) {
-      if (this.topic) {
+      Column({ space: 0 }) {
         Column({ space: 4 }) {
-          Text(arenaL10n().currentDebateTopic).fontSize(11).fontColor('#A855F7E6')
+          Text(arenaL10n().currentDebateTopic)
+            .fontSize(11)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#A855F7E6')
           Text(this.topic!.question)
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
@@ -367,62 +481,86 @@ export struct PhilosophyBattlePage {
         .padding(12)
         .backgroundColor(ArenaTheme.background)
         .border({ width: { bottom: 1 }, color: ArenaTheme.border })
-      }
 
-      Scroll() {
-        Column({ space: 14 }) {
-          Row({ space: 6 }) {
-            Text('⚠').fontSize(12)
-            Text(arenaL10n().debateRoundHint).fontSize(12).fontColor(ArenaTheme.textMuted)
+        Scroll(this.chatScroller) {
+          Column({ space: 14 }) {
+            Row({ space: 6 }) {
+              Text('ⓘ').fontSize(12).fontColor(ArenaTheme.textMuted)
+              Text(arenaL10n().debateRoundHint)
+                .fontSize(12)
+                .fontColor(ArenaTheme.textMuted)
+            }
+            .width('100%')
+            .alignItems(VerticalAlign.Top)
+
+            ForEach(this.messages, (m: PBMessage) => {
+              this.messageBubble(m, philosopher);
+            }, (m: PBMessage) => `${m.id}-${m.content.length}`)
+
+            if (this.isThinking && this.thinkingRole === 'judge') {
+              Text(arenaL10n().judgeThinking)
+                .fontSize(12)
+                .fontColor(ArenaTheme.textMuted)
+                .width('100%')
+            }
+
+            Column()
+              .width('100%')
+              .height(1)
           }
-          ForEach(this.messages, (m: PBMessage) => {
-            this.messageBubble(m, philosopher);
-          }, (m: PBMessage) => m.id)
-          if (this.isThinking && this.thinkingRole === 'judge') {
-            Text(arenaL10n().judgeThinking).fontSize(12).fontColor(ArenaTheme.textMuted)
+          .width('100%')
+          .justifyContent(FlexAlign.Start)
+          .alignItems(HorizontalAlign.Start)
+          .padding(12)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .align(Alignment.Top)
+        .scrollBar(BarState.Auto)
+        .hitTestBehavior(HitTestMode.Default)
+        .onAppear(() => { this.scheduleChatScroll(); })
+
+        Column({ space: 10 }) {
+          Row({ space: 10 }) {
+            TextInput({ placeholder: arenaL10n().continueYourThought, text: this.userInput })
+              .layoutWeight(1)
+              .fontColor(ArenaTheme.textPrimary)
+              .enabled(!this.isThinking)
+              .onChange((v: string) => { this.userInput = v; })
+            Button(arenaL10n().send)
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .backgroundColor(Color.Transparent)
+              .fontColor(ArenaTheme.purpleAccent)
+              .enabled(this.userInput.trim().length > 0 && !this.isThinking && this.choice !== null)
+              .opacity(this.userInput.trim().length > 0 && !this.isThinking && this.choice !== null ? 1 : 0.4)
+              .onClick(() => { this.handleUserTurn(philosopher); })
           }
+          .alignItems(VerticalAlign.Bottom)
+          .width('100%')
+
+          Button(arenaL10n().goToSummary)
+            .width('100%')
+            .height(48)
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Color.Black)
+            .backgroundColor('#FACC15D9')
+            .borderRadius(10)
+            .enabled((this.canReveal || this.messages.length >= 4) && this.choice !== null && !this.isThinking)
+            .onClick(() => { this.handleReveal(philosopher); })
         }
         .padding(12)
         .width('100%')
+        .backgroundColor(ArenaTheme.surface)
+        .border({ width: { top: 1 }, color: ArenaTheme.border })
       }
-      .constraintSize({ maxHeight: 420 })
-      .onClick(() => { focusControl.requestFocus(''); })
-
-      ThinkingTimerBar({
-        active: true,
-        paused: this.isThinking,
-        resetNonce: this.messages.length
-      })
-
-      Column({ space: 10 }) {
-        Row({ space: 10 }) {
-          TextInput({ placeholder: arenaL10n().continueYourThought, text: this.userInput })
-            .layoutWeight(1)
-            .fontColor(ArenaTheme.textPrimary)
-            .enabled(!this.isThinking)
-            .onChange((v: string) => { this.userInput = v; })
-          Button('💬')
-            .enabled(this.userInput.trim().length > 0 && !this.isThinking && this.choice !== null)
-            .onClick(() => { this.handleUserTurn(philosopher); })
-        }
-        Button(arenaL10n().goToSummary)
-          .width('100%')
-          .height(44)
-          .fontColor(Color.Black)
-          .backgroundColor('#FACC15D9')
-          .borderRadius(10)
-          .enabled((this.canReveal || this.messages.length >= 4) && this.choice !== null)
-          .onClick(() => { this.handleReveal(philosopher); })
-      }
-      .padding(12)
       .width('100%')
+      .layoutWeight(1)
       .backgroundColor(ArenaTheme.surface)
-      .border({ width: { top: 1 }, color: ArenaTheme.border })
+      .borderRadius(12)
+      .border({ width: 1, color: ArenaTheme.border })
     }
-    .width('100%')
-    .backgroundColor(ArenaTheme.surface)
-    .borderRadius(12)
-    .border({ width: 1, color: ArenaTheme.border })
   }
 
   @Builder
@@ -438,24 +576,44 @@ export struct PhilosophyBattlePage {
           .fontStyle(FontStyle.Italic)
           .fontColor(ArenaTheme.textMuted)
       } else {
-        Text(m.content).fontSize(14).fontColor(ArenaTheme.textPrimary)
+        Text(m.content.length === 0 && this.isThinking && m.role !== 'user' ? '…' : m.content)
+          .fontSize(14)
+          .fontColor(ArenaTheme.textPrimary)
       }
     }
     .padding(12)
     .width('100%')
     .alignItems(HorizontalAlign.Start)
-    .backgroundColor(this.messageBg(m.role))
-    .border({ width: 1, color: this.messageBorder(m.role), radius: 10 })
+    .border({
+      width: 1,
+      color: this.messageBorder(m.role),
+      radius: 10
+    })
+    .borderRadius(10)
   }
 
   @Builder
   revealStage(philosopher: Philosopher) {
-    Column({ space: 14 }) {
-      Text(arenaL10n().fullAnalysis).fontSize(22).fontWeight(FontWeight.Bold).fontColor(ArenaTheme.textPrimary)
-      Text(this.isGeneratingSummary ? arenaL10n().agentGeneratingSummary
-        : (this.fullExplanation.length === 0 ? arenaL10n().summaryMissing : this.fullExplanation))
+    Column({ space: 20 }) {
+      Text('💡').fontSize(44)
+      Text(arenaL10n().fullAnalysis)
+        .fontSize(22)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(ArenaTheme.textPrimary)
+      Text(arenaL10n().fullPerspectiveSubtitle)
+        .fontSize(14)
+        .fontColor(ArenaTheme.textMuted)
+      if (this.isGeneratingSummary) {
+        PerspectiveSummaryLoader()
+        Text(arenaL10n().agentGeneratingSummary)
+          .fontSize(14)
+          .fontColor(ArenaTheme.textMuted)
+      }
+      Text(this.fullExplanation.length === 0 && !this.isGeneratingSummary
+        ? arenaL10n().summaryMissing : this.fullExplanation)
         .fontSize(16)
         .fontColor('#D1D5DB')
+        .width('100%')
       if (this.topic) {
         DebateSummarySection({
           philosopher,
@@ -467,12 +625,12 @@ export struct PhilosophyBattlePage {
       Row({ space: 12 }) {
         Button(arenaL10n().backToMap)
           .layoutWeight(1)
-          .height(44)
+          .height(48)
           .border({ width: 1, color: ArenaTheme.border, radius: 10 })
           .onClick(() => arenaNavClear())
         Button(arenaL10n().viewMindProfile)
           .layoutWeight(1)
-          .height(44)
+          .height(48)
           .fontColor(Color.White)
           .backgroundColor(ArenaTheme.purpleAccent)
           .borderRadius(10)
@@ -483,10 +641,14 @@ export struct PhilosophyBattlePage {
       }
       .width('100%')
     }
-    .padding(18)
+    .padding(22)
     .width('100%')
-    .backgroundColor(ArenaTheme.surface)
-    .border({ width: 1, color: ArenaTheme.border, radius: 14 })
+    .linearGradient({
+      angle: 180,
+      colors: [[ArenaTheme.surface, 0], [ArenaTheme.background, 1]]
+    })
+    .border({ width: 2, color: '#A855F759', radius: 16 })
+    .borderRadius(16)
   }
 
   private messageLabel(role: PBMessageRole, philosopher: Philosopher): string {
@@ -507,16 +669,6 @@ export struct PhilosophyBattlePage {
       return '#FACC1573';
     }
     return ArenaTheme.border;
-  }
-
-  private messageBg(role: PBMessageRole): ResourceColor {
-    if (role === 'user') {
-      return '#A855F71F';
-    }
-    if (role === 'judge') {
-      return '#FACC1514';
-    }
-    return ArenaTheme.surface;
   }
 
   private recordMessageRole(m: PBMessage): string {
@@ -543,6 +695,7 @@ export struct PhilosophyBattlePage {
     this.messages = [
       new PBMessage(`${Date.now()}`, 'judge', arenaL10n().judgeOpeningAfterChoice(arenaL10n().choiceDisplay(c)))
     ];
+    this.scheduleChatScroll();
   }
 
   private async loadTopic(philosopher: Philosopher): Promise<void> {
@@ -599,6 +752,7 @@ export struct PhilosophyBattlePage {
     const userMsg = new PBMessage(userRowId, 'user', content);
     let next = this.messages.concat([userMsg]);
     this.messages = next;
+    this.scheduleChatScroll();
 
     const localeCode = arenaL10n().prefersEnglish ? 'en' : 'zh';
     const keyIdeas = philosopher.keyIdeas.join('。');
@@ -610,10 +764,12 @@ export struct PhilosophyBattlePage {
       let row = new PBMessage(msgId, 'philosopher', '');
       this.thinkingRole = 'philosopher';
       this.messages = prior.concat([row]);
+      this.scheduleChatScroll();
       const hist = this.historyBlock(prior, philosopher);
       const onDelta = (_d: string, acc: string) => {
         row = new PBMessage(msgId, 'philosopher', streamDisplay(acc));
         this.messages = prior.concat([row]);
+        this.scheduleChatScroll();
       };
       const resp = mode === 'to-user'
         ? await ArenaAPI.streamPhilosophyPhilosopherToUser(
@@ -630,6 +786,7 @@ export struct PhilosophyBattlePage {
       }
       const done = new PBMessage(msgId, 'philosopher', final);
       this.messages = prior.concat([done]);
+      this.scheduleChatScroll();
       playArenaInteractionSound();
       return done;
     };
@@ -639,10 +796,12 @@ export struct PhilosophyBattlePage {
       let row = new PBMessage(msgId, 'judge', '');
       this.thinkingRole = 'judge';
       this.messages = prior.concat([row]);
+      this.scheduleChatScroll();
       const hist = this.historyBlock(prior, philosopher);
       const onDelta = (_d: string, acc: string) => {
         row = new PBMessage(msgId, 'judge', judgeStreamDisplay(acc));
         this.messages = prior.concat([row]);
+        this.scheduleChatScroll();
       };
       const resp = await ArenaAPI.streamPhilosophyJudgeStep(
         this.topic!.question,
@@ -661,6 +820,7 @@ export struct PhilosophyBattlePage {
         const final = judgeStreamDisplay(resp.text).length === 0 ? judge.judgeMessage : judgeStreamDisplay(resp.text);
         const done = new PBMessage(msgId, 'judge', final);
         this.messages = prior.concat([done]);
+        this.scheduleChatScroll();
         playArenaInteractionSound();
         return new JudgeStreamOutcome(judge, done);
       }
@@ -679,6 +839,7 @@ export struct PhilosophyBattlePage {
         const philToJudge = await streamPhilosopher('to-judge', working);
         working = working.concat([philToJudge]);
         this.messages = working;
+        this.scheduleChatScroll();
       }
       this.canReveal = judgeResult.judge.continueDebate === false;
     } catch (e) {
@@ -689,6 +850,7 @@ export struct PhilosophyBattlePage {
     }
     this.isThinking = false;
     this.thinkingRole = null;
+    this.scheduleChatScroll();
   }
 
   private async handleReveal(philosopher: Philosopher): Promise<void> {

@@ -7,6 +7,7 @@ export enum AppRouteName {
   DILEMMA = 'dilemma',
   BATTLE = 'battle',
   PHILOSOPHY_BATTLE = 'philosophyBattle',
+  PHILOSOPHER_DETAIL = 'philosopherDetail',
   SETTINGS = 'settings',
 }
 
@@ -49,6 +50,18 @@ export class AppRoutes {
 
   static philosophyBattle(id: string): string {
     return `${AppRouteName.PHILOSOPHY_BATTLE}/${id}`;
+  }
+
+  static philosopherDetail(id: string): string {
+    return `${AppRouteName.PHILOSOPHER_DETAIL}/${id}`;
+  }
+
+  static parsePhilosopherDetailId(path: string): string | null {
+    const prefix = `${AppRouteName.PHILOSOPHER_DETAIL}/`;
+    if (path.startsWith(prefix)) {
+      return path.substring(prefix.length);
+    }
+    return null;
   }
 
   static parseBattleId(path: string): string | null {

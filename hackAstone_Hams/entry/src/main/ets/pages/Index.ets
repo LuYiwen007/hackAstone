@@ -16,6 +16,7 @@ import { DilemmaPage } from './DilemmaPage';
 import { BattlePage } from './BattlePage';
 import { PhilosophyBattlePage } from './PhilosophyBattlePage';
 import { AccountSettingsPage } from './AccountSettingsPage';
+import { PhilosopherDetailPage } from './PhilosopherDetailPage';
 
 const LOG_DOMAIN = 0x0000;
 
@@ -63,6 +64,13 @@ struct Index {
       NavDestination() {
         BattlePage({
           battleId: AppRoutes.parseBattleId(name) ?? '',
+        })
+      }
+      .hideTitleBar(true)
+    } else if (name.startsWith(`${AppRouteName.PHILOSOPHER_DETAIL}/`)) {
+      NavDestination() {
+        PhilosopherDetailPage({
+          philosopherId: AppRoutes.parsePhilosopherDetailId(name) ?? '',
         })
       }
       .hideTitleBar(true)
