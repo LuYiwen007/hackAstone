@@ -30,7 +30,7 @@ export struct PhilosopherAvatar {
     .height(this.avatarSize)
     .linearGradient({
       angle: 135,
-      colors: [[ArenaTheme.headerGradientStart, 0], [ArenaTheme.headerGradientEnd, 1]]
+      colors: [[ArenaTheme.avatarGradientStart, 0], [ArenaTheme.avatarGradientEnd, 1]]
     })
   }
 

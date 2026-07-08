@@ -39,6 +39,8 @@ export class ArenaTheme {
   static readonly cyanMuted: string = '#94E8FA';
   static readonly orangeAccent: string = '#ED7321';
   static readonly purpleAccent: string = '#A654F5';
+  static readonly avatarGradientStart: string = '#5B4580';
+  static readonly avatarGradientEnd: string = '#7C5CBA';
   static readonly headerGradientStart: string = '#0FB8D4';
   static readonly headerGradientEnd: string = '#3B82F5';
 

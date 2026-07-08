@@ -90,12 +90,13 @@ export struct PhilosopherDetailSheet {
         .alignItems(VerticalAlign.Top)
         .width('100%')
 
-        Text(this.philosopher.school)
-          .fontSize(14)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(ArenaTheme.purpleAccent)
+        Text(philosopher.school)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(ArenaTheme.textMuted)
           .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-          .backgroundColor('#A855F726')
+          .backgroundColor(ArenaTheme.surface)
+          .border({ width: 1, color: ArenaTheme.border, radius: 20 })
           .borderRadius(20)
 
         if (this.philosopher.summary) {
