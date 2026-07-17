@@ -2,21 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="811665e4-46ef-4d75-9adb-98e7a7995228" name="更改" comment="">
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/HackAstoneApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/HackAstoneApplication.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/dal/entity/IdSequenceEntity.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/dal/entity/IdSequenceEntity.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/dal/entity/UserEntity.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/dal/entity/UserEntity.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/dal/mapper/IdSequenceMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/dal/mapper/IdSequenceMapper.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/dal/mapper/UserMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/dal/mapper/UserMapper.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/Result.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/Result.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/constants/ResultEnum.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/constants/ResultEnum.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/exception/HackAstoneBizException.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/exception/HackAstoneBizException.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/template/BizCallback.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/template/BizCallback.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/template/BizTemplate.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/base/util/template/BizTemplate.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/biz/UserBiz.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/biz/UserBiz.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/controller/UserController.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/controller/UserController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/controller/model/UserLoginRequest.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/controller/model/UserLoginRequest.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/controller/model/UserRegisterRequest.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/controller/model/UserRegisterRequest.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/core/component/IdGenerator.class" beforeDir="false" afterPath="$PROJECT_DIR$/hackAstone_backend/target/classes/org/hackastone/core/component/IdGenerator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hackAstone_Hams/oh_modules/.ohpm/oh_modules/@ohos/hamock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hackAstone_Hams/oh_modules/.ohpm/oh_modules/@ohos/hypium" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hackAstone_Hams/oh_modules/@ohos/hamock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hackAstone_Hams/oh_modules/@ohos/hypium" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,11 +14,16 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 0
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
   <component name="ProjectId" id="3AqdSTpBq95VrhGIBMzcgoMcoQd" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -38,10 +33,12 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "LuYiwen",
-    "last_opened_file_path": "/Users/luyiwen/Desktop/hackAstone",
+    "last_opened_file_path": "E:/hongmeng/hackAstone/hackAstone_Hams",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.general",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -53,6 +50,7 @@
       </set>
     </attachedChunks>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="应用程序级" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="默认任务">
       <changelist id="811665e4-46ef-4d75-9adb-98e7a7995228" name="更改" comment="" />
