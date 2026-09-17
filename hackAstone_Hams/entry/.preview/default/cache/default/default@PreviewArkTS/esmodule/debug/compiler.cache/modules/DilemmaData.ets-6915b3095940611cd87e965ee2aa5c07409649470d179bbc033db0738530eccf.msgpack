@@ -1,679 +1,0 @@
-Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ0Úexport class MoralDilemmaOption {
-    constructor(init) {
-        this.id = '';
-        this.labelZh = '';
-        this.labelEn = '';
-        this.summaryZh = '';
-        this.summaryEn = '';
-        this.stancePromptZh = '';
-        this.stancePromptEn = '';
-        this.id = init.id;
-        this.labelZh = init.labelZh;
-        this.labelEn = init.labelEn;
-        this.summaryZh = init.summaryZh;
-        this.summaryEn = init.summaryEn;
-        this.stancePromptZh = init.stancePromptZh;
-        this.stancePromptEn = init.stancePromptEn;
-    }
-    label(en) {
-        return en ? this.labelEn : this.labelZh;
-    }
-    summary(en) {
-        return en ? this.summaryEn : this.summaryZh;
-    }
-    stancePrompt(en) {
-        return en ? this.stancePromptEn : this.stancePromptZh;
-    }
-}
-export class MoralDilemma {
-    constructor(init) {
-        this.id = '';
-        this.titleZh = '';
-        this.titleEn = '';
-        this.subtitleZh = '';
-        this.subtitleEn = '';
-        this.imageAltZh = '';
-        this.imageAltEn = '';
-        this.imageCaptionZh = '';
-        this.imageCaptionEn = '';
-        this.questionZh = '';
-        this.questionEn = '';
-        this.promptLeadZh = '';
-        this.promptLeadEn = '';
-        this.options = [];
-        this.recommendedPhilosopherIds = [];
-        this.id = init.id;
-        this.titleZh = init.titleZh;
-        this.titleEn = init.titleEn;
-        this.subtitleZh = init.subtitleZh;
-        this.subtitleEn = init.subtitleEn;
-        this.imageAltZh = init.imageAltZh;
-        this.imageAltEn = init.imageAltEn;
-        this.imageCaptionZh = init.imageCaptionZh;
-        this.imageCaptionEn = init.imageCaptionEn;
-        this.questionZh = init.questionZh;
-        this.questionEn = init.questionEn;
-        this.promptLeadZh = init.promptLeadZh;
-        this.promptLeadEn = init.promptLeadEn;
-        const opts = [];
-        for (let i = 0; i < init.options.length; i++) {
-            opts.push(new MoralDilemmaOption(init.options[i]));
-        }
-        this.options = opts;
-        this.recommendedPhilosopherIds = init.recommendedPhilosopherIds;
-    }
-    title(en) {
-        return en ? this.titleEn : this.titleZh;
-    }
-    subtitle(en) {
-        return en ? this.subtitleEn : this.subtitleZh;
-    }
-    imageAlt(en) {
-        return en ? this.imageAltEn : this.imageAltZh;
-    }
-    imageCaption(en) {
-        return en ? this.imageCaptionEn : this.imageCaptionZh;
-    }
-    question(en) {
-        return en ? this.questionEn : this.questionZh;
-    }
-    promptLead(en) {
-        return en ? this.promptLeadEn : this.promptLeadZh;
-    }
-}
-export class MoralDilemmaCatalog {
-    static dilemma(id) {
-        const found = MoralDilemmaCatalog.all.find((d) => d.id === id);
-        return found ?? MoralDilemmaCatalog.all[0];
-    }
-}
-MoralDilemmaCatalog.all = [
-    new MoralDilemma({
-        id: 'trolley-problem',
-        titleZh: 'ç”µè½¦éš¾é¢˜',
-        titleEn: 'Trolley Problem',
-        subtitleZh: 'åŠŸåˆ©ä¸è´£ä»»å‘ç”Ÿå†²çªæ—¶ï¼Œä½ æ˜¯å¦æ„¿æ„ä¸»åŠ¨æ‰³åŠ¨é‚£æ ¹æ‹‰æ†ï¼Ÿ',
-        subtitleEn: 'When utility clashes with responsibility, would you pull the lever?',
-        imageAltZh: 'ç”µè½¦éš¾é¢˜ç¤ºæ„å›¾',
-        imageAltEn: 'Trolley problem illustration',
-        imageCaptionZh: 'ä¸€è¾†å¤±æ§ç”µè½¦å†²å‘å‰æ–¹äº”äººï¼Œä½ å¯ä»¥æ‰³åŠ¨æ‹‰æ†ï¼Œè®©å®ƒæ”¹é“æ’å‘å¦ä¸€æ¡è½¨é“ä¸Šçš„ä¸€äººã€‚',
-        imageCaptionEn: 'A runaway trolley heads toward five people; you can divert it to hit one person on another track.',
-        questionZh: 'å¦‚æœä½ æ­¤åˆ»ç«™åœ¨é“å²”æ—ï¼Œä½ ä¼šæ€ä¹ˆåšï¼Ÿ',
-        questionEn: 'If you stood by the switch right now, what would you do?',
-        promptLeadZh: 'è¯·å›´ç»•ç‰ºç‰²å°‘æ•°ä»¥æ‹¯æ•‘å¤šæ•°ã€è¡ŒåŠ¨è´£ä»»ä¸é“å¾·è¾¹ç•Œæ¥å±•å¼€è®¨è®ºã€‚',
-        promptLeadEn: 'Discuss sacrificing the few to save many, agency, and moral boundaries.',
-        options: [
-            new MoralDilemmaOption({
-                id: 'pull-lever',
-                labelZh: 'æ‰³åŠ¨æ‹‰æ†ï¼Œç‰ºç‰²ä¸€äººæ•‘äº”äºº',
-                labelEn: 'Pull the leverâ€”save five, sacrifice one',
-                summaryZh: 'æŠŠç»“æœæœ€å¤§åŒ–çœ‹ä½œä¼˜å…ˆç›®æ ‡ï¼Œæ¥å—ä¸»åŠ¨ä»‹å…¥å¸¦æ¥çš„è´£ä»»ã€‚',
-                summaryEn: 'Prioritize the best outcome and accept responsibility for intervening.',
-                stancePromptZh: 'æˆ‘æ„¿æ„æ‰³åŠ¨æ‹‰æ†ï¼Œç”¨ä¸€äººçš„ç‰ºç‰²æ¢å–äº”äººçš„ç”Ÿè¿˜ã€‚',
-                stancePromptEn: 'I would pull the lever to save five at the cost of one.',
-            }),
-            new MoralDilemmaOption({
-                id: 'do-nothing',
-                labelZh: 'ä¸æ‰³åŠ¨æ‹‰æ†ï¼Œä¸ä¸»åŠ¨ä»‹å…¥',
-                labelEn: 'Do not pullâ€”do not intervene',
-                summaryZh: 'è®¤ä¸ºä¸»åŠ¨é€ æˆä¼¤å®³ä¸è¢–æ‰‹æ—è§‚åœ¨é“å¾·ä¸Šå¹¶ä¸ç­‰ä»·ã€‚',
-                summaryEn: 'Actively causing harm is not morally the same as letting harm unfold.',
-                stancePromptZh: 'æˆ‘ä¸ä¼šæ‰³åŠ¨æ‹‰æ†ï¼Œå› ä¸ºä¸»åŠ¨é€ æˆä¸€äººæ­»äº¡æœ¬èº«å°±æ˜¯ä¸å¯æ¥å—çš„è¡Œä¸ºã€‚',
-                stancePromptEn: 'I would not pull, because actively causing a death is unacceptable.',
-            }),
-            new MoralDilemmaOption({
-                id: 'seek-third-way',
-                labelZh: 'å…ˆå¯»æ‰¾ç¬¬ä¸‰ç§åŠæ³•',
-                labelEn: 'Seek a third way first',
-                summaryZh: 'æ‹’ç»é©¬ä¸Šæ¥å—äºŒé€‰ä¸€ï¼Œä¼˜å…ˆå¯»æ‰¾ç³»ç»Ÿæ€§æˆ–æƒ…å¢ƒæ€§æ›¿ä»£æ–¹æ¡ˆã€‚',
-                summaryEn: 'Refuse the forced binary; look for systemic or situational alternatives.',
-                stancePromptZh: 'æˆ‘ä¼šå°½é‡å¯»æ‰¾ç¬¬ä¸‰ç§åŠæ³•ï¼Œä¸æ„¿ç›´æ¥æ¥å—æ—¢å®šçš„ä¸¤éš¾ç»“æ„ã€‚',
-                stancePromptEn: 'I would try to find a third option rather than accept the dilemma as given.',
-            }),
-        ],
-        recommendedPhilosopherIds: ['kant', 'aristotle', 'confucius', 'hume', 'zhuangzi'],
-    }),
-    new MoralDilemma({
-        id: 'brain-in-a-vat',
-        titleZh: 'ç¼¸ä¸­ä¹‹è„‘',
-        titleEn: 'Brain in a Vat',
-        subtitleZh: 'å¦‚æœä¸€åˆ‡ç»éªŒéƒ½èƒ½è¢«æ¨¡æ‹Ÿï¼Œä½ è¿˜èƒ½ç¡®å®šè‡ªå·±çœŸæ­£æ´»åœ¨ç°å®ä¸­å—ï¼Ÿ',
-        subtitleEn: 'If all experience could be simulated, can you know you are really in reality?',
-        imageAltZh: 'ç¼¸ä¸­ä¹‹è„‘ç¤ºæ„å›¾',
-        imageAltEn: 'Brain in a vat illustration',
-        imageCaptionZh: 'ä¸€é¢—è¢«ç»´ç”Ÿç³»ç»Ÿç»´æŒçš„è„‘ï¼Œè¢«æŒç»­è¾“å…¥ä¸ç°å®å®Œå…¨ç›¸åŒçš„ç¥ç»ä¿¡å·ã€‚',
-        imageCaptionEn: 'A brain in a vat fed signals indistinguishable from real experience.',
-        questionZh: 'é¢å¯¹è¿™ä¸ªè®¾å®šï¼Œä½ æœ€æ„¿æ„é‡‡å–å“ªç§æ€åº¦ï¼Ÿ',
-        questionEn: 'Facing this setup, which attitude do you lean toward?',
-        promptLeadZh: 'è¯·å›´ç»•çŸ¥è¯†æ¥æºã€æ„Ÿå®˜ç»éªŒã€æ€€ç–‘è®ºä¸ç°å®åˆ¤æ–­å±•å¼€è®¨è®ºã€‚',
-        promptLeadEn: 'Discuss sources of knowledge, sense experience, skepticism, and judgments about reality.',
-        options: [
-            new MoralDilemmaOption({
-                id: 'trust-experience',
-                labelZh: 'æš‚ä¸”ç›¸ä¿¡ç»éªŒä¸–ç•Œå¯ä½œä¸ºç°å®åŸºç¡€',
-                labelEn: 'Trust experience as a provisional basis for reality',
-                summaryZh: 'è®¤ä¸ºå³ä½¿ç»éªŒå¯èƒ½è¢«æ¨¡æ‹Ÿï¼Œæˆ‘ä»¬ä»éœ€ä»¥ç¨³å®šç»éªŒä½œä¸ºè®¤çŸ¥ä¸è¡ŒåŠ¨åŸºç¡€ã€‚',
-                summaryEn: 'Even if experience might be simulated, we need a stable basis to think and act.',
-                stancePromptZh: 'æˆ‘ä»æ„¿æ„æŠŠç¨³å®šçš„ç»éªŒä¸–ç•Œå½“ä½œç°å®åŸºç¡€ï¼Œå› ä¸ºè®¤çŸ¥å’Œè¡ŒåŠ¨éƒ½éœ€è¦è¿™ä¸ªèµ·ç‚¹ã€‚',
-                stancePromptEn: 'I still treat stable experience as reality\'s basis for thought and action.',
-            }),
-            new MoralDilemmaOption({
-                id: 'radical-doubt',
-                labelZh: 'å¿…é¡»æ›´å¼ºè¯æ˜ï¼Œå¦åˆ™ä¿æŒæ€€ç–‘',
-                labelEn: 'Demand stronger proof or stay skeptical',
-                summaryZh: 'è®¤ä¸ºæ„Ÿå®˜ç»éªŒä¸å¯é ï¼Œä¸–ç•ŒçœŸå®æ€§ä¸èƒ½ä»…é ä½“éªŒæœ¬èº«æ‹…ä¿ã€‚',
-                summaryEn: 'Sense experience alone cannot guarantee the world is real.',
-                stancePromptZh: 'å¦‚æœæ— æ³•è·å¾—æ›´å¼ºçš„è¯æ˜ï¼Œæˆ‘ä¼šå¯¹å½“å‰ä¸–ç•Œçš„çœŸå®æ€§ä¿æŒæ ¹æœ¬æ€§çš„æ€€ç–‘ã€‚',
-                stancePromptEn: 'Without stronger proof, I would remain fundamentally skeptical about reality.',
-            }),
-            new MoralDilemmaOption({
-                id: 'pragmatic-living',
-                labelZh: 'çœŸå‡æœªå®šï¼Œä½†å…ˆæŒ‰èƒ½è¡ŒåŠ¨çš„ä¸–ç•Œç”Ÿæ´»',
-                labelEn: 'Truth uncertainâ€”live in the actionable world',
-                summaryZh: 'ä¸æŠŠç»ˆæçœŸå®æ€§æ”¾åœ¨ç¬¬ä¸€ä½ï¼Œè€ŒæŠŠå¯è¡ŒåŠ¨æ€§ä¸å¯è§£é‡Šæ€§æ”¾åœ¨å‰é¢ã€‚',
-                summaryEn: 'Prioritize action and intelligibility over ultimate metaphysical certainty.',
-                stancePromptZh: 'æˆ‘æ‰¿è®¤çœŸä¼ªæœªå®šï¼Œä½†ä»ä¼šå…ˆæŒ‰è¿™ä¸ªèƒ½è¡ŒåŠ¨ã€èƒ½äº¤æµçš„ä¸–ç•Œç»§ç»­ç”Ÿæ´»ã€‚',
-                stancePromptEn: 'Truth may be uncertain, but I still live in this actionable, shared world.',
-            }),
-        ],
-        recommendedPhilosopherIds: ['descartes', 'plato', 'hume', 'kant', 'zhuangzi'],
-    }),
-    new MoralDilemma({
-        id: 'veil-of-ignorance',
-        titleZh: 'æ— çŸ¥ä¹‹å¹•',
-        titleEn: 'Veil of Ignorance',
-        subtitleZh: 'å½“ä½ ä¸çŸ¥é“è‡ªå·±ä¼šæˆä¸ºè°æ—¶ï¼Œä½ ä¼šå¦‚ä½•è®¾è®¡ä¸€ä¸ªç¤¾ä¼šï¼Ÿ',
-        subtitleEn: 'Behind a veil of ignorance, how would you design a society?',
-        imageAltZh: 'æ— çŸ¥ä¹‹å¹•ç¤ºæ„å›¾',
-        imageAltEn: 'Veil of ignorance illustration',
-        imageCaptionZh: 'ä½ åœ¨åˆ¶å®šåˆ¶åº¦ä¹‹å‰è¢«è’™ä½èº«ä»½ä¿¡æ¯ï¼Œä¸çŸ¥é“è‡ªå·±å°†èº«å¤„ç¤¾ä¼šçš„å“ªä¸€ä¸ªä½ç½®ã€‚',
-        imageCaptionEn: 'You design institutions without knowing your place in society.',
-        questionZh: 'ä½ æ›´å€¾å‘äºæ”¯æŒæ€æ ·çš„åˆ¶åº¦è®¾è®¡ï¼Ÿ',
-        questionEn: 'Which institutional design do you lean toward?',
-        promptLeadZh: 'è¯·å›´ç»•å…¬å¹³ã€è‡ªç”±ã€åˆ¶åº¦é£é™©ä¸æœ€å¼±è€…ä¿éšœå±•å¼€è®¨è®ºã€‚',
-        promptLeadEn: 'Discuss fairness, liberty, institutional risk, and protection of the worst off.',
-        options: [
-            new MoralDilemmaOption({
-                id: 'prioritize-worst-off',
-                labelZh: 'ä¼˜å…ˆä¿éšœæœ€å¼±è€…åˆ©ç›Š',
-                labelEn: 'Prioritize the worst off',
-                summaryZh: 'æŠŠæœ€ä¸åˆ©å¤„å¢ƒè€…çš„å®‰å…¨ä¸å°Šä¸¥æ”¾åœ¨åˆ¶åº¦è®¾è®¡çš„æ ¸å¿ƒä½ç½®ã€‚',
-                summaryEn: 'Center the safety and dignity of the least advantaged.',
-                stancePromptZh: 'æˆ‘ä¼šä¼˜å…ˆä¿éšœæœ€å¼±è€…åˆ©ç›Šï¼Œå› ä¸ºåœ¨æ— çŸ¥ä¹‹å¹•ä¸‹æˆ‘å¿…é¡»ä¸ºæœ€åå¤„å¢ƒåšå¥½å‡†å¤‡ã€‚',
-                stancePromptEn: 'I would prioritize the worst off, since I might end up there behind the veil.',
-            }),
-            new MoralDilemmaOption({
-                id: 'prioritize-liberty',
-                labelZh: 'ä¼˜å…ˆä¿æŠ¤è‡ªç”±ä¸æœºä¼š',
-                labelEn: 'Prioritize liberty and opportunity',
-                summaryZh: 'è®¤ä¸ºåˆ¶åº¦é¦–å…ˆåº”ä¿éšœåŸºæœ¬è‡ªç”±ï¼Œå†é€šè¿‡æœºä¼šå…¬å¹³å‡å°‘ä¸å…¬ã€‚',
-                summaryEn: 'Institutions should secure basic liberties first, then fair opportunity.',
-                stancePromptZh: 'æˆ‘ä¼šä¼˜å…ˆä¿æŠ¤åŸºæœ¬è‡ªç”±ä¸æœºä¼šï¼Œå› ä¸ºåˆ¶åº¦é¦–å…ˆè¦é˜²æ­¢ä¸ªäººè¢«æƒåŠ›å‹ç¼©ã€‚',
-                stancePromptEn: 'I would prioritize basic liberties and opportunity against domination.',
-            }),
-            new MoralDilemmaOption({
-                id: 'balanced-design',
-                labelZh: 'è‡ªç”±ä¸å…¬å¹³å¹¶é‡ï¼Œå…è®¸æœ‰é™å·®è·',
-                labelEn: 'Balance liberty and fairness; allow limited inequality',
-                summaryZh: 'æ¥å—å·®å¼‚å­˜åœ¨ï¼Œä½†è¦æ±‚è¿™ç§å·®å¼‚èƒ½çœŸæ­£æ”¹å–„æ•´ä½“ä¸å¼±è€…å¤„å¢ƒã€‚',
-                summaryEn: 'Allow some inequality if it improves everyone, especially the vulnerable.',
-                stancePromptZh: 'æˆ‘ä¸»å¼ è‡ªç”±ä¸å…¬å¹³å¹¶é‡ï¼Œå…è®¸æœ‰é™å·®è·ï¼Œä½†è¿™ç§å·®è·å¿…é¡»èƒ½æ”¹å–„æ•´ä½“å¤„å¢ƒã€‚',
-                stancePromptEn: 'I want liberty and fairness with limited gaps that improve overall outcomes.',
-            }),
-        ],
-        recommendedPhilosopherIds: ['rawls', 'rousseau', 'confucius', 'kant', 'aristotle'],
-    }),
-];
-//# sourceMappingURL=DilemmaData.js.mapÂÙY/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entry/src/main/ets/data/DilemmaData.etsÔrB›ªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo¯hostModulesInfo°belongModulePath¬shouldEmitJs¥entryÃÂÙ7/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entryÙ1/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams¥entry¥1.0.0Ô  ‘ÔrC’²hostDependencyName®hostModuleName³../data/DilemmaData¥entryÙ7/Users/luyiwen/Desktop/hackAstone/hackAstone_Hams/entryÃÃÚ0/** ä¸ Web `dilemmas.ts` å¯¹é½çš„é“å¾·å›°å¢ƒå…ƒæ•°æ®ï¼ˆé…å›¾åœ¨å®¢æˆ·ç«¯ç”¨ç¬¦å·/æ¸å˜ä»£æ›¿ï¼‰ã€‚ */
-export interface MoralDilemmaOptionInit {
-  id: string;
-  labelZh: string;
-  labelEn: string;
-  summaryZh: string;
-  summaryEn: string;
-  stancePromptZh: string;
-  stancePromptEn: string;
-}
-
-export interface MoralDilemmaInit {
-  id: string;
-  titleZh: string;
-  titleEn: string;
-  subtitleZh: string;
-  subtitleEn: string;
-  imageAltZh: string;
-  imageAltEn: string;
-  imageCaptionZh: string;
-  imageCaptionEn: string;
-  questionZh: string;
-  questionEn: string;
-  promptLeadZh: string;
-  promptLeadEn: string;
-  options: MoralDilemmaOptionInit[];
-  recommendedPhilosopherIds: string[];
-}
-
-export class MoralDilemmaOption {
-  id: string = '';
-  labelZh: string = '';
-  labelEn: string = '';
-  summaryZh: string = '';
-  summaryEn: string = '';
-  stancePromptZh: string = '';
-  stancePromptEn: string = '';
-
-  constructor(init: MoralDilemmaOptionInit) {
-    this.id = init.id;
-    this.labelZh = init.labelZh;
-    this.labelEn = init.labelEn;
-    this.summaryZh = init.summaryZh;
-    this.summaryEn = init.summaryEn;
-    this.stancePromptZh = init.stancePromptZh;
-    this.stancePromptEn = init.stancePromptEn;
-  }
-
-  label(en: boolean): string {
-    return en ? this.labelEn : this.labelZh;
-  }
-
-  summary(en: boolean): string {
-    return en ? this.summaryEn : this.summaryZh;
-  }
-
-  stancePrompt(en: boolean): string {
-    return en ? this.stancePromptEn : this.stancePromptZh;
-  }
-}
-
-export class MoralDilemma {
-  id: string = '';
-  titleZh: string = '';
-  titleEn: string = '';
-  subtitleZh: string = '';
-  subtitleEn: string = '';
-  imageAltZh: string = '';
-  imageAltEn: string = '';
-  imageCaptionZh: string = '';
-  imageCaptionEn: string = '';
-  questionZh: string = '';
-  questionEn: string = '';
-  promptLeadZh: string = '';
-  promptLeadEn: string = '';
-  options: MoralDilemmaOption[] = [];
-  recommendedPhilosopherIds: string[] = [];
-
-  constructor(init: MoralDilemmaInit) {
-    this.id = init.id;
-    this.titleZh = init.titleZh;
-    this.titleEn = init.titleEn;
-    this.subtitleZh = init.subtitleZh;
-    this.subtitleEn = init.subtitleEn;
-    this.imageAltZh = init.imageAltZh;
-    this.imageAltEn = init.imageAltEn;
-    this.imageCaptionZh = init.imageCaptionZh;
-    this.imageCaptionEn = init.imageCaptionEn;
-    this.questionZh = init.questionZh;
-    this.questionEn = init.questionEn;
-    this.promptLeadZh = init.promptLeadZh;
-    this.promptLeadEn = init.promptLeadEn;
-    const opts: MoralDilemmaOption[] = [];
-    for (let i = 0; i < init.options.length; i++) {
-      opts.push(new MoralDilemmaOption(init.options[i]));
-    }
-    this.options = opts;
-    this.recommendedPhilosopherIds = init.recommendedPhilosopherIds;
-  }
-
-  title(en: boolean): string {
-    return en ? this.titleEn : this.titleZh;
-  }
-
-  subtitle(en: boolean): string {
-    return en ? this.subtitleEn : this.subtitleZh;
-  }
-
-  imageAlt(en: boolean): string {
-    return en ? this.imageAltEn : this.imageAltZh;
-  }
-
-  imageCaption(en: boolean): string {
-    return en ? this.imageCaptionEn : this.imageCaptionZh;
-  }
-
-  question(en: boolean): string {
-    return en ? this.questionEn : this.questionZh;
-  }
-
-  promptLead(en: boolean): string {
-    return en ? this.promptLeadEn : this.promptLeadZh;
-  }
-}
-
-export class MoralDilemmaCatalog {
-  static readonly all: MoralDilemma[] = [
-    new MoralDilemma({
-      id: 'trolley-problem',
-      titleZh: 'ç”µè½¦éš¾é¢˜',
-      titleEn: 'Trolley Problem',
-      subtitleZh: 'åŠŸåˆ©ä¸è´£ä»»å‘ç”Ÿå†²çªæ—¶ï¼Œä½ æ˜¯å¦æ„¿æ„ä¸»åŠ¨æ‰³åŠ¨é‚£æ ¹æ‹‰æ†ï¼Ÿ',
-      subtitleEn: 'When utility clashes with responsibility, would you pull the lever?',
-      imageAltZh: 'ç”µè½¦éš¾é¢˜ç¤ºæ„å›¾',
-      imageAltEn: 'Trolley problem illustration',
-      imageCaptionZh: 'ä¸€è¾†å¤±æ§ç”µè½¦å†²å‘å‰æ–¹äº”äººï¼Œä½ å¯ä»¥æ‰³åŠ¨æ‹‰æ†ï¼Œè®©å®ƒæ”¹é“æ’å‘å¦ä¸€æ¡è½¨é“ä¸Šçš„ä¸€äººã€‚',
-      imageCaptionEn: 'A runaway trolley heads toward five people; you can divert it to hit one person on another track.',
-      questionZh: 'å¦‚æœä½ æ­¤åˆ»ç«™åœ¨é“å²”æ—ï¼Œä½ ä¼šæ€ä¹ˆåšï¼Ÿ',
-      questionEn: 'If you stood by the switch right now, what would you do?',
-      promptLeadZh: 'è¯·å›´ç»•ç‰ºç‰²å°‘æ•°ä»¥æ‹¯æ•‘å¤šæ•°ã€è¡ŒåŠ¨è´£ä»»ä¸é“å¾·è¾¹ç•Œæ¥å±•å¼€è®¨è®ºã€‚',
-      promptLeadEn: 'Discuss sacrificing the few to save many, agency, and moral boundaries.',
-      options: [
-        new MoralDilemmaOption({
-          id: 'pull-lever',
-          labelZh: 'æ‰³åŠ¨æ‹‰æ†ï¼Œç‰ºç‰²ä¸€äººæ•‘äº”äºº',
-          labelEn: 'Pull the leverâ€”save five, sacrifice one',
-          summaryZh: 'æŠŠç»“æœæœ€å¤§åŒ–çœ‹ä½œä¼˜å…ˆç›®æ ‡ï¼Œæ¥å—ä¸»åŠ¨ä»‹å…¥å¸¦æ¥çš„è´£ä»»ã€‚',
-          summaryEn: 'Prioritize the best outcome and accept responsibility for intervening.',
-          stancePromptZh: 'æˆ‘æ„¿æ„æ‰³åŠ¨æ‹‰æ†ï¼Œç”¨ä¸€äººçš„ç‰ºç‰²æ¢å–äº”äººçš„ç”Ÿè¿˜ã€‚',
-          stancePromptEn: 'I would pull the lever to save five at the cost of one.',
-        }),
-        new MoralDilemmaOption({
-          id: 'do-nothing',
-          labelZh: 'ä¸æ‰³åŠ¨æ‹‰æ†ï¼Œä¸ä¸»åŠ¨ä»‹å…¥',
-          labelEn: 'Do not pullâ€”do not intervene',
-          summaryZh: 'è®¤ä¸ºä¸»åŠ¨é€ æˆä¼¤å®³ä¸è¢–æ‰‹æ—è§‚åœ¨é“å¾·ä¸Šå¹¶ä¸ç­‰ä»·ã€‚',
-          summaryEn: 'Actively causing harm is not morally the same as letting harm unfold.',
-          stancePromptZh: 'æˆ‘ä¸ä¼šæ‰³åŠ¨æ‹‰æ†ï¼Œå› ä¸ºä¸»åŠ¨é€ æˆä¸€äººæ­»äº¡æœ¬èº«å°±æ˜¯ä¸å¯æ¥å—çš„è¡Œä¸ºã€‚',
-          stancePromptEn: 'I would not pull, because actively causing a death is unacceptable.',
-        }),
-        new MoralDilemmaOption({
-          id: 'seek-third-way',
-          labelZh: 'å…ˆå¯»æ‰¾ç¬¬ä¸‰ç§åŠæ³•',
-          labelEn: 'Seek a third way first',
-          summaryZh: 'æ‹’ç»é©¬ä¸Šæ¥å—äºŒé€‰ä¸€ï¼Œä¼˜å…ˆå¯»æ‰¾ç³»ç»Ÿæ€§æˆ–æƒ…å¢ƒæ€§æ›¿ä»£æ–¹æ¡ˆã€‚',
-          summaryEn: 'Refuse the forced binary; look for systemic or situational alternatives.',
-          stancePromptZh: 'æˆ‘ä¼šå°½é‡å¯»æ‰¾ç¬¬ä¸‰ç§åŠæ³•ï¼Œä¸æ„¿ç›´æ¥æ¥å—æ—¢å®šçš„ä¸¤éš¾ç»“æ„ã€‚',
-          stancePromptEn: 'I would try to find a third option rather than accept the dilemma as given.',
-        }),
-      ],
-      recommendedPhilosopherIds: ['kant', 'aristotle', 'confucius', 'hume', 'zhuangzi'],
-    }),
-    new MoralDilemma({
-      id: 'brain-in-a-vat',
-      titleZh: 'ç¼¸ä¸­ä¹‹è„‘',
-      titleEn: 'Brain in a Vat',
-      subtitleZh: 'å¦‚æœä¸€åˆ‡ç»éªŒéƒ½èƒ½è¢«æ¨¡æ‹Ÿï¼Œä½ è¿˜èƒ½ç¡®å®šè‡ªå·±çœŸæ­£æ´»åœ¨ç°å®ä¸­å—ï¼Ÿ',
-      subtitleEn: 'If all experience could be simulated, can you know you are really in reality?',
-      imageAltZh: 'ç¼¸ä¸­ä¹‹è„‘ç¤ºæ„å›¾',
-      imageAltEn: 'Brain in a vat illustration',
-      imageCaptionZh: 'ä¸€é¢—è¢«ç»´ç”Ÿç³»ç»Ÿç»´æŒçš„è„‘ï¼Œè¢«æŒç»­è¾“å…¥ä¸ç°å®å®Œå…¨ç›¸åŒçš„ç¥ç»ä¿¡å·ã€‚',
-      imageCaptionEn: 'A brain in a vat fed signals indistinguishable from real experience.',
-      questionZh: 'é¢å¯¹è¿™ä¸ªè®¾å®šï¼Œä½ æœ€æ„¿æ„é‡‡å–å“ªç§æ€åº¦ï¼Ÿ',
-      questionEn: 'Facing this setup, which attitude do you lean toward?',
-      promptLeadZh: 'è¯·å›´ç»•çŸ¥è¯†æ¥æºã€æ„Ÿå®˜ç»éªŒã€æ€€ç–‘è®ºä¸ç°å®åˆ¤æ–­å±•å¼€è®¨è®ºã€‚',
-      promptLeadEn: 'Discuss sources of knowledge, sense experience, skepticism, and judgments about reality.',
-      options: [
-        new MoralDilemmaOption({
-          id: 'trust-experience',
-          labelZh: 'æš‚ä¸”ç›¸ä¿¡ç»éªŒä¸–ç•Œå¯ä½œä¸ºç°å®åŸºç¡€',
-          labelEn: 'Trust experience as a provisional basis for reality',
-          summaryZh: 'è®¤ä¸ºå³ä½¿ç»éªŒå¯èƒ½è¢«æ¨¡æ‹Ÿï¼Œæˆ‘ä»¬ä»éœ€ä»¥ç¨³å®šç»éªŒä½œä¸ºè®¤çŸ¥ä¸è¡ŒåŠ¨åŸºç¡€ã€‚',
-          summaryEn: 'Even if experience might be simulated, we need a stable basis to think and act.',
-          stancePromptZh: 'æˆ‘ä»æ„¿æ„æŠŠç¨³å®šçš„ç»éªŒä¸–ç•Œå½“ä½œç°å®åŸºç¡€ï¼Œå› ä¸ºè®¤çŸ¥å’Œè¡ŒåŠ¨éƒ½éœ€è¦è¿™ä¸ªèµ·ç‚¹ã€‚',
-          stancePromptEn: 'I still treat stable experience as reality\'s basis for thought and action.',
-        }),
-        new MoralDilemmaOption({
-          id: 'radical-doubt',
-          labelZh: 'å¿…é¡»æ›´å¼ºè¯æ˜ï¼Œå¦åˆ™ä¿æŒæ€€ç–‘',
-          labelEn: 'Demand stronger proof or stay skeptical',
-          summaryZh: 'è®¤ä¸ºæ„Ÿå®˜ç»éªŒä¸å¯é ï¼Œä¸–ç•ŒçœŸå®æ€§ä¸èƒ½ä»…é ä½“éªŒæœ¬èº«æ‹…ä¿ã€‚',
-          summaryEn: 'Sense experience alone cannot guarantee the world is real.',
-          stancePromptZh: 'å¦‚æœæ— æ³•è·å¾—æ›´å¼ºçš„è¯æ˜ï¼Œæˆ‘ä¼šå¯¹å½“å‰ä¸–ç•Œçš„çœŸå®æ€§ä¿æŒæ ¹æœ¬æ€§çš„æ€€ç–‘ã€‚',
-          stancePromptEn: 'Without stronger proof, I would remain fundamentally skeptical about reality.',
-        }),
-        new MoralDilemmaOption({
-          id: 'pragmatic-living',
-          labelZh: 'çœŸå‡æœªå®šï¼Œä½†å…ˆæŒ‰èƒ½è¡ŒåŠ¨çš„ä¸–ç•Œç”Ÿæ´»',
-          labelEn: 'Truth uncertainâ€”live in the actionable world',
-          summaryZh: 'ä¸æŠŠç»ˆæçœŸå®æ€§æ”¾åœ¨ç¬¬ä¸€ä½ï¼Œè€ŒæŠŠå¯è¡ŒåŠ¨æ€§ä¸å¯è§£é‡Šæ€§æ”¾åœ¨å‰é¢ã€‚',
-          summaryEn: 'Prioritize action and intelligibility over ultimate metaphysical certainty.',
-          stancePromptZh: 'æˆ‘æ‰¿è®¤çœŸä¼ªæœªå®šï¼Œä½†ä»ä¼šå…ˆæŒ‰è¿™ä¸ªèƒ½è¡ŒåŠ¨ã€èƒ½äº¤æµçš„ä¸–ç•Œç»§ç»­ç”Ÿæ´»ã€‚',
-          stancePromptEn: 'Truth may be uncertain, but I still live in this actionable, shared world.',
-        }),
-      ],
-      recommendedPhilosopherIds: ['descartes', 'plato', 'hume', 'kant', 'zhuangzi'],
-    }),
-    new MoralDilemma({
-      id: 'veil-of-ignorance',
-      titleZh: 'æ— çŸ¥ä¹‹å¹•',
-      titleEn: 'Veil of Ignorance',
-      subtitleZh: 'å½“ä½ ä¸çŸ¥é“è‡ªå·±ä¼šæˆä¸ºè°æ—¶ï¼Œä½ ä¼šå¦‚ä½•è®¾è®¡ä¸€ä¸ªç¤¾ä¼šï¼Ÿ',
-      subtitleEn: 'Behind a veil of ignorance, how would you design a society?',
-      imageAltZh: 'æ— çŸ¥ä¹‹å¹•ç¤ºæ„å›¾',
-      imageAltEn: 'Veil of ignorance illustration',
-      imageCaptionZh: 'ä½ åœ¨åˆ¶å®šåˆ¶åº¦ä¹‹å‰è¢«è’™ä½èº«ä»½ä¿¡æ¯ï¼Œä¸çŸ¥é“è‡ªå·±å°†èº«å¤„ç¤¾ä¼šçš„å“ªä¸€ä¸ªä½ç½®ã€‚',
-      imageCaptionEn: 'You design institutions without knowing your place in society.',
-      questionZh: 'ä½ æ›´å€¾å‘äºæ”¯æŒæ€æ ·çš„åˆ¶åº¦è®¾è®¡ï¼Ÿ',
-      questionEn: 'Which institutional design do you lean toward?',
-      promptLeadZh: 'è¯·å›´ç»•å…¬å¹³ã€è‡ªç”±ã€åˆ¶åº¦é£é™©ä¸æœ€å¼±è€…ä¿éšœå±•å¼€è®¨è®ºã€‚',
-      promptLeadEn: 'Discuss fairness, liberty, institutional risk, and protection of the worst off.',
-      options: [
-        new MoralDilemmaOption({
-          id: 'prioritize-worst-off',
-          labelZh: 'ä¼˜å…ˆä¿éšœæœ€å¼±è€…åˆ©ç›Š',
-          labelEn: 'Prioritize the worst off',
-          summaryZh: 'æŠŠæœ€ä¸åˆ©å¤„å¢ƒè€…çš„å®‰å…¨ä¸å°Šä¸¥æ”¾åœ¨åˆ¶åº¦è®¾è®¡çš„æ ¸å¿ƒä½ç½®ã€‚',
-          summaryEn: 'Center the safety and dignity of the least advantaged.',
-          stancePromptZh: 'æˆ‘ä¼šä¼˜å…ˆä¿éšœæœ€å¼±è€…åˆ©ç›Šï¼Œå› ä¸ºåœ¨æ— çŸ¥ä¹‹å¹•ä¸‹æˆ‘å¿…é¡»ä¸ºæœ€åå¤„å¢ƒåšå¥½å‡†å¤‡ã€‚',
-          stancePromptEn: 'I would prioritize the worst off, since I might end up there behind the veil.',
-        }),
-        new MoralDilemmaOption({
-          id: 'prioritize-liberty',
-          labelZh: 'ä¼˜å…ˆä¿æŠ¤è‡ªç”±ä¸æœºä¼š',
-          labelEn: 'Prioritize liberty and opportunity',
-          summaryZh: 'è®¤ä¸ºåˆ¶åº¦é¦–å…ˆåº”ä¿éšœåŸºæœ¬è‡ªç”±ï¼Œå†é€šè¿‡æœºä¼šå…¬å¹³å‡å°‘ä¸å…¬ã€‚',
-          summaryEn: 'Institutions should secure basic liberties first, then fair opportunity.',
-          stancePromptZh: 'æˆ‘ä¼šä¼˜å…ˆä¿æŠ¤åŸºæœ¬è‡ªç”±ä¸æœºä¼šï¼Œå› ä¸ºåˆ¶åº¦é¦–å…ˆè¦é˜²æ­¢ä¸ªäººè¢«æƒåŠ›å‹ç¼©ã€‚',
-          stancePromptEn: 'I would prioritize basic liberties and opportunity against domination.',
-        }),
-        new MoralDilemmaOption({
-          id: 'balanced-design',
-          labelZh: 'è‡ªç”±ä¸å…¬å¹³å¹¶é‡ï¼Œå…è®¸æœ‰é™å·®è·',
-          labelEn: 'Balance liberty and fairness; allow limited inequality',
-          summaryZh: 'æ¥å—å·®å¼‚å­˜åœ¨ï¼Œä½†è¦æ±‚è¿™ç§å·®å¼‚èƒ½çœŸæ­£æ”¹å–„æ•´ä½“ä¸å¼±è€…å¤„å¢ƒã€‚',
-          summaryEn: 'Allow some inequality if it improves everyone, especially the vulnerable.',
-          stancePromptZh: 'æˆ‘ä¸»å¼ è‡ªç”±ä¸å…¬å¹³å¹¶é‡ï¼Œå…è®¸æœ‰é™å·®è·ï¼Œä½†è¿™ç§å·®è·å¿…é¡»èƒ½æ”¹å–„æ•´ä½“å¤„å¢ƒã€‚',
-          stancePromptEn: 'I want liberty and fairness with limited gaps that improve overall outcomes.',
-        }),
-      ],
-      recommendedPhilosopherIds: ['rawls', 'rousseau', 'confucius', 'kant', 'aristotle'],
-    }),
-  ];
-
-  static dilemma(id: string): MoralDilemma {
-    const found = MoralDilemmaCatalog.all.find((d) => d.id === id);
-    return found ?? MoralDilemmaCatalog.all[0];
-  }
-}
-ÀA“ÔrD–§version¤fileªsourceRoot§sources¥names¨mappings®DilemmaData.js ‘¯DilemmaData.etsÜ â””   ” ” ” “” &” &” &*•” ” ” ” ” •” ” 	” ” ” •”  ”  	”  ”  ”  •” !” !” !” !” !•” "” "” "” "” "•” #” #” #”  #”! #•” $” $” $”  $”! $™” '” '” '	” '” '” '” '” '” '™” (” (” (	” (” (” (” (”# (”$ ( ™” )” )” )	” )” )” )” )”# )”$ ) ™” *” *” *	” *” *” *” *”' *#”( *$™” +” +” +	” +” +” +” +”' +#”( +$™” ,” ,” ,	” ,” ,”" ,”# ,”1 ,-”2 ,.™” -” -” -	” -” -”" -”# -”1 --”2 -.’” .” .”” 0”	 0”
- 0” 0Ü ” 1” 1” 1” 1” 1” 1” 1” 1”  1”! 1”" 1”# 1”' 1#”( 1$”/ 1+”0 1,’” 2” 2”” 4” 4	” 4
-” 4Ü ” 5” 5” 5” 5” 5” 5” 5” 5”" 5”# 5”$ 5 ”% 5!”) 5%”* 5&”3 5/”4 50’” 6” 6”” 8” 8” 8” 8Ü ” 9” 9” 9” 9” 9” 9” 9” 9”' 9#”( 9$”) 9%”* 9&”. 9*”/ 9+”= 99”> 9:’” :” :‘” ;””  = ” =” =” =“” ÌN” ÌN” ÌN$•” >” >” >” >” >•” ?” ?	” ?” ?” ?•” Ì@” Ì@	” Ì@” Ì@” Ì@•” ÌA” ÌA” ÌA” ÌA” ÌA•” ÌB” ÌB” ÌB” ÌB” ÌB•” ÌC” ÌC” ÌC” ÌC” ÌC•” ÌD” ÌD” ÌD” ÌD” ÌD•” ÌE” ÌE” ÌE”  ÌE”! ÌE•” ÌF” ÌF” ÌF”  ÌF”! ÌF•” ÌG” ÌG” ÌG” ÌG” ÌG•” ÌH” ÌH” ÌH” ÌH” ÌH•” ÌI” ÌI” ÌI” ÌI” ÌI•” ÌJ” ÌJ” ÌJ” ÌJ” ÌJ•” ÌK” ÌK	” ÌK"” ÌK$” ÌK%•” ÌL”& ÌL”) ÌL(”+ ÌL*”, ÌL+™” ÌO” ÌO” ÌO	” ÌO” ÌO” ÌO” ÌO” ÌO” ÌO™” ÌP” ÌP” ÌP	” ÌP” ÌP” ÌP” ÌP”# ÌP”$ ÌP ™” ÌQ” ÌQ” ÌQ	” ÌQ” ÌQ” ÌQ” ÌQ”# ÌQ”$ ÌQ ™” ÌR” ÌR” ÌR	” ÌR” ÌR” ÌR” ÌR”) ÌR%”* ÌR&™” ÌS” ÌS” ÌS	” ÌS” ÌS” ÌS” ÌS”) ÌS%”* ÌS&™” ÌT” ÌT” ÌT	” ÌT” ÌT” ÌT” ÌT”) ÌT%”* ÌT&™” ÌU” ÌU” ÌU	” ÌU” ÌU” ÌU” ÌU”) ÌU%”* ÌU&™” ÌV” ÌV” ÌV	” ÌV” ÌV”" ÌV”# ÌV”1 ÌV-”2 ÌV.™” ÌW” ÌW” ÌW	” ÌW” ÌW”" ÌW”# ÌW”1 ÌW-”2 ÌW.™” ÌX” ÌX” ÌX	” ÌX” ÌX” ÌX” ÌX”) ÌX%”* ÌX&™” ÌY” ÌY” ÌY	” ÌY” ÌY” ÌY” ÌY”) ÌY%”* ÌY&™” ÌZ” ÌZ” ÌZ	” ÌZ” ÌZ”  ÌZ”! ÌZ”- ÌZ)”. ÌZ*™” Ì[” Ì[” Ì[	” Ì[” Ì[”  Ì[”! Ì[”- Ì[)”. Ì[*–” Ì\” Ì\
-” Ì\” Ì\'” Ì\)” Ì\*Ü ” Ì]” Ì]	” Ì]” Ì]” Ì]” Ì]” Ì]” Ì]” Ì]”  Ì]”! Ì]”( Ì]$”) Ì]%”/ Ì]+”1 Ì]-”2 Ì].”4 Ì]0”6 Ì]2Ü ” Ì^” Ì^
-” Ì^” Ì^” Ì^” Ì^”, Ì^&”- Ì^'”1 Ì^+”2 Ì^,”9 Ì^3”: Ì^4”; Ì^5”< Ì^6”= Ì^7”> Ì^8”? Ì^9‘”	 Ì_—” Ì`” Ì`” Ì`	” Ì`” Ì`” Ì`” Ì`™” Ìa” Ìa” Ìa	”& Ìa"”) Ìa%”- Ìa)”. Ìa*”ÌG ÌaÌC”ÌH ÌaÌD’” Ìb” Ìb”” Ìd”	 Ìd”
- Ìd” ÌdÜ ” Ìe” Ìe” Ìe” Ìe” Ìe” Ìe” Ìe” Ìe”  Ìe”! Ìe”" Ìe”# Ìe”' Ìe#”( Ìe$”/ Ìe+”0 Ìe,’” Ìf” Ìf”” Ìh” Ìh
-” Ìh” ÌhÜ ” Ìi” Ìi” Ìi” Ìi” Ìi” Ìi” Ìi” Ìi”# Ìi”$ Ìi ”% Ìi!”& Ìi"”* Ìi&”+ Ìi'”5 Ìi1”6 Ìi2’” Ìj” Ìj”” Ìl” Ìl
-” Ìl” ÌlÜ ” Ìm” Ìm” Ìm” Ìm” Ìm” Ìm” Ìm” Ìm”# Ìm”$ Ìm ”% Ìm!”& Ìm"”* Ìm&”+ Ìm'”5 Ìm1”6 Ìm2’” Ìn” Ìn”” Ìp” Ìp” Ìp” ÌpÜ ” Ìq” Ìq” Ìq” Ìq” Ìq” Ìq” Ìq” Ìq”' Ìq#”( Ìq$”) Ìq%”* Ìq&”. Ìq*”/ Ìq+”= Ìq9”> Ìq:’” Ìr” Ìr”” Ìt” Ìt
-” Ìt” ÌtÜ ” Ìu” Ìu” Ìu” Ìu” Ìu” Ìu” Ìu” Ìu”# Ìu”$ Ìu ”% Ìu!”& Ìu"”* Ìu&”+ Ìu'”5 Ìu1”6 Ìu2’” Ìv” Ìv”” Ìx” Ìx” Ìx” ÌxÜ ” Ìy” Ìy” Ìy” Ìy” Ìy” Ìy” Ìy” Ìy”% Ìy!”& Ìy"”' Ìy#”( Ìy$”, Ìy(”- Ìy)”9 Ìy5”: Ìy6’” Ìz” Ìz‘” Ì{””  Ì} ” Ì}” Ì}”  Ì} –” Í”
- Í” Í	” Í” Í” ÍÜ ” Í	” Í	
-” Í	” Í	”) Í	%”* Í	&”- Í	)”. Í	*”2 Í	.”3 Í	/”4 Í	0”5 Í	1”7 Í	3”9 Í	5”: Í	6”; Í	7”< Í	8”> Í	:”ÌC Í	?”ÌE Í	ÌA”ÌF Í	ÌB”ÌG Í	ÌC›” Í
-” Í
-” Í
-” Í
-”+ Í
-'”, Í
-(”/ Í
-+”0 Í
-,”1 Í
--”2 Í
-.”3 Í
-/’” Í” Í“”  Ì~” Ì~” Ì~(”” Ì” Ì” Ì” Ì”” Ì€”
- Ì€” Ì€
-” Ì€”” Ì” Ì” Ì” Ì”” Ì‚” Ì‚” Ì‚”" Ì‚ ”” Ìƒ” Ìƒ” Ìƒ”/ Ìƒ-”” Ì„” Ì„” Ì„”ÌY Ì„ÌW”” Ì…” Ì…” Ì…” Ì…”” Ì†” Ì†” Ì†”2 Ì†0”” Ì‡” Ì‡” Ì‡”? Ì‡=”” Ìˆ” Ìˆ” Ìˆ”Ì{ ÌˆÌy”” Ì‰” Ì‰” Ì‰”' Ì‰%”” ÌŠ” ÌŠ” ÌŠ”ÌN ÌŠÌL”” Ì‹” Ì‹” Ì‹”4 Ì‹2”” ÌŒ” ÌŒ” ÌŒ”Ì_ ÌŒÌ]“” Ì” Ì” Ì”” Ì” Ì”" Ì”# Ì”” Ì
-” Ì” Ì”  Ì”” Ì
-” Ì” Ì”' Ì!”” Ì‘
-” Ì‘” Ì‘”ÌB Ì‘<”” Ì’
-” Ì’” Ì’”6 Ì’0”” Ì“
-” Ì“” Ì“”Ìc Ì“Ì]”” Ì”
-” Ì””  Ì””8 Ì”2”” Ì•
-” Ì•”  Ì•”ÌY Ì•ÌS’” Ì–	” Ì–
-”” Ì—” Ì—”" Ì—”# Ì—”” Ì˜
-” Ì˜” Ì˜”  Ì˜”” Ì™
-” Ì™” Ì™”& Ì™ ”” Ìš
-” Ìš” Ìš”7 Ìš1”” Ì›
-” Ì›” Ì›”3 Ì›-”” Ìœ
-” Ìœ” Ìœ”Ìb ÌœÌ\”” Ì
-” Ì”  Ì”Ì@ Ì:”” Ì
-” Ì”  Ì”Ìe ÌÌ_’” ÌŸ	” ÌŸ
-”” Ì ” Ì ”" Ì ”# Ì ”” Ì¡
-” Ì¡” Ì¡”$ Ì¡”” Ì¢
-” Ì¢” Ì¢”# Ì¢”” Ì£
-” Ì£” Ì£”1 Ì£+”” Ì¤
-” Ì¤” Ì¤”7 Ì¤1”” Ì¥
-” Ì¥” Ì¥”Ìe Ì¥Ì_”” Ì¦
-” Ì¦”  Ì¦”< Ì¦6”” Ì§
-” Ì§”  Ì§”Ìm Ì§Ìg’” Ì¨	” Ì¨
-‘”	 Ì©” Ìª”! Ìª”# Ìª!”$ Ìª"”* Ìª(”, Ìª*”7 Ìª5”9 Ìª7”ÌD ÌªÌB”ÌF ÌªÌD”ÌL ÌªÌJ”ÌN ÌªÌL”ÌX ÌªÌV”ÌY ÌªÌW’” Ì«” Ì«”” Ì¬” Ì¬” Ì¬” Ì¬”” Ì­”
- Ì­” Ì­
-” Ì­”” Ì®” Ì®” Ì®” Ì®”” Ì¯” Ì¯” Ì¯”! Ì¯”” Ì°” Ì°” Ì°”2 Ì°0”” Ì±” Ì±” Ì±”Ìc Ì±Ìa”” Ì²” Ì²” Ì²” Ì²”” Ì³” Ì³” Ì³”1 Ì³/”” Ì´” Ì´” Ì´”8 Ì´6”” Ìµ” Ìµ” Ìµ”Ì^ ÌµÌ\”” Ì¶” Ì¶” Ì¶”( Ì¶&”” Ì·” Ì·” Ì·”ÌK Ì·ÌI”” Ì¸” Ì¸” Ì¸”2 Ì¸0”” Ì¹” Ì¹” Ì¹”Ìp Ì¹Ìn“” Ìº” Ìº” Ìº”” Ì»” Ì»”" Ì»”# Ì»”” Ì¼
-” Ì¼” Ì¼”& Ì¼ ”” Ì½
-” Ì½” Ì½”* Ì½$”” Ì¾
-” Ì¾” Ì¾”ÌN Ì¾ÌH”” Ì¿
-” Ì¿” Ì¿”< Ì¿6”” ÌÀ
-” ÌÀ” ÌÀ”Ìl ÌÀÌf”” ÌÁ
-” ÌÁ”  ÌÁ”ÌD ÌÁ>”” ÌÂ
-” ÌÂ”  ÌÂ”Ìm ÌÂÌg’” ÌÃ	” ÌÃ
-”” ÌÄ” ÌÄ”" ÌÄ”# ÌÄ”” ÌÅ
-” ÌÅ” ÌÅ”# ÌÅ”” ÌÆ
-” ÌÆ” ÌÆ”( ÌÆ"”” ÌÇ
-” ÌÇ” ÌÇ”ÌB ÌÇ<”” ÌÈ
-” ÌÈ” ÌÈ”7 ÌÈ1”” ÌÉ
-” ÌÉ” ÌÉ”ÌW ÌÉÌQ”” ÌÊ
-” ÌÊ”  ÌÊ”ÌB ÌÊ<”” ÌË
-” ÌË”  ÌË”Ìo ÌËÌi’” ÌÌ	” ÌÌ
-”” ÌÍ” ÌÍ”" ÌÍ”# ÌÍ”” ÌÎ
-” ÌÎ” ÌÎ”& ÌÎ ”” ÌÏ
-” ÌÏ” ÌÏ”+ ÌÏ%”” ÌĞ
-” ÌĞ” ÌĞ”ÌG ÌĞÌA”” ÌÑ
-” ÌÑ” ÌÑ”: ÌÑ4”” ÌÒ
-” ÌÒ” ÌÒ”Ìh ÌÒÌb”” ÌÓ
-” ÌÓ”  ÌÓ”Ì@ ÌÓ:”” ÌÔ
-” ÌÔ”  ÌÔ”Ìl ÌÔÌf’” ÌÕ	” ÌÕ
-‘”	 ÌÖ” Ì×”! Ì×”# Ì×!”$ Ì×"”/ Ì×-”1 Ì×/”8 Ì×6”: Ì×8”Ì@ Ì×>”ÌB Ì×Ì@”ÌH Ì×ÌF”ÌJ Ì×ÌH”ÌT Ì×ÌR”ÌU Ì×ÌS’” ÌØ” ÌØ”” ÌÙ” ÌÙ” ÌÙ” ÌÙ”” ÌÚ”
- ÌÚ” ÌÚ
-” ÌÚ”” ÌÛ” ÌÛ” ÌÛ” ÌÛ”” ÌÜ” ÌÜ” ÌÜ”$ ÌÜ"”” Ìİ” Ìİ” Ìİ”. Ìİ,”” ÌŞ” ÌŞ” ÌŞ”ÌQ ÌŞÌO”” Ìß” Ìß” Ìß” Ìß”” Ìà” Ìà” Ìà”4 Ìà2”” Ìá” Ìá” Ìá”; Ìá9”” Ìâ” Ìâ” Ìâ”ÌX ÌâÌV”” Ìã” Ìã” Ìã”% Ìã#”” Ìä” Ìä” Ìä”ÌD ÌäÌB”” Ìå” Ìå” Ìå”0 Ìå.”” Ìæ” Ìæ” Ìæ”Ìg ÌæÌe“” Ìç” Ìç” Ìç”” Ìè” Ìè”" Ìè”# Ìè”” Ìé
-” Ìé” Ìé”* Ìé$”” Ìê
-” Ìê” Ìê”$ Ìê”” Ìë
-” Ìë” Ìë”3 Ìë-”” Ìì
-” Ìì” Ìì”6 Ìì0”” Ìí
-” Ìí” Ìí”ÌS ÌíÌM”” Ìî
-” Ìî”  Ìî”ÌC Ìî=”” Ìï
-” Ìï”  Ìï”Ìo ÌïÌi’” Ìğ	” Ìğ
-”” Ìñ” Ìñ”" Ìñ”# Ìñ”” Ìò
-” Ìò” Ìò”( Ìò"”” Ìó
-” Ìó” Ìó”$ Ìó”” Ìô
-” Ìô” Ìô”= Ìô7”” Ìõ
-” Ìõ” Ìõ”7 Ìõ1”” Ìö
-” Ìö” Ìö”Ìe ÌöÌ_”” Ì÷
-” Ì÷”  Ì÷”ÌA Ì÷;”” Ìø
-” Ìø”  Ìø”Ìh ÌøÌb’” Ìù	” Ìù
-”” Ìú” Ìú”" Ìú”# Ìú”” Ìû
-” Ìû” Ìû”% Ìû”” Ìü
-” Ìü” Ìü”) Ìü#”” Ìı
-” Ìı” Ìı”ÌQ ÌıÌK”” Ìş
-” Ìş” Ìş”8 Ìş2”” Ìÿ
-” Ìÿ” Ìÿ”Ìf ÌÿÌ`”” Í 
-” Í ”  Í ”ÌC Í =”” Í
-” Í”  Í”Ìn ÍÌh’” Í	” Í
-‘”	 Í” Í”! Í”# Í!”$ Í"”+ Í)”- Í+”7 Í5”9 Í7”ÌD ÍÌB”ÌF ÍÌD”ÌL ÍÌJ”ÌN ÍÌL”ÌY ÍÌW”ÌZ ÍÌX’” Í” Í’” Í” ÍÔrE–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ ã‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
- ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ÔrF’§missing¦pluginÃ¦genAbcÂÔ  ÔrG”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache“ÔrH–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclaration Í2ÔrI–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÍ2ÔrJ”¤type¥start£end¤nameªIdentifier²MoralDilemmaOptionÀÔrK”¤type¥start£end¤body©ClassBody Í2”ÔrL˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinition'Í6ÂÂJªIdentifier'2«constructor«constructorÔrM™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpression2Í6ÀÂÂÂ‘JªIdentifier37¤initK®BlockStatement9Í6ÔrN”¤type¥start£endªexpression³ExpressionStatementÌDÌQÔrO–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÌDÌP¡=ÔrP—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÌDÌKÔrQ“¤type¥start£end®ThisExpressionÌDÌHJªIdentifierÌIÌK¢idÂÂÔrR•¤type¥start£end¥value£raw§LiteralÌNÌP ¢''N³ExpressionStatementÌ[ÌmO´AssignmentExpressionÌ[Ìl¡=P°MemberExpressionÌ[ÌgQ®ThisExpressionÌ[Ì_JªIdentifierÌ`Ìg§labelZhÂÂR§LiteralÌjÌl ¢''N³ExpressionStatementÌwÌ‰O´AssignmentExpressionÌwÌˆ¡=P°MemberExpressionÌwÌƒQ®ThisExpressionÌwÌ{JªIdentifierÌ|Ìƒ§labelEnÂÂR§LiteralÌ†Ìˆ ¢''N³ExpressionStatementÌ“Ì§O´AssignmentExpressionÌ“Ì¦¡=P°MemberExpressionÌ“Ì¡Q®ThisExpressionÌ“Ì—JªIdentifierÌ˜Ì¡©summaryZhÂÂR§LiteralÌ¤Ì¦ ¢''N³ExpressionStatementÌ±ÌÅO´AssignmentExpressionÌ±ÌÄ¡=P°MemberExpressionÌ±Ì¿Q®ThisExpressionÌ±ÌµJªIdentifierÌ¶Ì¿©summaryEnÂÂR§LiteralÌÂÌÄ ¢''N³ExpressionStatementÌÏÌèO´AssignmentExpressionÌÏÌç¡=P°MemberExpressionÌÏÌâQ®ThisExpressionÌÏÌÓJªIdentifierÌÔÌâ®stancePromptZhÂÂR§LiteralÌåÌç ¢''N³ExpressionStatementÌòÍO´AssignmentExpressionÌòÍ
-¡=P°MemberExpressionÌòÍQ®ThisExpressionÌòÌöJªIdentifierÌ÷Í®stancePromptEnÂÂR§LiteralÍÍ
- ¢''N³ExpressionStatementÍÍ'O´AssignmentExpressionÍÍ&¡=P°MemberExpressionÍÍQ®ThisExpressionÍÍJªIdentifierÍÍ¢idÂÂP°MemberExpressionÍÍ&JªIdentifierÍÍ#¤initJªIdentifierÍ$Í&¢idÂÂN³ExpressionStatementÍ1ÍMO´AssignmentExpressionÍ1ÍL¡=P°MemberExpressionÍ1Í=Q®ThisExpressionÍ1Í5JªIdentifierÍ6Í=§labelZhÂÂP°MemberExpressionÍ@ÍLJªIdentifierÍ@ÍD¤initJªIdentifierÍEÍL§labelZhÂÂN³ExpressionStatementÍWÍsO´AssignmentExpressionÍWÍr¡=P°MemberExpressionÍWÍcQ®ThisExpressionÍWÍ[JªIdentifierÍ\Íc§labelEnÂÂP°MemberExpressionÍfÍrJªIdentifierÍfÍj¤initJªIdentifierÍkÍr§labelEnÂÂN³ExpressionStatementÍ}ÍO´AssignmentExpressionÍ}Íœ¡=P°MemberExpressionÍ}Í‹Q®ThisExpressionÍ}ÍJªIdentifierÍ‚Í‹©summaryZhÂÂP°MemberExpressionÍÍœJªIdentifierÍÍ’¤initJªIdentifierÍ“Íœ©summaryZhÂÂN³ExpressionStatementÍ§ÍÇO´AssignmentExpressionÍ§ÍÆ¡=P°MemberExpressionÍ§ÍµQ®ThisExpressionÍ§Í«JªIdentifierÍ¬Íµ©summaryEnÂÂP°MemberExpressionÍ¸ÍÆJªIdentifierÍ¸Í¼¤initJªIdentifierÍ½ÍÆ©summaryEnÂÂN³ExpressionStatementÍÑÍûO´AssignmentExpressionÍÑÍú¡=P°MemberExpressionÍÑÍäQ®ThisExpressionÍÑÍÕJªIdentifierÍÖÍä®stancePromptZhÂÂP°MemberExpressionÍçÍúJªIdentifierÍçÍë¤initJªIdentifierÍìÍú®stancePromptZhÂÂN³ExpressionStatementÍÍ/O´AssignmentExpressionÍÍ.¡=P°MemberExpressionÍÍQ®ThisExpressionÍÍ	JªIdentifierÍ
-Í®stancePromptEnÂÂP°MemberExpressionÍÍ.JªIdentifierÍÍ¤initJªIdentifierÍ Í.®stancePromptEnÂÂL°MethodDefinitionÍ<Í€ÂÂJªIdentifierÍ<ÍA¥label¦methodM²FunctionExpressionÍAÍ€ÀÂÂÂ‘JªIdentifierÍBÍD¢enK®BlockStatementÍFÍ€‘ÔrS”¤type¥start£end¨argument¯ReturnStatementÍQÍyÔrT–¤type¥start£end¤testªconsequent©alternateµConditionalExpressionÍXÍxJªIdentifierÍXÍZ¢enP°MemberExpressionÍ]ÍiQ®ThisExpressionÍ]ÍaJªIdentifierÍbÍi§labelEnÂÂP°MemberExpressionÍlÍxQ®ThisExpressionÍlÍpJªIdentifierÍqÍx§labelZhÂÂL°MethodDefinitionÍ†ÍĞÂÂJªIdentifierÍ†Í§summary¦methodM²FunctionExpressionÍÍĞÀÂÂÂ‘JªIdentifierÍÍ¢enK®BlockStatementÍ’ÍĞ‘S¯ReturnStatementÍÍÉTµConditionalExpressionÍ¤ÍÈJªIdentifierÍ¤Í¦¢enP°MemberExpressionÍ©Í·Q®ThisExpressionÍ©Í­JªIdentifierÍ®Í·©summaryEnÂÂP°MemberExpressionÍºÍÈQ®ThisExpressionÍºÍ¾JªIdentifierÍ¿ÍÈ©summaryZhÂÂL°MethodDefinitionÍÖÍ/ÂÂJªIdentifierÍÖÍâ¬stancePrompt¦methodM²FunctionExpressionÍâÍ/ÀÂÂÂ‘JªIdentifierÍãÍå¢enK®BlockStatementÍçÍ/‘S¯ReturnStatementÍòÍ(TµConditionalExpressionÍùÍ'JªIdentifierÍùÍû¢enP°MemberExpressionÍşÍQ®ThisExpressionÍşÍJªIdentifierÍÍ®stancePromptEnÂÂP°MemberExpressionÍÍ'Q®ThisExpressionÍÍJªIdentifierÍÍ'®stancePromptZhÂÂÀH¶ExportNamedDeclarationÍ4Í
-‡I°ClassDeclarationÍ;Í
-‡JªIdentifierÍAÍM¬MoralDilemmaÀK©ClassBodyÍNÍ
-‡—L°MethodDefinitionÍUÍ‰ÂÂJªIdentifierÍUÍ`«constructor«constructorM²FunctionExpressionÍ`Í‰ÀÂÂÂ‘JªIdentifierÍaÍe¤initK®BlockStatementÍgÍ‰Ü  N³ExpressionStatementÍrÍO´AssignmentExpressionÍrÍ~¡=P°MemberExpressionÍrÍyQ®ThisExpressionÍrÍvJªIdentifierÍwÍy¢idÂÂR§LiteralÍ|Í~ ¢''N³ExpressionStatementÍ‰Í›O´AssignmentExpressionÍ‰Íš¡=P°MemberExpressionÍ‰Í•Q®ThisExpressionÍ‰ÍJªIdentifierÍÍ•§titleZhÂÂR§LiteralÍ˜Íš ¢''N³ExpressionStatementÍ¥Í·O´AssignmentExpressionÍ¥Í¶¡=P°MemberExpressionÍ¥Í±Q®ThisExpressionÍ¥Í©JªIdentifierÍªÍ±§titleEnÂÂR§LiteralÍ´Í¶ ¢''N³ExpressionStatementÍÁÍÖO´AssignmentExpressionÍÁÍÕ¡=P°MemberExpressionÍÁÍĞQ®ThisExpressionÍÁÍÅJªIdentifierÍÆÍĞªsubtitleZhÂÂR§LiteralÍÓÍÕ ¢''N³ExpressionStatementÍàÍõO´AssignmentExpressionÍàÍô¡=P°MemberExpressionÍàÍïQ®ThisExpressionÍàÍäJªIdentifierÍåÍïªsubtitleEnÂÂR§LiteralÍòÍô ¢''N³ExpressionStatementÍÿÍO´AssignmentExpressionÍÿÍ¡=P°MemberExpressionÍÿÍQ®ThisExpressionÍÿÍJªIdentifierÍÍªimageAltZhÂÂR§LiteralÍÍ ¢''N³ExpressionStatementÍÍ3O´AssignmentExpressionÍÍ2¡=P°MemberExpressionÍÍ-Q®ThisExpressionÍÍ"JªIdentifierÍ#Í-ªimageAltEnÂÂR§LiteralÍ0Í2 ¢''N³ExpressionStatementÍ=ÍVO´AssignmentExpressionÍ=ÍU¡=P°MemberExpressionÍ=ÍPQ®ThisExpressionÍ=ÍAJªIdentifierÍBÍP®imageCaptionZhÂÂR§LiteralÍSÍU ¢''N³ExpressionStatementÍ`ÍyO´AssignmentExpressionÍ`Íx¡=P°MemberExpressionÍ`ÍsQ®ThisExpressionÍ`ÍdJªIdentifierÍeÍs®imageCaptionEnÂÂR§LiteralÍvÍx ¢''N³ExpressionStatementÍƒÍ˜O´AssignmentExpressionÍƒÍ—¡=P°MemberExpressionÍƒÍ’Q®ThisExpressionÍƒÍ‡JªIdentifierÍˆÍ’ªquestionZhÂÂR§LiteralÍ•Í— ¢''N³ExpressionStatementÍ¢Í·O´AssignmentExpressionÍ¢Í¶¡=P°MemberExpressionÍ¢Í±Q®ThisExpressionÍ¢Í¦JªIdentifierÍ§Í±ªquestionEnÂÂR§LiteralÍ´Í¶ ¢''N³ExpressionStatementÍÁÍØO´AssignmentExpressionÍÁÍ×¡=P°MemberExpressionÍÁÍÒQ®ThisExpressionÍÁÍÅJªIdentifierÍÆÍÒ¬promptLeadZhÂÂR§LiteralÍÕÍ× ¢''N³ExpressionStatementÍâÍùO´AssignmentExpressionÍâÍø¡=P°MemberExpressionÍâÍóQ®ThisExpressionÍâÍæJªIdentifierÍçÍó¬promptLeadEnÂÂR§LiteralÍöÍø ¢''N³ExpressionStatementÍÍO´AssignmentExpressionÍÍ¡=P°MemberExpressionÍÍQ®ThisExpressionÍÍJªIdentifierÍÍ§optionsÂÂÔrU”¤type¥start£end¨elements¯ArrayExpressionÍÍN³ExpressionStatementÍÍCO´AssignmentExpressionÍÍB¡=P°MemberExpressionÍÍ=Q®ThisExpressionÍÍ#JªIdentifierÍ$Í=¹recommendedPhilosopherIdsÂÂU¯ArrayExpressionÍ@ÍBN³ExpressionStatementÍMÍ_O´AssignmentExpressionÍMÍ^¡=P°MemberExpressionÍMÍTQ®ThisExpressionÍMÍQJªIdentifierÍRÍT¢idÂÂP°MemberExpressionÍWÍ^JªIdentifierÍWÍ[¤initJªIdentifierÍ\Í^¢idÂÂN³ExpressionStatementÍiÍ…O´AssignmentExpressionÍiÍ„¡=P°MemberExpressionÍiÍuQ®ThisExpressionÍiÍmJªIdentifierÍnÍu§titleZhÂÂP°MemberExpressionÍxÍ„JªIdentifierÍxÍ|¤initJªIdentifierÍ}Í„§titleZhÂÂN³ExpressionStatementÍÍ«O´AssignmentExpressionÍÍª¡=P°MemberExpressionÍÍ›Q®ThisExpressionÍÍ“JªIdentifierÍ”Í›§titleEnÂÂP°MemberExpressionÍÍªJªIdentifierÍÍ¢¤initJªIdentifierÍ£Íª§titleEnÂÂN³ExpressionStatementÍµÍ×O´AssignmentExpressionÍµÍÖ¡=P°MemberExpressionÍµÍÄQ®ThisExpressionÍµÍ¹JªIdentifierÍºÍÄªsubtitleZhÂÂP°MemberExpressionÍÇÍÖJªIdentifierÍÇÍË¤initJªIdentifierÍÌÍÖªsubtitleZhÂÂN³ExpressionStatementÍáÍO´AssignmentExpressionÍáÍ¡=P°MemberExpressionÍáÍğQ®ThisExpressionÍáÍåJªIdentifierÍæÍğªsubtitleEnÂÂP°MemberExpressionÍóÍJªIdentifierÍóÍ÷¤initJªIdentifierÍøÍªsubtitleEnÂÂN³ExpressionStatementÍÍ/O´AssignmentExpressionÍÍ.¡=P°MemberExpressionÍÍQ®ThisExpressionÍÍJªIdentifierÍÍªimageAltZhÂÂP°MemberExpressionÍÍ.JªIdentifierÍÍ#¤initJªIdentifierÍ$Í.ªimageAltZhÂÂN³ExpressionStatementÍ9Í[O´AssignmentExpressionÍ9ÍZ¡=P°MemberExpressionÍ9ÍHQ®ThisExpressionÍ9Í=JªIdentifierÍ>ÍHªimageAltEnÂÂP°MemberExpressionÍKÍZJªIdentifierÍKÍO¤initJªIdentifierÍPÍZªimageAltEnÂÂN³ExpressionStatementÍeÍO´AssignmentExpressionÍeÍ¡=P°MemberExpressionÍeÍxQ®ThisExpressionÍeÍiJªIdentifierÍjÍx®imageCaptionZhÂÂP°MemberExpressionÍ{ÍJªIdentifierÍ{Í¤initJªIdentifierÍ€Í®imageCaptionZhÂÂN³ExpressionStatementÍ™ÍÃO´AssignmentExpressionÍ™ÍÂ¡=P°MemberExpressionÍ™Í¬Q®ThisExpressionÍ™ÍJªIdentifierÍÍ¬®imageCaptionEnÂÂP°MemberExpressionÍ¯ÍÂJªIdentifierÍ¯Í³¤initJªIdentifierÍ´ÍÂ®imageCaptionEnÂÂN³ExpressionStatementÍÍÍïO´AssignmentExpressionÍÍÍî¡=P°MemberExpressionÍÍÍÜQ®ThisExpressionÍÍÍÑJªIdentifierÍÒÍÜªquestionZhÂÂP°MemberExpressionÍßÍîJªIdentifierÍßÍã¤initJªIdentifierÍäÍîªquestionZhÂÂN³ExpressionStatementÍùÍO´AssignmentExpressionÍùÍ¡=P°MemberExpressionÍùÍQ®ThisExpressionÍùÍıJªIdentifierÍşÍªquestionEnÂÂP°MemberExpressionÍÍJªIdentifierÍÍ¤initJªIdentifierÍÍªquestionEnÂÂN³ExpressionStatementÍ%ÍKO´AssignmentExpressionÍ%ÍJ¡=P°MemberExpressionÍ%Í6Q®ThisExpressionÍ%Í)JªIdentifierÍ*Í6¬promptLeadZhÂÂP°MemberExpressionÍ9ÍJJªIdentifierÍ9Í=¤initJªIdentifierÍ>ÍJ¬promptLeadZhÂÂN³ExpressionStatementÍUÍ{O´AssignmentExpressionÍUÍz¡=P°MemberExpressionÍUÍfQ®ThisExpressionÍUÍYJªIdentifierÍZÍf¬promptLeadEnÂÂP°MemberExpressionÍiÍzJªIdentifierÍiÍm¤initJªIdentifierÍnÍz¬promptLeadEnÂÂÔrV•¤type¥start£end¬declarations¤kind³VariableDeclarationÍ…Í•‘ÔrW•¤type¥start£end¢id¤init²VariableDeclaratorÍ‹Í”JªIdentifierÍ‹Í¤optsU¯ArrayExpressionÍ’Í”¥constÔrX—¤type¥start£end¤init¤test¦update¤body¬ForStatementÍŸÍV³VariableDeclarationÍ¤Í­‘W²VariableDeclaratorÍ¨Í­JªIdentifierÍ¨Í©¡iR§LiteralÍ¬Í­ ¡0£letÔrY–¤type¥start£end¤left¨operator¥right°BinaryExpressionÍ¯ÍÆJªIdentifierÍ¯Í°¡i¡<P°MemberExpressionÍ³ÍÆP°MemberExpressionÍ³Í¿JªIdentifierÍ³Í·¤initJªIdentifierÍ¸Í¿§optionsÂÂJªIdentifierÍÀÍÆ¦lengthÂÂÔrZ–¤type¥start£end¨operator¦prefix¨argument°UpdateExpressionÍÈÍË¢++ÂJªIdentifierÍÈÍÉ¡iK®BlockStatementÍÍÍ‘N³ExpressionStatementÍÜÍÔr[–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍÜÍP°MemberExpressionÍÜÍåJªIdentifierÍÜÍà¤optsJªIdentifierÍáÍå¤pushÂÂ‘Ôr\•¤type¥start£end¦callee©arguments­NewExpressionÍæÍJªIdentifierÍêÍü²MoralDilemmaOption‘P°MemberExpressionÍıÍP°MemberExpressionÍıÍ	JªIdentifierÍıÍ¤initJªIdentifierÍÍ	§optionsÂÂJªIdentifierÍ
-Í¡iÃÂÂN³ExpressionStatementÍ$Í8O´AssignmentExpressionÍ$Í7¡=P°MemberExpressionÍ$Í0Q®ThisExpressionÍ$Í(JªIdentifierÍ)Í0§optionsÂÂJªIdentifierÍ3Í7¤optsN³ExpressionStatementÍBÍ‚O´AssignmentExpressionÍBÍ¡=P°MemberExpressionÍBÍ`Q®ThisExpressionÍBÍFJªIdentifierÍGÍ`¹recommendedPhilosopherIdsÂÂP°MemberExpressionÍcÍJªIdentifierÍcÍg¤initJªIdentifierÍhÍ¹recommendedPhilosopherIdsÂÂL°MethodDefinitionÍÍÓÂÂJªIdentifierÍÍ”¥title¦methodM²FunctionExpressionÍ”ÍÓÀÂÂÂ‘JªIdentifierÍ•Í—¢enK®BlockStatementÍ™ÍÓ‘S¯ReturnStatementÍ¤ÍÌTµConditionalExpressionÍ«ÍËJªIdentifierÍ«Í­¢enP°MemberExpressionÍ°Í¼Q®ThisExpressionÍ°Í´JªIdentifierÍµÍ¼§titleEnÂÂP°MemberExpressionÍ¿ÍËQ®ThisExpressionÍ¿ÍÃJªIdentifierÍÄÍË§titleZhÂÂL°MethodDefinitionÍÙÍ	&ÂÂJªIdentifierÍÙÍá¨subtitle¦methodM²FunctionExpressionÍáÍ	&ÀÂÂÂ‘JªIdentifierÍâÍä¢enK®BlockStatementÍæÍ	&‘S¯ReturnStatementÍñÍ	TµConditionalExpressionÍøÍ	JªIdentifierÍøÍú¢enP°MemberExpressionÍıÍ	Q®ThisExpressionÍıÍ	JªIdentifierÍ	Í	ªsubtitleEnÂÂP°MemberExpressionÍ	Í	Q®ThisExpressionÍ	Í	JªIdentifierÍ	Í	ªsubtitleZhÂÂL°MethodDefinitionÍ	,Í	yÂÂJªIdentifierÍ	,Í	4¨imageAlt¦methodM²FunctionExpressionÍ	4Í	yÀÂÂÂ‘JªIdentifierÍ	5Í	7¢enK®BlockStatementÍ	9Í	y‘S¯ReturnStatementÍ	DÍ	rTµConditionalExpressionÍ	KÍ	qJªIdentifierÍ	KÍ	M¢enP°MemberExpressionÍ	PÍ	_Q®ThisExpressionÍ	PÍ	TJªIdentifierÍ	UÍ	_ªimageAltEnÂÂP°MemberExpressionÍ	bÍ	qQ®ThisExpressionÍ	bÍ	fJªIdentifierÍ	gÍ	qªimageAltZhÂÂL°MethodDefinitionÍ	Í	ØÂÂJªIdentifierÍ	Í	‹¬imageCaption¦methodM²FunctionExpressionÍ	‹Í	ØÀÂÂÂ‘JªIdentifierÍ	ŒÍ	¢enK®BlockStatementÍ	Í	Ø‘S¯ReturnStatementÍ	›Í	ÑTµConditionalExpressionÍ	¢Í	ĞJªIdentifierÍ	¢Í	¤¢enP°MemberExpressionÍ	§Í	ºQ®ThisExpressionÍ	§Í	«JªIdentifierÍ	¬Í	º®imageCaptionEnÂÂP°MemberExpressionÍ	½Í	ĞQ®ThisExpressionÍ	½Í	ÁJªIdentifierÍ	ÂÍ	Ğ®imageCaptionZhÂÂL°MethodDefinitionÍ	ŞÍ
-+ÂÂJªIdentifierÍ	ŞÍ	æ¨question¦methodM²FunctionExpressionÍ	æÍ
-+ÀÂÂÂ‘JªIdentifierÍ	çÍ	é¢enK®BlockStatementÍ	ëÍ
-+‘S¯ReturnStatementÍ	öÍ
-$TµConditionalExpressionÍ	ıÍ
-#JªIdentifierÍ	ıÍ	ÿ¢enP°MemberExpressionÍ
-Í
-Q®ThisExpressionÍ
-Í
-JªIdentifierÍ
-Í
-ªquestionEnÂÂP°MemberExpressionÍ
-Í
-#Q®ThisExpressionÍ
-Í
-JªIdentifierÍ
-Í
-#ªquestionZhÂÂL°MethodDefinitionÍ
-1Í
-„ÂÂJªIdentifierÍ
-1Í
-;ªpromptLead¦methodM²FunctionExpressionÍ
-;Í
-„ÀÂÂÂ‘JªIdentifierÍ
-<Í
->¢enK®BlockStatementÍ
-@Í
-„‘S¯ReturnStatementÍ
-KÍ
-}TµConditionalExpressionÍ
-RÍ
-|JªIdentifierÍ
-RÍ
-T¢enP°MemberExpressionÍ
-WÍ
-hQ®ThisExpressionÍ
-WÍ
-[JªIdentifierÍ
-\Í
-h¬promptLeadEnÂÂP°MemberExpressionÍ
-kÍ
-|Q®ThisExpressionÍ
-kÍ
-oJªIdentifierÍ
-pÍ
-|¬promptLeadZhÂÂÀH¶ExportNamedDeclarationÍ
-‰ÍMI°ClassDeclarationÍ
-ÍMJªIdentifierÍ
-–Í
-©³MoralDilemmaCatalogÀK©ClassBodyÍ
-ªÍM‘L°MethodDefinitionÍ
-±ÍJÃÂJªIdentifierÍ
-¸Í
-¿§dilemma¦methodM²FunctionExpressionÍ
-¿ÍJÀÂÂÂ‘JªIdentifierÍ
-ÀÍ
-Â¢idK®BlockStatementÍ
-ÄÍJ’V³VariableDeclarationÍ
-ÏÍ‘W²VariableDeclaratorÍ
-ÕÍJªIdentifierÍ
-ÕÍ
-Ú¥found[®CallExpressionÍ
-İÍP°MemberExpressionÍ
-İÍ
-ùP°MemberExpressionÍ
-İÍ
-ôJªIdentifierÍ
-İÍ
-ğ³MoralDilemmaCatalogJªIdentifierÍ
-ñÍ
-ô£allÂÂJªIdentifierÍ
-õÍ
-ù¤findÂÂ‘M·ArrowFunctionExpressionÍ
-úÍÀÃÂÂ‘JªIdentifierÍ
-ûÍ
-ü¡dY°BinaryExpressionÍÍP°MemberExpressionÍÍJªIdentifierÍÍ¡dJªIdentifierÍÍ¢idÂÂ£===JªIdentifierÍ
-Í¢idÂ¥constS¯ReturnStatementÍÍCY±LogicalExpressionÍÍBJªIdentifierÍÍ$¥found¢??P°MemberExpressionÍ(ÍBP°MemberExpressionÍ(Í?JªIdentifierÍ(Í;³MoralDilemmaCatalogJªIdentifierÍ<Í?£allÂÂR§LiteralÍ@ÍA ¡0ÃÂÀ

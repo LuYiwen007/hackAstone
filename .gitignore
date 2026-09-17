@@ -48,6 +48,9 @@ dist/
 
 # --- HarmonyOS / hvigor 构建产物 ---
 **/.hvigor/
+**/.preview/
+**/.appanalyzer/
+oh_modules/
 
 # --- 个人 PPT / 视频素材 ---
 media_assets/
