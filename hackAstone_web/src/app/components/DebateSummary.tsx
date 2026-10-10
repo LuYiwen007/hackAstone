@@ -105,35 +105,50 @@ export function DebateSummary({
 
   useEffect(() => {
     let cancelled = false;
-    setInsightLoading(true);
-    setInsight(null);
-    setInsightStreamPreview("");
-    runEchoQuery(buildInsightPrompt(philosopher, question, userChoice, userReason), {
-      onDelta: (_d, acc) => setInsightStreamPreview(acc),
-    })
-      .then((resp) => {
-        const parsed = parseJsonPayload<AiDebateInsight>(resp.text);
-        if (
-          !parsed?.corePoints?.length ||
-          !parsed.comparison?.philosopherStance ||
-          !parsed.deepQuestions?.length
-        ) {
-          throw new Error("模型未返回有效的智能总结 JSON");
-        }
-        if (!cancelled) setInsight(parsed);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
+    const loadInsight = async () => {
+      setInsightLoading(true);
+      setInsight(null);
+      setInsightStreamPreview("");
+      const maxAttempts = 3;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        if (cancelled) return;
+        try {
+          const resp = await runEchoQuery(
+            buildInsightPrompt(philosopher, question, userChoice, userReason),
+            {
+              onDelta: (_d, acc) => {
+                if (!cancelled) setInsightStreamPreview(acc);
+              },
+            }
+          );
+          const parsed = parseJsonPayload<AiDebateInsight>(resp.text);
+          if (
+            !parsed?.corePoints?.length ||
+            !parsed.comparison?.philosopherStance ||
+            !parsed.deepQuestions?.length
+          ) {
+            console.error(
+              `[DebateSummary] 智能总结校验失败（第 ${attempt}/${maxAttempts} 次），模型原始输出：`,
+              resp.text
+            );
+            throw new Error("模型未返回有效的智能总结 JSON");
+          }
+          if (!cancelled) setInsight(parsed);
+          return;
+        } catch (err: unknown) {
+          if (cancelled) return;
+          if (attempt < maxAttempts) continue;
           const msg = err instanceof Error ? err.message : "智能总结加载失败";
           toast.error(msg);
         }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setInsightLoading(false);
-          setInsightStreamPreview("");
-        }
-      });
+      }
+    };
+    loadInsight().finally(() => {
+      if (!cancelled) {
+        setInsightLoading(false);
+        setInsightStreamPreview("");
+      }
+    });
     return () => {
       cancelled = true;
     };

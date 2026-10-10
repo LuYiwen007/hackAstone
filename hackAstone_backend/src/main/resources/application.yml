@@ -26,6 +26,8 @@ mybatis:
 logging:
   level:
     org.hackastone: debug
+    # 压掉 MyBatis 每次 SQL 的 Preparing/Parameters/Total 调试日志（mapper 包继承上面的 debug 会被带开）
+    org.hackastone.base.dal.mapper: info
 
 # 启动时自动建库 + 幂等建表（classpath:db/init-tables.sql）
 hackastone:
