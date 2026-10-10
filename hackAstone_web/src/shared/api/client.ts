@@ -44,7 +44,9 @@ export function setAuth(payload: AuthPayload) {
   window.dispatchEvent(new Event("hackastone-auth-changed"));
 }
 
-/** 登录后或拉取 /user/me 后，同步本地会话中的展示字段 */
+/** 登录后或拉取 /user/me 后，同步本地会话中的展示字段。
+ *  注意：这里不能 dispatch hackastone-auth-changed——UserSettingsContext 监听该事件并
+ *  会再次拉取 /user/me，会造成"拉取→同步→触发再拉取"的死循环，让后端被 /user/me 刷屏。 */
 export function patchAuthProfile(fields: {
   nickname?: string;
   email?: string;
@@ -52,7 +54,7 @@ export function patchAuthProfile(fields: {
 }) {
   const auth = getAuth();
   if (!auth) return;
-  setAuth({
+  const next = {
     ...auth,
     nickname: fields.nickname ?? auth.nickname,
     email: fields.email ?? auth.email,
@@ -63,7 +65,8 @@ export function patchAuthProfile(fields: {
           ? fields.avatarUrl
           : auth.avatarUrl,
     username: (fields.email !== undefined ? fields.email : auth.email) ?? auth.username,
-  });
+  };
+  localStorage.setItem(AUTH_KEY, JSON.stringify(next));
 }
 
 export function clearAuth() {

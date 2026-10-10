@@ -429,7 +429,7 @@ export function Dilemma() {
               <img
                 src={currentDilemma.heroImage}
                 alt={currentDilemma.imageAlt}
-                className="h-[360px] w-full object-cover md:h-[460px]"
+                className="aspect-video w-full object-cover"
               />
               <div className="border-t border-zinc-800 bg-zinc-950/80 px-6 py-4">
                 <div className="text-sm text-zinc-400">{currentDilemma.imageCaption}</div>
